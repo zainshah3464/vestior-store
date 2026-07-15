@@ -74,31 +74,31 @@ export const metadata: Metadata = {
   },
 
   icons: {
-    icon: "/favicon/favicon.ico",
-    shortcut: "/favicon/favicon.ico",
-    apple: "/favicon/apple-touch-icon.png",
+    icon: "/favicon.ico",
+    shortcut: "/favicon.ico",
+    apple: "/apple-touch-icon.png",
     other: [
       {
         rel: "icon",
         type: "image/png",
         sizes: "192x192",
-        url: "/favicon/icon-192.png",
+        url: "/icon-192.png",
       },
       {
         rel: "icon",
         type: "image/png",
         sizes: "512x512",
-        url: "/favicon/icon-512.png",
+        url: "/icon-512.png",
       },
       {
         rel: "mask-icon",
-        url: "/favicon/safari-pinned-tab.svg",
+        url: "/safari-pinned-tab.svg",
         color: "#0A0A0A",
       },
     ],
   },
 
-  manifest: "/favicon/manifest.json",
+  manifest: "/manifest.json",
 
   other: {
     "theme-color": "#0A0A0A",
