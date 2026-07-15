@@ -17,7 +17,7 @@ const geistMono = Geist_Mono({
   display: "swap",
 })
 
-// ---- Metadata (full SEO) ----
+// ---- Metadata (updated domain + icons) ----
 export const metadata: Metadata = {
   title: {
     default: "VESTIOR – Premium Tailored Fashion",
@@ -26,11 +26,11 @@ export const metadata: Metadata = {
   description:
     "Discover hand‑crafted suits, coats, pants, and heritage Gurkha wear",
   metadataBase: new URL(
-    process.env.NEXT_PUBLIC_SITE_URL || "https://vestior-store.vercel.app"
+    process.env.NEXT_PUBLIC_SITE_URL || "https://vestior.vercel.app"
   ),
   applicationName: "VESTIOR",
   creator: "VESTIOR Studio",
-  authors: [{ name: "VESTIOR", url: "https://vestior-store.vercel.app" }],
+  authors: [{ name: "VESTIOR", url: "https://vestior.vercel.app" }],
   keywords: [
     "suits",
     "coats",
@@ -48,7 +48,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     locale: "en_US",
-    url: "https://vestior-store.vercel.app",
+    url: "https://vestior.vercel.app",
     siteName: "VESTIOR",
     title: "VESTIOR – Premium Tailored Fashion",
     description:
@@ -65,7 +65,7 @@ export const metadata: Metadata = {
 
   twitter: {
     card: "summary_large_image",
-    site: "@VESTIOR", // replace with real handle if you have one
+    site: "@VESTIOR",
     creator: "@VESTIOR",
     title: "VESTIOR – Premium Tailored Fashion",
     description:
@@ -74,7 +74,7 @@ export const metadata: Metadata = {
   },
 
   icons: {
-    icon: "/favicon.ico",
+    icon: "/favicon.ico",       // root of public/
     shortcut: "/favicon.ico",
     apple: "/apple-touch-icon.png",
     other: [
@@ -108,7 +108,7 @@ export const metadata: Metadata = {
   },
 }
 
-// ---- Viewport (mobile optimisation) ----
+// ---- Viewport ----
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
@@ -129,7 +129,6 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${geistSans.variable} ${geistMono.variable}`}>
       <head>
-        {/* Supabase connection optimisation */}
         <link
           rel="preconnect"
           href={process.env.NEXT_PUBLIC_SUPABASE_URL}
@@ -143,9 +142,7 @@ export default function RootLayout({
         className="font-sans bg-[#0A0A0A] text-white antialiased"
         suppressHydrationWarning
       >
-        <AuthProvider>
-          {children}
-        </AuthProvider>
+        <AuthProvider>{children}</AuthProvider>
         <Toaster
           position="top-right"
           toastOptions={{
