@@ -60,19 +60,19 @@ A **full-stack, production-ready, single‑vendor e‑commerce website** for pre
 
 | Homepage                                    | Product Category Filter                         |
 | ------------------------------------------- | ----------------------------------------------- |
-| ![Homepage](./og-image.png)                 | ![Category Filter](./category.png)              |
+| ![Homepage](./public/og-image.png)                 | ![Category Filter](./public/category.png)              |
 
 | Product Cart                                | Checkout Page                                   |
 | ------------------------------------------- | ----------------------------------------------- |
-| ![Cart](./cart.png)                         | ![Checkout](./checkout.png)                     |
+| ![Cart](./public/cart.png)                         | ![Checkout](./public/checkout.png)                     |
 
 | Customer Orders                            | Admin Dashboard                                 |
 | ------------------------------------------- | ----------------------------------------------- |
-| ![Orders](./order.png)                      | ![Dashboard](./dashboard.png)                   |
+| ![Orders](./public/order.png)                      | ![Dashboard](./public/dashboard.png)                   |
 
 | Admin Orders Management                     | Admin Users Table                               |
 | ------------------------------------------- | ----------------------------------------------- |
-| ![Admin Orders](./ordersadmin.png)          | *(User modal not shown, but included)*          |
+| ![Admin Orders](./public/ordersadmin.png)          | *(User modal not shown, but included)*          |
 
 *More screenshots can be added as needed.*
 
@@ -84,10 +84,75 @@ A **full-stack, production-ready, single‑vendor e‑commerce website** for pre
 - **Node.js** v18+ and **npm** (or yarn/pnpm)
 - A **Supabase** project (free tier works)
 - (Optional) A **Vercel** account for deployment
+- 
+🚢 Deployment
+The project is deployed on Vercel. To deploy your own instance:
+
+Push the repository to GitHub.
+
+Import the project into Vercel.
+
+Set the environment variables in Vercel’s project settings.
+
+Deploy.
+
+Make sure to configure the Supabase redirect URLs (in Authentication → URL Configuration) to include your Vercel domain for OAuth callbacks.
+
+🗺️ Roadmap
+Core e‑commerce flow (product listing → cart → checkout → orders)
+
+Admin panel with CRUD operations
+
+Real‑time order status updates
+
+Google OAuth & email verification
+
+Glass‑morphism UI & animations
+
+Online payment integration (Stripe / Razorpay)
+
+Automatic stock deduction on order placement
+
+Admin notifications for new orders
+
+SEO enhancements (structured data, sitemap)
+
+Comprehensive test suite (E2E with Cypress/Playwright)
+
+Wishlist functionality
+
+Order detail page for customers
+
+🤝 Contributing
+Contributions are welcome! This project is built as a portfolio piece, but if you find any issues or have improvements, feel free to open an issue or pull request.
+
+Fork the repository
+
+Create a feature branch (git checkout -b feature/amazing-feature)
+
+Commit your changes (git commit -m 'Add amazing feature')
+
+Push to the branch (git push origin feature/amazing-feature)
+
+Open a Pull Request
+
+📄 License
+This project is licensed under the MIT License. See LICENSE for details.
+
+📞 Contact
+Zain Ali Shah
+
+Email: zainshahz110s@gmail.com
+
+GitHub: github.com/yourusername
+
+Live Project: vestior.vercel.app
+
+<p align="center">Made with ❤️ and modern web technologies</p> ```
 
 ### 1. Clone the repository
 ```bash
-git clone https://github.com/yourusername/vestior-store.git
+git clone https://github.com/zainshah3464/vestior-store.git
 cd vestior-store
 
 2. Install dependencies
@@ -220,68 +285,5 @@ NEXT_PUBLIC_SUPABASE_URL	Supabase project URL (public)
 NEXT_PUBLIC_SUPABASE_ANON_KEY	Supabase anonymous key (public)
 SUPABASE_SERVICE_ROLE_KEY	Supabase service role key (secret, server‑only)
 Note: Never expose SUPABASE_SERVICE_ROLE_KEY to the browser. It’s used only in server components and server actions.
-
-🚢 Deployment
-The project is deployed on Vercel. To deploy your own instance:
-
-Push the repository to GitHub.
-
-Import the project into Vercel.
-
-Set the environment variables in Vercel’s project settings.
-
-Deploy.
-
-Make sure to configure the Supabase redirect URLs (in Authentication → URL Configuration) to include your Vercel domain for OAuth callbacks.
-
-🗺️ Roadmap
-Core e‑commerce flow (product listing → cart → checkout → orders)
-
-Admin panel with CRUD operations
-
-Real‑time order status updates
-
-Google OAuth & email verification
-
-Glass‑morphism UI & animations
-
-Online payment integration (Stripe / Razorpay)
-
-Automatic stock deduction on order placement
-
-Admin notifications for new orders
-
-SEO enhancements (structured data, sitemap)
-
-Comprehensive test suite (E2E with Cypress/Playwright)
-
-Wishlist functionality
-
-Order detail page for customers
-
-🤝 Contributing
-Contributions are welcome! This project is built as a portfolio piece, but if you find any issues or have improvements, feel free to open an issue or pull request.
-
-Fork the repository
-
-Create a feature branch (git checkout -b feature/amazing-feature)
-
-Commit your changes (git commit -m 'Add amazing feature')
-
-Push to the branch (git push origin feature/amazing-feature)
-
-Open a Pull Request
-
-📄 License
-This project is licensed under the MIT License. See LICENSE for details.
-
-📞 Contact
-Zain Ali Shah
-
-Email: zainshahz110s@gmail.com
-
-GitHub: github.com/zainshah3463
-
-Live Project: vestior.vercel.app
 
 <p align="center">Made with ❤️ and modern web technologies</p> ```
