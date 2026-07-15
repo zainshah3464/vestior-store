@@ -123,7 +123,9 @@ Wishlist functionality
 
 Order detail page for customers
 
+
 🤝 Contributing
+
 Contributions are welcome! This project is built as a portfolio piece, but if you find any issues or have improvements, feel free to open an issue or pull request.
 
 Fork the repository
@@ -140,6 +142,7 @@ Open a Pull Request
 This project is licensed under the MIT License. See LICENSE for details.
 
 📞 Contact
+
 Zain Ali Shah
 
 Email: zainshahz110s@gmail.com
@@ -285,5 +288,3 @@ NEXT_PUBLIC_SUPABASE_URL	Supabase project URL (public)
 NEXT_PUBLIC_SUPABASE_ANON_KEY	Supabase anonymous key (public)
 SUPABASE_SERVICE_ROLE_KEY	Supabase service role key (secret, server‑only)
 Note: Never expose SUPABASE_SERVICE_ROLE_KEY to the browser. It’s used only in server components and server actions.
-
-<p align="center">Made with ❤️ and modern web technologies</p> ```
