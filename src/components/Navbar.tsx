@@ -375,7 +375,7 @@ export default function Navbar() {
       </nav>
 
       {/* ---- Spacer for non-home pages to avoid content touching navbar ---- */}
-      {!isHomePage && <div className="h-12 md:h-14" />}  {/* adjust as you like */}
+      {!isHomePage && <div className="md:h-6" />}  {/* adjust as you like */}
 
       {/* ---------- Search Modal (unchanged except images now parsed) ---------- */}
       <AnimatePresence>
