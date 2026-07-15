@@ -310,14 +310,14 @@ export default function Navbar() {
             </div>
           </div>
 
-          {/* Mobile Menu */}
+          {/* Mobile Menu – now with solid background to prevent overlap with hero image */}
           <AnimatePresence>
             {isOpen && (
               <motion.div
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
-                className="md:hidden py-2 border-t border-white/10 mt-1"
+                className="md:hidden py-2 border-t border-white/10 mt-1 bg-[#0A0A0A]/95 backdrop-blur-md"
               >
                 {navItems.map((item) =>
                   item.isButton ? (
@@ -340,7 +340,7 @@ export default function Navbar() {
                   )
                 )}
 
-                {/* 👇 User links only when navbar is solid (scrolled or not on home) */}
+                {/* User links only when navbar is solid (scrolled or not on home) */}
                 {(scrolled || !isHomePage) && user && (
                   <div className="border-t border-white/10 pt-2 mt-2 space-y-1">
                     <Link
@@ -375,7 +375,7 @@ export default function Navbar() {
       </nav>
 
       {/* ---- Spacer for non-home pages to avoid content touching navbar ---- */}
-      {!isHomePage && <div className="md:h-6" />}  {/* adjust as you like */}
+      {!isHomePage && <div className="md:h-6" />}
 
       {/* ---------- Search Modal (unchanged except images now parsed) ---------- */}
       <AnimatePresence>
