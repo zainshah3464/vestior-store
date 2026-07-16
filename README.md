@@ -75,9 +75,7 @@ A **full-stack, production-ready, single‑vendor e‑commerce website** for pre
 
 | Admin Orders Management                     | Admin Users Table                               |
 | ------------------------------------------- | ----------------------------------------------- |
-| ![Admin Orders](./public/ordersadmin.png)          | *(User modal included, screenshot optional)*    |
-
-*Add screenshots to the `/public` folder and update paths accordingly.*
+| ![Admin Orders](./public/ordersadmin.png)          ![Admin Orders](./public/useradmin.png)     |
 
 ---
 
@@ -87,6 +85,73 @@ A **full-stack, production-ready, single‑vendor e‑commerce website** for pre
 - **Node.js** v18+ and **npm** (or yarn/pnpm)
 - A **Supabase** project (free tier works)
 - (Optional) A **Vercel** account for deployment
+
+🚢 Deployment
+The project is deployed on Vercel. To deploy your own instance:
+
+Push the repository to GitHub.
+
+Import the project into Vercel.
+
+Set the environment variables in Vercel’s project settings.
+
+Deploy.
+
+Make sure to configure the Supabase redirect URLs (in Authentication → URL Configuration) to include your Vercel domain for OAuth callbacks.
+
+🗺️ Roadmap
+Core e‑commerce flow (product listing → cart → checkout → orders)
+
+Admin panel with CRUD operations
+
+Real‑time order status updates
+
+Google OAuth & email verification
+
+Glass‑morphism UI & animations
+
+Google Analytics 4 tracking
+
+Custom branded email templates
+
+Online payment integration (Stripe / Razorpay)
+
+Automatic stock deduction on order placement
+
+Admin notifications for new orders
+
+SEO enhancements (structured data, sitemap)
+
+Comprehensive test suite (E2E with Cypress/Playwright)
+
+Wishlist functionality
+
+Order detail page for customers
+
+🤝 Contributing
+
+Contributions are welcome! This project is built as a portfolio piece, but if you find any issues or have improvements, feel free to open an issue or pull request.
+
+Fork the repository
+
+Create a feature branch (git checkout -b feature/amazing-feature)
+
+Commit your changes (git commit -m 'Add amazing feature')
+
+Push to the branch (git push origin feature/amazing-feature)
+
+Open a Pull Request
+
+📄 License
+This project is licensed under the MIT License. See LICENSE for details.
+
+📞 Contact
+Zain Ali Shah
+Email: zainshahzs110@gmail.com
+GitHub: zainshah3464
+Live Project: vestior.vercel.app
+
+<p align="center">Made with ❤️ and modern web technologies</p> ```
 
 ### 1. Clone the repository
 ```bash
@@ -228,68 +293,3 @@ SUPABASE_SERVICE_ROLE_KEY	Supabase service role key (secret, server‑only)
 NEXT_PUBLIC_SITE_URL	Your deployment URL (for Open Graph & callbacks)
 NEXT_PUBLIC_GA_MEASUREMENT_ID	Google Analytics 4 measurement ID (optional)
 Note: Never expose SUPABASE_SERVICE_ROLE_KEY to the browser. It’s used only in server components and server actions.
-
-🚢 Deployment
-The project is deployed on Vercel. To deploy your own instance:
-
-Push the repository to GitHub.
-
-Import the project into Vercel.
-
-Set the environment variables in Vercel’s project settings.
-
-Deploy.
-
-Make sure to configure the Supabase redirect URLs (in Authentication → URL Configuration) to include your Vercel domain for OAuth callbacks.
-🗺️ Roadmap
-Core e‑commerce flow (product listing → cart → checkout → orders)
-
-Admin panel with CRUD operations
-
-Real‑time order status updates
-
-Google OAuth & email verification
-
-Glass‑morphism UI & animations
-
-Google Analytics 4 tracking
-
-Custom branded email templates
-
-Online payment integration (Stripe / Razorpay)
-
-Automatic stock deduction on order placement
-
-Admin notifications for new orders
-
-SEO enhancements (structured data, sitemap)
-
-Comprehensive test suite (E2E with Cypress/Playwright)
-
-Wishlist functionality
-
-Order detail page for customers
-
-🤝 Contributing
-Contributions are welcome! This project is built as a portfolio piece, but if you find any issues or have improvements, feel free to open an issue or pull request.
-
-Fork the repository
-
-Create a feature branch (git checkout -b feature/amazing-feature)
-
-Commit your changes (git commit -m 'Add amazing feature')
-
-Push to the branch (git push origin feature/amazing-feature)
-
-Open a Pull Request
-
-📄 License
-This project is licensed under the MIT License. See LICENSE for details.
-
-📞 Contact
-Zain Ali Shah
-Email: zainshahz110s@gmail.com
-GitHub: zainshah3464
-Live Project: vestior.vercel.app
-
-<p align="center">Made with ❤️ and modern web technologies</p> ```
