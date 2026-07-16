@@ -75,7 +75,7 @@ A **full-stack, production-ready, single‑vendor e‑commerce website** for pre
 
 | Admin Orders Management                     | Admin Users Table                               |
 | ------------------------------------------- | ----------------------------------------------- |
-| ![Admin Orders](./public/ordersadmin.png)         | ![Dashboard](./public/useradmin.png)      |
+| ![Admin Orders](./public/ordersadmin.png)         | ![Dashboard](./public/useradmin.png)                    |
 
 ---
 
@@ -86,7 +86,9 @@ A **full-stack, production-ready, single‑vendor e‑commerce website** for pre
 - A **Supabase** project (free tier works)
 - (Optional) A **Vercel** account for deployment
 
+
 ### 🚢 Deployment
+
 The project is deployed on Vercel. To deploy your own instance:
 
 Push the repository to GitHub.
@@ -100,7 +102,8 @@ Deploy.
 Make sure to configure the Supabase redirect URLs (in Authentication → URL Configuration) to include your Vercel domain for OAuth callbacks.
 
 ### 🗺️ Roadmap
-Core e‑commerce flow (product listing → cart → checkout → orders)
+
+**Core e‑commerce flow (product listing → cart → checkout → orders)**
 
 Admin panel with CRUD operations
 
@@ -128,7 +131,9 @@ Wishlist functionality
 
 Order detail page for customers
 
+
 ### 🤝 Contributing
+
 Contributions are welcome! This project is built as a portfolio piece, but if you find any issues or have improvements, feel free to open an issue or pull request.
 
 Fork the repository
@@ -141,18 +146,19 @@ Push to the branch (git push origin feature/amazing-feature)
 
 Open a Pull Request
 
-## 📄 License
-This project is licensed under the MIT License. See LICENSE for details.
+### 📄 License
+
+**This project is licensed under the MIT License. See LICENSE for details.*
 
 ### 📞 Contact
 
-Zain Ali Shah
+**Zain Ali Shah*
 
 Email: zainshahzs110@gmail.com
 
 GitHub: zainshah3464
 
-Live Project: vestior.vercel.app
+**Live Project:** vestior.vercel.app
 
 
 
@@ -167,12 +173,14 @@ Live Project: vestior.vercel.app
 ```bash
 git clone https://github.com/zainshah3464/vestior-store.git
 cd vestior-store
+```
 
-2. Install dependencies
+### 2. Install dependencies
 bash
 npm install
 
-3. Set up environment variables
+### 3. Set up environment variables
+```
 Create a .env.local file in the root with:
 NEXT_PUBLIC_SUPABASE_URL=https://your-project-id.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
@@ -180,8 +188,9 @@ SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 NEXT_PUBLIC_SITE_URL=https://vestior.vercel.app  # your deployment URL
 NEXT_PUBLIC_GA_MEASUREMENT_ID=G-XXXXXXXXXX       # optional – Google Analytics
 Important: The SUPABASE_SERVICE_ROLE_KEY is only used on the server side and must never be exposed to the client.
+```
+### 4. Set up your Supabase project
 
-4. Set up your Supabase project
 Tables – Run the SQL schema (see below) in your Supabase SQL Editor to create tables and triggers.
 
 Storage Bucket – Create a public bucket named product-images.
@@ -192,11 +201,13 @@ Email Templates – (Optional) Customize the “Confirm Signup” and “Reset P
 
 RLS Policies – The schema includes basic RLS policies. Additional admin policies are handled via the service_role key.
 
-5. Run the development server
-bash
+### 5. Run the development server
+```bash
 npm run dev
 Open http://localhost:3000 in your browser.
- 🗄️ Database Schema
+```
+### 🗄️ Database Schema
+```
 products
 Column	Type	Description
 id	uuid (PK)	Default gen_random_uuid()
@@ -252,13 +263,14 @@ created_at	timestamptz
 updated_at	timestamptz	
 Triggers & Functions
 handle_new_user() – Automatically inserts a row into profiles after a new user signs up (id, full_name, email).
+```
+###Storage
+**Bucket: product-images – Public, used for product images. Folder naming: {timestamp}-{filename}.jpg.*
 
-Storage
-Bucket: product-images – Public, used for product images. Folder naming: {timestamp}-{filename}.jpg.
-
-Realtime
-orders table has realtime enabled for live status updates on the customer frontend.
-📁 Folder Structure
+###Realtime
+**orders table has realtime enabled for live status updates on the customer frontend.*
+###📁 Folder Structure
+```
 src/
 ├── app/
 │   ├── (main)/               # Customer-facing pages
@@ -294,9 +306,10 @@ src/
 ├── actions/
 │   └── updateOrderStatus.ts  # Server action for admin
 └── middleware.ts              # Route protection & admin check
+```
+###🛠️ Environment Variables
 
-🛠️ Environment Variables
-Variable	Description
+**Variable	Description**
 NEXT_PUBLIC_SUPABASE_URL	Supabase project URL (public)
 NEXT_PUBLIC_SUPABASE_ANON_KEY	Supabase anonymous key (public)
 SUPABASE_SERVICE_ROLE_KEY	Supabase service role key (secret, server‑only)
