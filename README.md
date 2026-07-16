@@ -86,7 +86,7 @@ A **full-stack, production-ready, single‑vendor e‑commerce website** for pre
 - A **Supabase** project (free tier works)
 - (Optional) A **Vercel** account for deployment
 
-🚢 Deployment
+## 🚢 Deployment
 The project is deployed on Vercel. To deploy your own instance:
 
 Push the repository to GitHub.
@@ -99,7 +99,7 @@ Deploy.
 
 Make sure to configure the Supabase redirect URLs (in Authentication → URL Configuration) to include your Vercel domain for OAuth callbacks.
 
-🗺️ Roadmap
+## 🗺️ Roadmap
 Core e‑commerce flow (product listing → cart → checkout → orders)
 
 Admin panel with CRUD operations
@@ -128,8 +128,7 @@ Wishlist functionality
 
 Order detail page for customers
 
-🤝 Contributing
-
+## 🤝 Contributing
 Contributions are welcome! This project is built as a portfolio piece, but if you find any issues or have improvements, feel free to open an issue or pull request.
 
 Fork the repository
@@ -142,16 +141,27 @@ Push to the branch (git push origin feature/amazing-feature)
 
 Open a Pull Request
 
-📄 License
+## 📄 License
 This project is licensed under the MIT License. See LICENSE for details.
 
-📞 Contact
+## 📞 Contact
+
 Zain Ali Shah
+
 Email: zainshahzs110@gmail.com
+
 GitHub: zainshah3464
+
 Live Project: vestior.vercel.app
 
-<p align="center">Made with ❤️ and modern web technologies</p> ```
+
+
+
+  <p align="center">Made with ❤️ and modern web technologies</p> ```
+
+
+
+  
 
 ### 1. Clone the repository
 ```bash
@@ -186,7 +196,7 @@ RLS Policies – The schema includes basic RLS policies. Additional admin polici
 bash
 npm run dev
 Open http://localhost:3000 in your browser.
-🗄️ Database Schema
+## 🗄️ Database Schema
 products
 Column	Type	Description
 id	uuid (PK)	Default gen_random_uuid()
@@ -248,7 +258,7 @@ Bucket: product-images – Public, used for product images. Folder naming: {time
 
 Realtime
 orders table has realtime enabled for live status updates on the customer frontend.
-📁 Folder Structure
+## 📁 Folder Structure
 src/
 ├── app/
 │   ├── (main)/               # Customer-facing pages
@@ -285,7 +295,7 @@ src/
 │   └── updateOrderStatus.ts  # Server action for admin
 └── middleware.ts              # Route protection & admin check
 
-🛠️ Environment Variables
+## 🛠️ Environment Variables
 Variable	Description
 NEXT_PUBLIC_SUPABASE_URL	Supabase project URL (public)
 NEXT_PUBLIC_SUPABASE_ANON_KEY	Supabase anonymous key (public)
