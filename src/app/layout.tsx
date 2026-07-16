@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google"
 import { Toaster } from "react-hot-toast"
 import AuthProvider from "@/providers/AuthProvider"
 import GoogleAnalytics from "@/components/GoogleAnalytics" // 👈 new
+import { Suspense } from "react"   // 👈 add this import
 import "./globals.css"
 
 // ---- Fonts ----
@@ -156,7 +157,9 @@ export default function RootLayout({
           }}
         />
         {/* GA4 Tracking for page views & device/browser data */}
-        <GoogleAnalytics />
+          <Suspense fallback={null}>
+          <GoogleAnalytics />
+        </Suspense>
       </body>
     </html>
   )
