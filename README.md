@@ -164,7 +164,7 @@ Live Project: vestior.vercel.app
   
 
 ### 1. Clone the repository
-bash
+```bash
 git clone https://github.com/zainshah3464/vestior-store.git
 cd vestior-store
 
@@ -196,7 +196,7 @@ RLS Policies – The schema includes basic RLS policies. Additional admin polici
 bash
 npm run dev
 Open http://localhost:3000 in your browser.
-## 🗄️ Database Schema
+ 🗄️ Database Schema
 products
 Column	Type	Description
 id	uuid (PK)	Default gen_random_uuid()
@@ -258,7 +258,7 @@ Bucket: product-images – Public, used for product images. Folder naming: {time
 
 Realtime
 orders table has realtime enabled for live status updates on the customer frontend.
-### 📁 Folder Structure
+📁 Folder Structure
 src/
 ├── app/
 │   ├── (main)/               # Customer-facing pages
@@ -295,7 +295,7 @@ src/
 │   └── updateOrderStatus.ts  # Server action for admin
 └── middleware.ts              # Route protection & admin check
 
-### 🛠️ Environment Variables
+🛠️ Environment Variables
 Variable	Description
 NEXT_PUBLIC_SUPABASE_URL	Supabase project URL (public)
 NEXT_PUBLIC_SUPABASE_ANON_KEY	Supabase anonymous key (public)
