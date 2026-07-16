@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next"
 import { Geist, Geist_Mono } from "next/font/google"
 import { Toaster } from "react-hot-toast"
 import AuthProvider from "@/providers/AuthProvider"
+import GoogleAnalytics from "@/components/GoogleAnalytics" // 👈 new
 import "./globals.css"
 
 // ---- Fonts ----
@@ -17,7 +18,7 @@ const geistMono = Geist_Mono({
   display: "swap",
 })
 
-// ---- Metadata (updated domain + icons) ----
+// ---- Metadata (unchanged) ----
 export const metadata: Metadata = {
   title: {
     default: "VESTIOR – Premium Tailored Fashion",
@@ -55,7 +56,7 @@ export const metadata: Metadata = {
       "Hand‑crafted suits, coats, pants, and heritage Gurkha wear. Premium fabrics, timeless design.",
     images: [
       {
-        url: "/og-image.png", // 1200x630 PNG
+        url: "/og-image.png",
         width: 1200,
         height: 630,
         alt: "VESTIOR – Premium Tailored Fashion",
@@ -74,7 +75,7 @@ export const metadata: Metadata = {
   },
 
   icons: {
-    icon: "/images/favicon.ico",       // root of public/
+    icon: "/images/favicon.ico",
     shortcut: "/images/favicon.ico",
     apple: "/apple-touch-icon.png",
     other: [
@@ -154,6 +155,8 @@ export default function RootLayout({
             duration: 3000,
           }}
         />
+        {/* GA4 Tracking for page views & device/browser data */}
+        <GoogleAnalytics />
       </body>
     </html>
   )
