@@ -75,7 +75,7 @@ A **full-stack, production-ready, single‑vendor e‑commerce website** for pre
 
 | Admin Orders Management                     | Admin Users Table                               |
 | ------------------------------------------- | ----------------------------------------------- |
-| ![Admin Orders](./public/ordersadmin.png)          ![Admin Orders](./public/useradmin.png)     |
+| ![Admin Orders](./public/ordersadmin.png)         | ![Dashboard](./public/useradmin.png)      |
 
 ---
 
