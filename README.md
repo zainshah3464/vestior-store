@@ -86,8 +86,8 @@ A **full-stack, production-ready, single‑vendor e‑commerce website** for pre
 - A **Supabase** project (free tier works)
 - (Optional) A **Vercel** account for deployment
 
-
-## 🚢 Deployment
+---
+### 🚢 Deployment
 
 **The project is deployed on Vercel.** *To deploy your own instance:*
 
@@ -98,7 +98,7 @@ A **full-stack, production-ready, single‑vendor e‑commerce website** for pre
 
 **Make sure to configure the Supabase redirect URLs** *(in Authentication → URL Configuration)* to include your Vercel domain for OAuth callbacks.
 
-## 🗺️ Roadmap
+### 🗺️ Roadmap
 
 **Core e‑commerce flow** *(product listing → cart → checkout → orders)*
 - Admin panel with CRUD operations
@@ -115,7 +115,7 @@ A **full-stack, production-ready, single‑vendor e‑commerce website** for pre
 - Wishlist functionality
 - Order detail page for customers
 
-## 🤝 Contributing
+### 🤝 Contributing
 
 Contributions are welcome! This project is built as a portfolio piece, but if you find any issues or have improvements, feel free to open an issue or pull request.
 
@@ -126,11 +126,11 @@ Contributions are welcome! This project is built as a portfolio piece, but if yo
 - Push to the branch (git push origin feature/amazing-feature)
 - Open a Pull Request
 
-## 📄 License
+### 📄 License
 
 *This project is licensed under the MIT License. See LICENSE for details.*
 
-## 📞 Contact
+### 📞 Contact
 
 *Zain Ali Shah*
 
@@ -173,15 +173,15 @@ Important: The SUPABASE_SERVICE_ROLE_KEY is only used on the server side and mus
 ```
 ### 4. Set up your Supabase project
 
-- Tables – Run the SQL schema (see below) in your Supabase SQL Editor to create tables and triggers.
+- **Tables** – Run the SQL schema *(see below)* in your Supabase SQL Editor to create tables and triggers.
 
-- Storage Bucket – Create a public bucket named product-images.
+- **Storage Bucket** – Create a public bucket named product-images.
 
-- Authentication – Under Authentication → Providers, enable Email and Google. Configure the Google OAuth credentials.
+- **Authentication** – Under Authentication → Providers, enable Email and Google. Configure the Google OAuth credentials.
 
-- Email Templates – (Optional) Customize the “Confirm Signup” and “Reset Password” templates with the premium VESTIOR brand (light/dark adaptive HTML provided in this repo).
+- **Email Templates** – *(Optional)* Customize the *“Confirm Signup”* and *“Reset Password”* templates with the premium **VESTIOR** brand *(light/dark adaptive HTML provided in this repo)*.
 
-- RLS Policies – The schema includes basic RLS policies. Additional admin policies are handled via the service_role key.
+- **RLS Policies** – The schema includes basic RLS policies. Additional admin policies are handled via the service_role key.
 
 ### 5. Run the development server
 ```bash
@@ -247,7 +247,7 @@ Triggers & Functions
 handle_new_user() – Automatically inserts a row into profiles after a new user signs up (id, full_name, email).
 ```
 ### Storage
-*Bucket: product-images – Public, used for product images. Folder naming: {timestamp}-{filename}.jpg.*
+**Bucket**: *product-images – Public, used for product images. Folder naming: {timestamp}-{filename}.jpg.*
 
 ### Realtime
 
@@ -294,10 +294,11 @@ src/
 ### 🛠️ Environment Variables
 
 **Variable	Description**
-
+```
 NEXT_PUBLIC_SUPABASE_URL	Supabase project URL (public)
 NEXT_PUBLIC_SUPABASE_ANON_KEY	Supabase anonymous key (public)
 SUPABASE_SERVICE_ROLE_KEY	Supabase service role key (secret, server‑only)
 NEXT_PUBLIC_SITE_URL	Your deployment URL (for Open Graph & callbacks)
 NEXT_PUBLIC_GA_MEASUREMENT_ID	Google Analytics 4 measurement ID (optional)
 Note: Never expose SUPABASE_SERVICE_ROLE_KEY to the browser. It’s used only in server components and server actions.
+```
