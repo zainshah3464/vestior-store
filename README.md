@@ -142,11 +142,11 @@ GitHub: zainshah3464
 
 
 
-
+---
 
 ###  <p align="center">Made with ❤️ and modern web technologies</p>
 
-
+---
 
   
 
@@ -246,12 +246,16 @@ updated_at	timestamptz
 Triggers & Functions
 handle_new_user() – Automatically inserts a row into profiles after a new user signs up (id, full_name, email).
 ```
+---
 ### Storage
 **Bucket**: *product-images – Public, used for product images. Folder naming: {timestamp}-{filename}.jpg.*
 
 ### Realtime
 
 *orders table has realtime enabled for live status updates on the customer frontend.*
+
+---
+
 ### 📁 Folder Structure
 
 ```
@@ -291,9 +295,9 @@ src/
 │   └── updateOrderStatus.ts  # Server action for admin
 └── middleware.ts              # Route protection & admin check
 ```
-### 🛠️ Environment Variables
+## 🛠️ Environment Variables
 
-**Variable	Description**
+##Variable	Description
 ```
 NEXT_PUBLIC_SUPABASE_URL	Supabase project URL (public)
 NEXT_PUBLIC_SUPABASE_ANON_KEY	Supabase anonymous key (public)
