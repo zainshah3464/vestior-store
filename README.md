@@ -297,7 +297,7 @@ src/
 ```
 ## 🛠️ Environment Variables
 
-## Variable	Description
+### Variable	Description
 ```
 NEXT_PUBLIC_SUPABASE_URL	Supabase project URL (public)
 NEXT_PUBLIC_SUPABASE_ANON_KEY	Supabase anonymous key (public)
