@@ -2,8 +2,9 @@ import type { Metadata, Viewport } from "next"
 import { Geist, Geist_Mono } from "next/font/google"
 import { Toaster } from "react-hot-toast"
 import AuthProvider from "@/providers/AuthProvider"
-import GoogleAnalytics from "@/components/GoogleAnalytics" // 👈 new
-import { Suspense } from "react"   // 👈 add this import
+import GoogleAnalytics from "@/components/GoogleAnalytics"
+import { OrganizationSchema, WebsiteSchema } from "@/components/StructuredData"
+import { Suspense } from "react"
 import "./globals.css"
 
 // ---- Fonts ----
@@ -19,7 +20,7 @@ const geistMono = Geist_Mono({
   display: "swap",
 })
 
-// ---- Metadata (unchanged) ----
+// ---- Metadata ----
 export const metadata: Metadata = {
   title: {
     default: "VESTIOR – Premium Tailored Fashion",
@@ -45,7 +46,20 @@ export const metadata: Metadata = {
     "luxury wear",
     "online boutique",
   ],
-  robots: "index, follow",
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-video-preview": -1,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
+  },
+  alternates: {
+    canonical: "/",
+  },
 
   openGraph: {
     type: "website",
@@ -144,6 +158,12 @@ export default function RootLayout({
         className="font-sans bg-[#0A0A0A] text-white antialiased"
         suppressHydrationWarning
       >
+        <OrganizationSchema
+          siteUrl={process.env.NEXT_PUBLIC_SITE_URL || 'https://vestior.vercel.app'}
+        />
+        <WebsiteSchema
+          siteUrl={process.env.NEXT_PUBLIC_SITE_URL || 'https://vestior.vercel.app'}
+        />
         <AuthProvider>{children}</AuthProvider>
         <Toaster
           position="top-right"
@@ -157,7 +177,7 @@ export default function RootLayout({
           }}
         />
         {/* GA4 Tracking for page views & device/browser data */}
-          <Suspense fallback={null}>
+        <Suspense fallback={null}>
           <GoogleAnalytics />
         </Suspense>
       </body>

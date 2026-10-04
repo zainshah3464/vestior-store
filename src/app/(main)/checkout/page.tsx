@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { placeOrder } from '@/actions/placeOrder'
 import toast from 'react-hot-toast'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
@@ -16,7 +17,6 @@ import Link from 'next/link'
 function BackgroundAnimation() {
   return (
     <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
-      {/* Slow moving gradient blobs */}
       <motion.div
         animate={{ x: [0, 30, -20, 0], y: [0, -40, 20, 0] }}
         transition={{ repeat: Infinity, duration: 20, ease: 'easeInOut' }}
@@ -32,15 +32,10 @@ function BackgroundAnimation() {
         transition={{ repeat: Infinity, duration: 18, ease: 'easeInOut' }}
         className="absolute bottom-0 left-1/4 w-[300px] h-[300px] bg-amber-500/5 rounded-full blur-3xl"
       />
-      {/* Subtle grid overlay */}
-      <div className="absolute inset-0 bg-[url('/noise.png')] opacity-[0.03] mix-blend-overlay" />
     </div>
   )
 }
 
-/* ---------------------------------- */
-/*  Main Checkout Component           */
-/* ---------------------------------- */
 interface CartItem {
   id: string
   name: string
@@ -68,7 +63,7 @@ export default function CheckoutPage() {
   const [cart, setCart] = useState<CartItem[]>([])
   const [loading, setLoading] = useState(false)
   const [user, setUser] = useState<any>(null)
-  const [activeStep, setActiveStep] = useState(0) // 0=Address, 1=Review
+  const [activeStep, setActiveStep] = useState(0)
   const [address, setAddress] = useState({
     full_name: '',
     phone: '',
@@ -108,6 +103,7 @@ export default function CheckoutPage() {
     getUser()
   }, [supabase])
 
+  // NOTE: These totals are DISPLAY ONLY. Server recalculates authoritative total.
   const subtotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0)
   const shipping = subtotal > 5000 ? 0 : 100
   const total = subtotal + shipping
@@ -119,6 +115,7 @@ export default function CheckoutPage() {
 
   const handlePlaceOrder = async (e: React.FormEvent) => {
     e.preventDefault()
+
     if (!user) {
       toast.error('You must be logged in')
       return
@@ -130,19 +127,13 @@ export default function CheckoutPage() {
 
     setLoading(true)
 
-    // 1. Insert order
-    const { data: orderData, error: orderError } = await supabase
-      .from('orders')
-      .insert({
-        user_id: user.id,
-        user_email: user.email,
-        items: cart.map((item) => ({
+    try {
+      const result = await placeOrder(
+        cart.map((item) => ({
           product_id: item.id,
-          product_name: item.name,
           quantity: item.quantity,
-          price: item.price,
         })),
-        address: {
+        {
           full_name: address.full_name,
           phone: address.phone,
           line1: address.address_line1,
@@ -150,51 +141,20 @@ export default function CheckoutPage() {
           city: address.city,
           state: address.state,
           pincode: address.pincode,
-        },
-        subtotal,
-        shipping,
-        total,
-        status: 'pending',
-        payment_status: 'pending',
-        payment_method: 'cod',
-      })
-      .select('id')
-      .single()
+        }
+      )
 
-    if (orderError || !orderData) {
-      toast.error('Order failed: ' + (orderError?.message || 'Unknown error'))
+      if (result.success) {
+        toast.success('Order placed successfully!')
+        localStorage.removeItem('cart')
+        window.dispatchEvent(new Event('cartUpdated'))
+        router.push('/orders')
+      }
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to place order')
+    } finally {
       setLoading(false)
-      return
     }
-
-    const orderId = orderData.id
-
-    // 2. Insert order items
-    const orderItems = cart.map((item) => ({
-      order_id: orderId,
-      product_id: item.id,
-      product_name: item.name,
-      quantity: item.quantity,
-      price: item.price,
-    }))
-
-    const { error: itemsError } = await supabase
-      .from('order_items')
-      .insert(orderItems)
-
-    if (itemsError) {
-      toast.success('Order placed!')
-      toast.error('Order placed but failed to save items. Contact support.')
-      console.error('Order items insert error:', itemsError)
-    } else {
-      toast.success('Order placed successfully!')
-    }
-
-    // 3. Clear cart and redirect
-    localStorage.removeItem('cart')
-    window.dispatchEvent(new Event('cartUpdated'))
-    router.push('/orders')
-    setLoading(false)
   }
 
   if (cart.length === 0) {
@@ -326,7 +286,7 @@ export default function CheckoutPage() {
               )}
             </AnimatePresence>
 
-            {/* ========== MOBILE ORDER SUMMARY (ADDED BACK) ========== */}
+            {/* Mobile Order Summary */}
             <div className="lg:hidden mt-6">
               <div className="bg-[#0f0f0f]/80 backdrop-blur-lg border border-white/10 rounded-2xl p-6 shadow-xl">
                 <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">

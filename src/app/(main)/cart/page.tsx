@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { Trash2, Plus, Minus, ShoppingBag, ArrowLeft, CreditCard, Shield, Truck, AlertCircle, Gift, Sparkles, TrendingUp, Clock, ChevronRight } from 'lucide-react'
+import { Trash2, Plus, Minus, ShoppingBag, ArrowLeft, CreditCard, Shield, Truck, Gift, Sparkles, Clock, ChevronRight } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { motion, AnimatePresence } from 'framer-motion'
 
@@ -14,6 +14,38 @@ interface CartItem {
   images: string[]
   quantity: number
   stock: number
+}
+
+/**
+ * Merge duplicate cart items (same product id) into a single line.
+ * Also clamps quantity to stock if stock dropped since item was added.
+ */
+function mergeCartItems(rawItems: CartItem[]): CartItem[] {
+  if (!Array.isArray(rawItems) || rawItems.length === 0) return []
+
+  const map = new Map<string, CartItem>()
+
+  for (const item of rawItems) {
+    if (!item || typeof item.id !== 'string') continue
+
+    const existing = map.get(item.id)
+    if (existing) {
+      const mergedQty = existing.quantity + (item.quantity || 0)
+      existing.quantity = Math.min(
+        mergedQty,
+        typeof item.stock === 'number' && item.stock > 0 ? item.stock : mergedQty
+      )
+    } else {
+      const safeStock =
+        typeof item.stock === 'number' && item.stock > 0 ? item.stock : Infinity
+      map.set(item.id, {
+        ...item,
+        quantity: Math.min(item.quantity || 1, safeStock),
+      })
+    }
+  }
+
+  return Array.from(map.values())
 }
 
 export default function CartPage() {
@@ -31,7 +63,10 @@ export default function CartPage() {
 
   const loadCart = () => {
     const savedCart = JSON.parse(localStorage.getItem('cart') || '[]')
-    setCart(savedCart)
+    const merged = mergeCartItems(savedCart)
+    setCart(merged)
+    // Sync merged version back to storage so future reads are clean
+    localStorage.setItem('cart', JSON.stringify(merged))
     setLoading(false)
   }
 
@@ -42,11 +77,12 @@ export default function CartPage() {
       toast.error(`Only ${item.stock} items available`)
       return
     }
-    const updatedCart = cart.map(item => 
+    const updatedCart = cart.map(item =>
       item.id === id ? { ...item, quantity: newQuantity } : item
     )
     setCart(updatedCart)
     localStorage.setItem('cart', JSON.stringify(updatedCart))
+    window.dispatchEvent(new Event('cartUpdated'))
     toast.success('Cart updated')
   }
 
@@ -54,6 +90,7 @@ export default function CartPage() {
     const updatedCart = cart.filter(item => item.id !== id)
     setCart(updatedCart)
     localStorage.setItem('cart', JSON.stringify(updatedCart))
+    window.dispatchEvent(new Event('cartUpdated'))
     toast.success('Item removed')
   }
 
@@ -61,6 +98,7 @@ export default function CartPage() {
     if (confirm('Clear your shopping cart?')) {
       setCart([])
       localStorage.setItem('cart', '[]')
+      window.dispatchEvent(new Event('cartUpdated'))
       toast.success('Cart cleared')
     }
   }
@@ -108,7 +146,7 @@ export default function CartPage() {
   if (cart.length === 0) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center pt-20">
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           className="text-center max-w-md mx-auto px-4"
@@ -121,8 +159,8 @@ export default function CartPage() {
           </div>
           <h2 className="text-2xl font-bold text-white mb-2">Your cart is empty</h2>
           <p className="text-gray-400 text-sm mb-6">Looks like you haven't found your perfect piece yet</p>
-          <Link 
-            href="/products" 
+          <Link
+            href="/products"
             className="group inline-flex items-center gap-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white px-6 py-2.5 rounded-full hover:from-blue-700 hover:to-blue-800 transition-all shadow-lg shadow-blue-500/25 text-sm"
           >
             Start Shopping
@@ -167,8 +205,8 @@ export default function CartPage() {
               <span className="text-sm text-gray-400">Total Amount</span>
               <span className="text-xl font-bold text-white">₹{total.toLocaleString()}</span>
             </div>
-            <Link 
-              href="/checkout" 
+            <Link
+              href="/checkout"
               className="w-full py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg flex items-center justify-center gap-2 hover:from-blue-700 hover:to-blue-800 transition-all text-sm font-medium"
             >
               <CreditCard size={16} />
@@ -187,7 +225,7 @@ export default function CartPage() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          {/* Cart Items - Mobile First Design */}
+          {/* Cart Items */}
           <div className="lg:col-span-7 order-2 lg:order-1">
             <div className="space-y-3">
               <AnimatePresence>
@@ -201,12 +239,11 @@ export default function CartPage() {
                     className="bg-gray-900/50 rounded-xl border border-gray-800 hover:border-gray-700 transition-all duration-300 overflow-hidden"
                   >
                     <div className="flex gap-3 p-3">
-                      {/* Product Image - Smaller on mobile */}
                       <Link href={`/products/${item.id}`} className="w-20 h-20 flex-shrink-0">
                         <div className="relative w-full h-full rounded-lg overflow-hidden bg-gray-800">
-                          <img 
-                            src={item.images?.[0] || 'https://placehold.co/100x100/1a1a1a/3B82F6?text=No+Image'} 
-                            alt={item.name} 
+                          <img
+                            src={item.images?.[0] || 'https://placehold.co/100x100/1a1a1a/3B82F6?text=No+Image'}
+                            alt={item.name}
                             className="w-full h-full object-cover"
                           />
                           {item.compare_at_price && item.compare_at_price > item.price && (
@@ -216,8 +253,7 @@ export default function CartPage() {
                           )}
                         </div>
                       </Link>
-                      
-                      {/* Product Details */}
+
                       <div className="flex-1 min-w-0">
                         <div className="flex justify-between items-start gap-2">
                           <Link href={`/products/${item.id}`} className="text-sm font-semibold text-white hover:text-blue-400 transition line-clamp-2 flex-1">
@@ -230,14 +266,14 @@ export default function CartPage() {
                             <Trash2 size={14} />
                           </button>
                         </div>
-                        
+
                         <div className="flex items-center gap-2 mt-1">
                           <span className="text-base font-bold text-white">₹{item.price.toLocaleString()}</span>
                           {item.compare_at_price && item.compare_at_price > item.price && (
                             <span className="text-xs text-gray-500 line-through">₹{item.compare_at_price.toLocaleString()}</span>
                           )}
                         </div>
-                        
+
                         <div className="flex items-center justify-between mt-2">
                           <div className="flex items-center gap-2 bg-gray-800 rounded-lg">
                             <button
@@ -265,28 +301,25 @@ export default function CartPage() {
                 ))}
               </AnimatePresence>
             </div>
-            
-            {/* Continue Shopping */}
-            <Link 
-              href="/products" 
+
+            <Link
+              href="/products"
               className="inline-flex items-center gap-1 text-gray-500 hover:text-blue-400 transition-colors mt-4 group text-sm"
             >
               <ArrowLeft size={14} className="group-hover:-translate-x-1 transition-transform" />
               Continue Shopping
             </Link>
           </div>
-          
-          {/* Order Summary - Desktop and Mobile Details */}
+
+          {/* Order Summary */}
           <div className="lg:col-span-5 order-1 lg:order-2" id="order-summary">
             <div className="sticky top-24">
-              {/* Desktop Order Summary */}
               <div className="hidden lg:block bg-gradient-to-br from-gray-900 to-gray-900/50 rounded-xl border border-gray-800 p-5">
                 <div className="flex items-center gap-2 mb-4">
                   <Sparkles size={16} className="text-blue-400" />
                   <h2 className="text-base font-semibold text-white">Order Summary</h2>
                 </div>
-                
-                {/* Savings Banner */}
+
                 {savings > 0 && (
                   <div className="bg-green-500/10 rounded-lg p-2 mb-4 border border-green-500/20">
                     <div className="flex items-center gap-2 text-green-400 text-xs">
@@ -295,8 +328,7 @@ export default function CartPage() {
                     </div>
                   </div>
                 )}
-                
-                {/* Coupon */}
+
                 <div className="mb-4">
                   <div className="flex gap-2">
                     <input
@@ -319,26 +351,25 @@ export default function CartPage() {
                     <span className="text-[10px] text-gray-500 cursor-pointer hover:text-blue-400" onClick={() => setCouponCode('BRAND20')}>BRAND20</span>
                   </div>
                 </div>
-                
-                {/* Price Details */}
+
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between text-gray-400">
                     <span>Subtotal</span>
                     <span>₹{subtotal.toLocaleString()}</span>
                   </div>
-                  
+
                   {discount > 0 && (
                     <div className="flex justify-between text-green-400">
                       <span>Discount</span>
                       <span>-₹{discount.toLocaleString()}</span>
                     </div>
                   )}
-                  
+
                   <div className="flex justify-between text-gray-400">
                     <span>Shipping</span>
                     <span>{shipping === 0 ? 'Free' : `₹${shipping}`}</span>
                   </div>
-                  
+
                   {subtotal < 5000 && subtotal > 0 && (
                     <div className="bg-blue-500/10 rounded-lg p-2">
                       <div className="flex items-center gap-2 text-blue-400 text-[11px]">
@@ -346,14 +377,14 @@ export default function CartPage() {
                         <span>Add ₹{(5000 - subtotal).toLocaleString()} for free shipping</span>
                       </div>
                       <div className="w-full bg-gray-700 rounded-full h-1 mt-2">
-                        <div 
+                        <div
                           className="bg-gradient-to-r from-blue-500 to-blue-400 h-1 rounded-full transition-all"
                           style={{ width: `${Math.min((subtotal / 5000) * 100, 100)}%` }}
                         ></div>
                       </div>
                     </div>
                   )}
-                  
+
                   <div className="border-t border-gray-800 pt-3 mt-3">
                     <div className="flex justify-between text-white font-bold">
                       <span>Total</span>
@@ -362,17 +393,15 @@ export default function CartPage() {
                     <p className="text-[10px] text-gray-500 mt-1">Inclusive of all taxes</p>
                   </div>
                 </div>
-                
-                {/* Checkout Button */}
-                <Link 
-                  href="/checkout" 
+
+                <Link
+                  href="/checkout"
                   className="w-full mt-5 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg flex items-center justify-center gap-2 hover:from-blue-700 hover:to-blue-800 transition-all text-sm font-medium"
                 >
                   <CreditCard size={16} />
                   Proceed to Checkout
                 </Link>
-                
-                {/* Trust Badges */}
+
                 <div className="grid grid-cols-3 gap-2 mt-4 pt-4 border-t border-gray-800">
                   <div className="text-center">
                     <Shield size={14} className="text-blue-400 mx-auto mb-1" />
@@ -388,8 +417,7 @@ export default function CartPage() {
                   </div>
                 </div>
               </div>
-              
-              {/* Mobile Detailed Summary - Hidden by default, shown when clicked */}
+
               <div className="lg:hidden bg-gray-900/50 rounded-xl border border-gray-800 p-4 mt-4">
                 <div className="space-y-3 text-sm">
                   <div className="flex justify-between">
@@ -417,8 +445,7 @@ export default function CartPage() {
                     <span className="text-white text-lg">₹{total.toLocaleString()}</span>
                   </div>
                 </div>
-                
-                {/* Coupon for mobile */}
+
                 <div className="mt-4 pt-3 border-t border-gray-800">
                   <div className="flex gap-2">
                     <input

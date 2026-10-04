@@ -28,20 +28,20 @@ export default function ProductCard({ product }: { product: Product }) {
   const addToCart = () => {
     const cart = JSON.parse(localStorage.getItem('cart') || '[]')
     const existingItem = cart.find((item: any) => item.id === product.id)
-    
+
     if (existingItem) {
       existingItem.quantity += 1
     } else {
       cart.push({ ...product, quantity: 1 })
     }
-    
+
     localStorage.setItem('cart', JSON.stringify(cart))
     toast.success('Added to cart!', { icon: '🛒' })
     window.dispatchEvent(new Event('cartUpdated'))
   }
 
   return (
-    <motion.div 
+    <motion.div
       className="group bg-[#111111] rounded-xl overflow-hidden border border-white/10 hover:border-blue-500/40 transition-all duration-300 hover:shadow-xl hover:shadow-blue-500/5"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
@@ -56,11 +56,10 @@ export default function ProductCard({ product }: { product: Product }) {
           fill
           sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, (max-width: 1024px) 25vw, 20vw"
           className="object-cover group-hover:scale-110 transition duration-500"
-          loading="eager"   // 👈 Eager load (above the fold images ko fast load karega)
         />
-        
+
         {/* Quick View Overlay */}
-        <motion.div 
+        <motion.div
           className={`absolute inset-0 bg-black/60 flex items-center justify-center transition-opacity duration-300 ${
             isHovered ? 'opacity-100' : 'opacity-0'
           }`}
@@ -72,7 +71,7 @@ export default function ProductCard({ product }: { product: Product }) {
             Quick View
           </button>
         </motion.div>
-        
+
         {/* Badges */}
         <div className="absolute top-3 left-3 flex gap-2">
           {discount > 0 && (
@@ -91,7 +90,7 @@ export default function ProductCard({ product }: { product: Product }) {
             </span>
           )}
         </div>
-        
+
         {/* Wishlist Button */}
         <motion.button
           onClick={() => setIsWishlisted(!isWishlisted)}
@@ -103,7 +102,7 @@ export default function ProductCard({ product }: { product: Product }) {
           <Heart size={14} fill={isWishlisted ? 'currentColor' : 'none'} />
         </motion.button>
       </Link>
-      
+
       {/* Content */}
       <div className="p-4">
         <Link href={`/products/${product.id}`}>
@@ -111,14 +110,14 @@ export default function ProductCard({ product }: { product: Product }) {
             {product.name}
           </h3>
         </Link>
-        
+
         <div className="flex items-center gap-2 mt-2">
           <span className="text-base font-semibold text-white">₹{product.price.toLocaleString()}</span>
           {product.compare_at_price && product.compare_at_price > product.price && (
             <span className="text-xs text-gray-500 line-through">₹{product.compare_at_price.toLocaleString()}</span>
           )}
         </div>
-        
+
         <motion.button
           onClick={addToCart}
           disabled={product.stock === 0}

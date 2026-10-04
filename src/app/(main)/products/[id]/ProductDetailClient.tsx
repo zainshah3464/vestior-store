@@ -10,7 +10,7 @@ import { motion } from 'framer-motion';
 interface Product {
   id: string;
   name: string;
-  description: string;
+  description: string | null;   // 👈 CHANGE: `string` → `string | null`
   price: number;
   compare_at_price: number | null;
   images: string[];
