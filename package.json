@@ -9,6 +9,8 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@stripe/react-stripe-js": "^7.0.0",
+    "@stripe/stripe-js": "^10.0.0",
     "@supabase/ssr": "^0.12.0",
     "@supabase/supabase-js": "^2.110.2",
     "@upstash/ratelimit": "^2.2.0",
@@ -22,6 +24,7 @@
     "react-dom": "^19.3.0",
     "react-hot-toast": "^2.6.0",
     "recharts": "^3.9.2",
+    "stripe": "^23.0.0",
     "zod": "^4.6.5"
   },
   "devDependencies": {

@@ -3,6 +3,8 @@
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
+import { getPaymentProvider, isPaymentProviderId } from '@/lib/payments'
+import type { PaymentProviderId } from '@/lib/payments'
 
 const MAX_QUANTITY_PER_ITEM = 50
 const MAX_DISTINCT_ITEMS = 30
@@ -28,20 +30,31 @@ interface PlaceOrderResult {
   subtotal: number
   shipping: number
   total: number
+  /** Present only when payment_method is not 'cod' */
+  clientSecret?: string
+  paymentIntentId?: string
+  paymentProvider: PaymentProviderId
 }
 
 export async function placeOrder(
   items: CartItemInput[],
-  address: AddressInput
+  address: AddressInput,
+  paymentMethod: PaymentProviderId = 'cod'
 ): Promise<PlaceOrderResult> {
   // ────────────────────────────────────────────
-  // 1. Validate input shape
+  // 0. Validate payment method
+  // ────────────────────────────────────────────
+  if (!isPaymentProviderId(paymentMethod)) {
+    throw new Error(`Invalid payment method: ${paymentMethod}`)
+  }
+
+  // ────────────────────────────────────────────
+  // 1. Validate input shape (unchanged)
   // ────────────────────────────────────────────
   if (!Array.isArray(items) || items.length === 0) {
     throw new Error('Cart is empty')
   }
   if (items.length > MAX_DISTINCT_ITEMS * 3) {
-    // Allow some slack before merge, but cap raw abuse
     throw new Error('Cart contains too many items')
   }
 
@@ -76,8 +89,7 @@ export async function placeOrder(
   }
 
   // ────────────────────────────────────────────
-  // 2. Merge duplicate product_id entries
-  //    (same product added twice = one line)
+  // 2. Merge duplicates (unchanged)
   // ────────────────────────────────────────────
   const mergedMap = new Map<string, number>()
   for (const item of items) {
@@ -89,7 +101,6 @@ export async function placeOrder(
     throw new Error('Too many distinct items in cart')
   }
 
-  // Re-check quantity cap AFTER merging
   const normalizedItems: CartItemInput[] = []
   for (const [product_id, quantity] of mergedMap.entries()) {
     if (quantity > MAX_QUANTITY_PER_ITEM) {
@@ -101,7 +112,7 @@ export async function placeOrder(
   }
 
   // ────────────────────────────────────────────
-  // 3. Authenticate caller
+  // 3. Authenticate (unchanged)
   // ────────────────────────────────────────────
   const supabase = await createClient()
   const {
@@ -113,7 +124,8 @@ export async function placeOrder(
   }
 
   // ────────────────────────────────────────────
-  // 4. Call the atomic Postgres RPC
+  // 4. Atomic order creation (unchanged RPC)
+  //    Order is created with payment_status='pending'
   // ────────────────────────────────────────────
   const { data, error } = await supabaseAdmin.rpc('place_order_atomic', {
     p_user_id: user.id,
@@ -131,10 +143,7 @@ export async function placeOrder(
   })
 
   if (error) {
-    // Supabase returns the RAISE EXCEPTION message as-is in `error.message`.
-    // Do NOT regex-strip — messages may contain their own colons.
     const raw = (error.message || '').trim()
-    // Some Supabase errors prepend "PostgresError: " or a code — strip only that known prefix.
     const cleaned = raw
       .replace(/^PostgresError:\s*/i, '')
       .replace(/^P\d{4}:\s*/, '')
@@ -142,18 +151,6 @@ export async function placeOrder(
     throw new Error(cleaned || 'Failed to place order')
   }
 
-  // ────────────────────────────────────────────
-  // 5. Revalidate cached routes
-  // ────────────────────────────────────────────
-  revalidatePath('/orders')
-  revalidatePath('/admin/orders')
-  revalidatePath('/admin')
-  revalidatePath('/products')
-  revalidatePath('/')
-
-  // ────────────────────────────────────────────
-  // 6. Return result
-  // ────────────────────────────────────────────
   const result = data as {
     order_id: string
     subtotal: number
@@ -161,11 +158,63 @@ export async function placeOrder(
     total: number
   }
 
+  // ────────────────────────────────────────────
+  // 5. Tag order with payment provider
+  // ────────────────────────────────────────────
+  await supabaseAdmin
+    .from('orders')
+    .update({ payment_provider: paymentMethod })
+    .eq('id', result.order_id)
+
+  // ────────────────────────────────────────────
+  // 6. For non-COD: create PaymentIntent
+  // ────────────────────────────────────────────
+  let clientSecret: string | undefined
+  let paymentIntentId: string | undefined
+
+  if (paymentMethod !== 'cod') {
+    const provider = getPaymentProvider(paymentMethod)
+
+    const intent = await provider.createPaymentIntent({
+      orderId: result.order_id,
+      amount: Math.round(result.total * 100), // PKR in paise
+      currency: 'pkr',
+      customerEmail: user.email!,
+      metadata: {
+        userId: user.id,
+      },
+    })
+
+    clientSecret = intent.clientSecret
+    paymentIntentId = intent.id
+
+    // Persist intent ID on the order
+    await supabaseAdmin
+      .from('orders')
+      .update({
+        payment_intent_id: intent.id,
+        payment_metadata: intent.raw as object,
+      })
+      .eq('id', result.order_id)
+  }
+
+  // ────────────────────────────────────────────
+  // 7. Revalidate (unchanged)
+  // ────────────────────────────────────────────
+  revalidatePath('/orders')
+  revalidatePath('/admin/orders')
+  revalidatePath('/admin')
+  revalidatePath('/products')
+  revalidatePath('/')
+
   return {
     success: true,
     orderId: result.order_id,
     subtotal: result.subtotal,
     shipping: result.shipping,
     total: result.total,
+    clientSecret,
+    paymentIntentId,
+    paymentProvider: paymentMethod,
   }
 }
