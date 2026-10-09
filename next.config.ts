@@ -33,6 +33,33 @@ const nextConfig: NextConfig = {
   },
 
   // ─────────────────────────────────────────────────────────────
+  // Cache headers — immutable for static assets
+  // Browser + CDN cache hero images for 1 year
+  // ─────────────────────────────────────────────────────────────
+  async headers() {
+    return [
+      {
+        source: '/suits/:path*',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=31536000, immutable',
+          },
+        ],
+      },
+      {
+        source: '/images/:path*',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=31536000, immutable',
+          },
+        ],
+      },
+    ]
+  },
+
+  // ─────────────────────────────────────────────────────────────
   // Performance
   // ─────────────────────────────────────────────────────────────
 

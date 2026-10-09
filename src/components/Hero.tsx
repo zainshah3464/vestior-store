@@ -40,8 +40,8 @@ export default function Hero() {
               alt="Premium tailored suit — VESTIOR collection"
               fill
               priority
-              sizes="100vw"
-              quality={80}
+              sizes="(max-width: 767px) 100vw, 1px"
+              quality={70}
               className={`md:hidden object-cover object-center z-0 transition-opacity duration-500 ${
                 imageLoaded ? 'opacity-100' : 'opacity-0'
               }`}
@@ -54,8 +54,8 @@ export default function Hero() {
               alt="Premium tailored suit — VESTIOR collection"
               fill
               priority
-              sizes="100vw"
-              quality={85}
+              sizes="(min-width: 768px) 100vw, 1px"
+              quality={80}
               className={`hidden md:block object-cover object-center z-0 transition-opacity duration-500 ${
                 imageLoaded ? 'opacity-100' : 'opacity-0'
               }`}
@@ -118,7 +118,7 @@ export default function Hero() {
                 className="text-sm sm:text-base md:text-lg text-gray-200 max-w-xl mb-8 leading-relaxed"
                 initial={{ opacity: 0, x: -40 }}
                 animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.7, delay: 0.7 }}
+                transition={{ duration: 0.5, delay: 0.4 }}
               >
                 Experience the pinnacle of craftsmanship with our premium collection of
                 hand-tailored suits. Each piece is a masterpiece of precision, using only
@@ -130,7 +130,7 @@ export default function Hero() {
                 className="flex flex-col sm:flex-row gap-4 justify-start"
                 initial={{ opacity: 0, y: 30 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: 0.9 }}
+                transition={{ duration: 0.5, delay: 0.5 }}
               >
                 <motion.div
                   whileHover={{ scale: 1.05 }}
@@ -181,7 +181,7 @@ export default function Hero() {
                 className="flex flex-wrap justify-start gap-6 sm:gap-10 md:gap-14 mt-10 sm:mt-12 pt-6 sm:pt-8 border-t border-white/20"
                 initial={{ opacity: 0, y: 30 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: 1.1 }}
+                transition={{ duration: 0.5, delay: 0.6 }}
               >
                 {stats.map((stat, index) => (
                   <motion.div
@@ -196,7 +196,7 @@ export default function Hero() {
                       className="text-xl sm:text-2xl md:text-3xl font-bold text-blue-500"
                       initial={{ scale: 0 }}
                       animate={{ scale: 1 }}
-                      transition={{ delay: 1.2 + index * 0.1, type: 'spring', stiffness: 200 }}
+                      transition={{ delay: 0.7 + index * 0.1, type: 'spring', stiffness: 200 }}
                     >
                       {stat.value}
                     </motion.p>
@@ -224,7 +224,7 @@ export default function Hero() {
             className="absolute bottom-4 sm:bottom-6 left-1/2 transform -translate-x-1/2 z-20"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ delay: 1.5 }}
+            transition={{ delay: 0.4 }}
           >
             <motion.div
               className="flex flex-col items-center gap-1"

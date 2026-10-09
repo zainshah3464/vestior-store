@@ -146,6 +146,7 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${geistSans.variable} ${geistMono.variable}`}>
       <head>
+        {/* Supabase */}
         <link
           rel="preconnect"
           href={process.env.NEXT_PUBLIC_SUPABASE_URL}
@@ -154,6 +155,14 @@ export default function RootLayout({
           rel="dns-prefetch"
           href={process.env.NEXT_PUBLIC_SUPABASE_URL}
         />
+
+        {/* Google Fonts — preconnect speeds up Geist fonts */}
+        <link
+          rel="preconnect"
+          href="https://fonts.gstatic.com"
+          crossOrigin="anonymous"
+        />
+        <link rel="dns-prefetch" href="https://fonts.gstatic.com" />
       </head>
       <body
         className="font-sans bg-[#0A0A0A] text-white antialiased"
