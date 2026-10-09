@@ -90,7 +90,7 @@ export default function UsersTable({ profiles }: { profiles: Profile[] }) {
           <h1 className="text-2xl font-bold text-white">Users</h1>
           <div className="flex gap-3 w-full sm:w-auto">
             <div className="relative flex-1 sm:w-72">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <input
                 type="text"
                 placeholder="Search name, email or phone..."
@@ -136,7 +136,7 @@ export default function UsersTable({ profiles }: { profiles: Profile[] }) {
 
         {/* Table */}
         {paginated.length === 0 ? (
-          <div className="text-center py-16 text-gray-500">No users found.</div>
+          <div className="text-center py-16 text-gray-400">No users found.</div>
         ) : (
           <div className="bg-[#0f0f0f]/60 backdrop-blur-md border border-white/10 rounded-2xl overflow-hidden shadow-xl">
             <div className="overflow-x-auto">

@@ -257,7 +257,7 @@ export default function NewProductPage() {
                 >
                   <div>
                     <span className="text-sm text-white">{toggle.label}</span>
-                    <p className="text-xs text-gray-500">{toggle.desc}</p>
+                    <p className="text-xs text-gray-400">{toggle.desc}</p>
                   </div>
                   <input
                     type="checkbox"
@@ -308,7 +308,7 @@ export default function NewProductPage() {
               </div>
             )}
             <label className="relative flex flex-col items-center justify-center border-2 border-dashed border-white/10 rounded-2xl p-10 cursor-pointer hover:border-indigo-500/50 transition group bg-black/20 backdrop-blur-sm">
-              <Upload className="w-8 h-8 text-gray-500 group-hover:text-indigo-400 transition mb-2" />
+              <Upload className="w-8 h-8 text-gray-400 group-hover:text-indigo-400 transition mb-2" />
               <span className="text-sm text-gray-400 group-hover:text-gray-300">Click or drag images here</span>
               <span className="text-xs text-gray-600 mt-1">PNG, JPG, WEBP (max 5MB each)</span>
               <input

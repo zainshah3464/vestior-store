@@ -34,7 +34,7 @@ export default function DeleteProductButton({ productId }: { productId: string }
   return (
     <span className="ml-2">
       <button onClick={handleDelete} className="text-red-500 font-bold text-sm">Confirm</button>
-      <button onClick={() => setConfirming(false)} className="text-gray-500 text-sm ml-2">Cancel</button>
+      <button onClick={() => setConfirming(false)} className="text-gray-400 text-sm ml-2">Cancel</button>
     </span>
   )
 }

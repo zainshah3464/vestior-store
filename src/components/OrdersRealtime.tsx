@@ -108,7 +108,7 @@ export default function OrdersRealtime({ initialOrders }: { initialOrders: any[]
               key="empty"
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
-              className="text-center py-16 text-gray-500"
+              className="text-center py-16 text-gray-400"
             >
               No orders found.
             </motion.div>

@@ -68,7 +68,7 @@ export default function AdminCharts({
             </AreaChart>
           </ResponsiveContainer>
         ) : (
-          <p className="text-gray-500 text-center py-16">No sales data yet.</p>
+          <p className="text-gray-400 text-center py-16">No sales data yet.</p>
         )}
       </motion.div>
 
@@ -113,7 +113,7 @@ export default function AdminCharts({
             </PieChart>
           </ResponsiveContainer>
         ) : (
-          <p className="text-gray-500 text-center py-16">No orders yet.</p>
+          <p className="text-gray-400 text-center py-16">No orders yet.</p>
         )}
       </motion.div>
     </div>

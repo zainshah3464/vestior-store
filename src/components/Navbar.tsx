@@ -201,6 +201,7 @@ export default function Navbar() {
               href="/"
               onClick={handleLogoClick}
               className="text-xl md:text-2xl font-semibold tracking-tight text-white"
+              aria-label="VESTIOR home"
             >
               VESTIOR
             </Link>
@@ -235,8 +236,9 @@ export default function Navbar() {
               <button
                 onClick={() => setIsSearchOpen(true)}
                 className="text-gray-300 hover:text-white transition"
+                aria-label="Open search"
               >
-                <Search size={18} />
+                <Search size={18} aria-hidden="true" />
               </button>
 
               {user ? (
@@ -245,11 +247,11 @@ export default function Navbar() {
                   onMouseLeave={() => setUserMenuOpen(false)}
                   onClick={() => setUserMenuOpen(!userMenuOpen)}
                 >
-                  <button className="flex items-center gap-2">
+                  <button className="flex items-center gap-2" aria-label="Open user menu">
                     <div className="w-8 h-8 rounded-full bg-neutral-700 border border-white/20 flex items-center justify-center text-white text-sm font-medium transition-all hover:shadow-[0_0_8px_rgba(255,255,255,0.2)] hover:border-white/30">
                       {user.email?.charAt(0).toUpperCase()}
                     </div>
-                    <ChevronDown className="hidden md:block w-4 h-4 text-gray-400" />
+                    <ChevronDown className="hidden md:block w-4 h-4 text-gray-400" aria-hidden="true" />
                   </button>
                   <AnimatePresence>
                     {userMenuOpen && (
@@ -261,7 +263,7 @@ export default function Navbar() {
                         className="absolute right-0 mt-3 w-52 bg-[#121212]/95 backdrop-blur-lg border border-white/10 rounded-xl shadow-2xl shadow-black/40 overflow-hidden"
                       >
                         <div className="p-2 space-y-1">
-                          <div className="px-3 py-2 text-xs text-gray-500 uppercase tracking-wider font-medium">
+                          <div className="px-3 py-2 text-xs text-gray-400 uppercase tracking-wider font-medium">
                             {user.email?.split('@')[0]}
                           </div>
                           <Link
@@ -269,7 +271,7 @@ export default function Navbar() {
                             onClick={() => setUserMenuOpen(false)}
                             className="flex items-center gap-2 px-4 py-2.5 text-sm text-gray-300 hover:bg-white/5 rounded-lg transition"
                           >
-                            <UserCircle size={16} className="text-gray-400" />
+                            <UserCircle size={16} className="text-gray-400" aria-hidden="true" />
                             Profile
                           </Link>
                           <Link
@@ -277,7 +279,7 @@ export default function Navbar() {
                             onClick={() => setUserMenuOpen(false)}
                             className="flex items-center gap-2 px-4 py-2.5 text-sm text-gray-300 hover:bg-white/5 rounded-lg transition"
                           >
-                            <Package size={16} className="text-gray-400" />
+                            <Package size={16} className="text-gray-400" aria-hidden="true" />
                             Orders
                           </Link>
                           <button
@@ -288,7 +290,7 @@ export default function Navbar() {
                             }}
                             className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-red-400 hover:bg-white/5 rounded-lg transition"
                           >
-                            <LogOut size={16} />
+                            <LogOut size={16} aria-hidden="true" />
                             Sign out
                           </button>
                         </div>
@@ -301,13 +303,17 @@ export default function Navbar() {
                   href="/auth/login"
                   className="text-sm text-gray-300 hover:text-white transition flex items-center gap-1"
                 >
-                  <User size={18} />
+                  <User size={18} aria-hidden="true" />
                   <span className="hidden md:inline">Sign In</span>
                 </Link>
               )}
 
-              <Link href="/cart" className="relative text-gray-300 hover:text-white transition">
-                <ShoppingBag size={18} />
+              <Link
+                href="/cart"
+                className="relative text-gray-300 hover:text-white transition"
+                aria-label={`Shopping cart${cartCount > 0 ? ` (${cartCount} items)` : ''}`}
+              >
+                <ShoppingBag size={18} aria-hidden="true" />
                 {cartCount > 0 && (
                   <span className="absolute -top-2 -right-2 bg-white text-black text-xs rounded-full w-4 h-4 flex items-center justify-center">
                     {cartCount}
@@ -315,8 +321,13 @@ export default function Navbar() {
                 )}
               </Link>
 
-              <button onClick={() => setIsOpen(!isOpen)} className="md:hidden text-gray-300">
-                {isOpen ? <X size={20} /> : <Menu size={20} />}
+              <button
+                onClick={() => setIsOpen(!isOpen)}
+                className="md:hidden text-gray-300"
+                aria-label={isOpen ? 'Close menu' : 'Open menu'}
+                aria-expanded={isOpen}
+              >
+                {isOpen ? <X size={20} aria-hidden="true" /> : <Menu size={20} aria-hidden="true" />}
               </button>
             </div>
           </div>
@@ -415,8 +426,9 @@ export default function Navbar() {
                     setSearchResults([])
                   }}
                   className="text-gray-400 hover:text-white transition p-2 hover:bg-white/10 rounded-full"
+                  aria-label="Close search"
                 >
-                  <X size={24} />
+                  <X size={24} aria-hidden="true" />
                 </motion.button>
               </div>
 
@@ -426,7 +438,7 @@ export default function Navbar() {
                 className="relative mb-8"
               >
                 <div className="relative group">
-                  <Search size={22} className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-blue-400 transition-colors" />
+                  <Search size={22} className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-blue-400 transition-colors" aria-hidden="true" />
                   <input
                     ref={inputRef}
                     type="text"
@@ -440,9 +452,10 @@ export default function Navbar() {
                     <button
                       type="button"
                       onClick={clearSearch}
-                      className="absolute right-20 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300 transition"
+                      className="absolute right-20 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-300 transition"
+                      aria-label="Clear search"
                     >
-                      <X size={20} />
+                      <X size={20} aria-hidden="true" />
                     </button>
                   )}
                 </div>
@@ -482,12 +495,12 @@ export default function Navbar() {
                                 <h4 className="text-white font-medium group-hover:text-blue-400 transition">
                                   {product.name}
                                 </h4>
-                                <p className="text-gray-500 text-xs mt-1">{product.category_main}</p>
+                                <p className="text-gray-400 text-xs mt-1">{product.category_main}</p>
                               </div>
                               <div className="text-right">
                                 <span className="text-blue-400 font-bold">₹{product.price.toLocaleString()}</span>
                                 {product.compare_at_price && product.compare_at_price > product.price && (
-                                  <p className="text-gray-500 text-xs line-through">₹{product.compare_at_price.toLocaleString()}</p>
+                                  <p className="text-gray-400 text-xs line-through">₹{product.compare_at_price.toLocaleString()}</p>
                                 )}
                               </div>
                             </div>
@@ -509,11 +522,11 @@ export default function Navbar() {
                 {!isSearching && searchQuery.length >= 2 && searchResults.length === 0 && (
                   <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col items-center justify-center py-16 text-center">
                     <div className="w-20 h-20 bg-white/5 rounded-full flex items-center justify-center mb-4">
-                      <Package size={32} className="text-gray-600" />
+                      <Package size={32} className="text-gray-600" aria-hidden="true" />
                     </div>
                     <p className="text-white text-lg font-medium mb-2">No products found</p>
-                    <p className="text-gray-500 text-sm">We couldn't find anything matching "{searchQuery}"</p>
-                    <p className="text-gray-500 text-sm mt-1">Try searching with different keywords</p>
+                    <p className="text-gray-400 text-sm">We couldn't find anything matching "{searchQuery}"</p>
+                    <p className="text-gray-400 text-sm mt-1">Try searching with different keywords</p>
                   </motion.div>
                 )}
 
@@ -521,7 +534,7 @@ export default function Navbar() {
                   <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="grid grid-cols-1 md:grid-cols-2 gap-8">
                     <div>
                       <div className="flex items-center gap-2 mb-4">
-                        <TrendingUp size={16} className="text-blue-400" />
+                        <TrendingUp size={16} className="text-blue-400" aria-hidden="true" />
                         <h3 className="text-white font-medium">Popular Searches</h3>
                       </div>
                       <div className="flex flex-wrap gap-2">
@@ -540,12 +553,12 @@ export default function Navbar() {
                       <div>
                         <div className="flex items-center justify-between mb-4">
                           <div className="flex items-center gap-2">
-                            <Search size={14} className="text-gray-500" />
+                            <Search size={14} className="text-gray-400" aria-hidden="true" />
                             <h3 className="text-white font-medium">Recent Searches</h3>
                           </div>
                           <button
                             onClick={clearRecentSearches}
-                            className="text-xs text-gray-500 hover:text-red-400 transition"
+                            className="text-xs text-gray-400 hover:text-red-400 transition"
                           >
                             Clear all
                           </button>
@@ -557,7 +570,7 @@ export default function Navbar() {
                               onClick={() => setSearchQuery(term)}
                               className="flex items-center gap-3 w-full p-2 rounded-lg hover:bg-white/5 transition group"
                             >
-                              <Search size={14} className="text-gray-600 group-hover:text-blue-400" />
+                              <Search size={14} className="text-gray-600 group-hover:text-blue-400" aria-hidden="true" />
                               <span className="text-gray-400 group-hover:text-white transition">{term}</span>
                             </button>
                           ))}
@@ -569,7 +582,7 @@ export default function Navbar() {
 
                 {searchQuery.length > 0 && searchQuery.length < 2 && (
                   <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col items-center justify-center py-16">
-                    <p className="text-gray-500 text-center">Type at least 2 characters to start searching</p>
+                    <p className="text-gray-400 text-center">Type at least 2 characters to start searching</p>
                   </motion.div>
                 )}
               </div>

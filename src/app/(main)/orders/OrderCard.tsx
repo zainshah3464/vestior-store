@@ -67,7 +67,7 @@ export default function OrderCard({ order }: { order: Order }) {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4">
         <div>
           <p className="text-sm text-gray-400">Order #{order.id.slice(0, 8)}</p>
-          <p className="text-xs text-gray-500">
+          <p className="text-xs text-gray-400">
             {new Date(order.created_at).toLocaleDateString('en-GB', {
               day: 'numeric', month: 'short', year: 'numeric',
             })}
@@ -122,7 +122,7 @@ export default function OrderCard({ order }: { order: Order }) {
       </div>
 
       <div className="mt-3 flex items-center justify-between">
-        <div className="text-xs text-gray-500 flex items-center gap-2">
+        <div className="text-xs text-gray-400 flex items-center gap-2">
           <span className="capitalize">{order.payment_status}</span>
           <span className="w-1 h-1 rounded-full bg-gray-600" />
           <span>{order.payment_method || 'COD'}</span>

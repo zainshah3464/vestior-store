@@ -62,7 +62,7 @@ export default function AdminHeader({ user, onToggleSidebar }: AdminHeaderProps)
           >
             <Clock size={15} className="text-indigo-400" />
             <span className="text-sm font-medium text-white">{timeString}</span>
-            <span className="text-xs text-gray-500 ml-1">{dateString}</span>
+            <span className="text-xs text-gray-400 ml-1">{dateString}</span>
           </motion.div>
         </div>
       </div>
@@ -91,7 +91,7 @@ export default function AdminHeader({ user, onToggleSidebar }: AdminHeaderProps)
                 className="absolute right-0 mt-2 w-48 bg-[#121212]/90 backdrop-blur-lg border border-white/10 rounded-xl shadow-2xl overflow-hidden z-50"
               >
                 <div className="p-2">
-                  <div className="px-3 py-2 text-xs text-gray-500 border-b border-white/10 mb-1">
+                  <div className="px-3 py-2 text-xs text-gray-400 border-b border-white/10 mb-1">
                     {user?.email}
                   </div>
                   <button

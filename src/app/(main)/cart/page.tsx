@@ -138,7 +138,7 @@ export default function CartPage() {
     <div className="min-h-screen bg-black flex items-center justify-center">
       <div className="text-center">
         <div className="w-12 h-12 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-3"></div>
-        <p className="text-gray-500 text-sm">Loading your style...</p>
+        <p className="text-gray-400 text-sm">Loading your style...</p>
       </div>
     </div>
   )
@@ -154,7 +154,7 @@ export default function CartPage() {
           <div className="relative">
             <div className="absolute inset-0 bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-full blur-3xl"></div>
             <div className="relative w-24 h-24 bg-gradient-to-br from-gray-900 to-gray-800 rounded-full flex items-center justify-center mx-auto mb-5 border border-gray-700">
-              <ShoppingBag size={36} className="text-gray-600" />
+              <ShoppingBag size={36} className="text-gray-600" aria-hidden="true" />
             </div>
           </div>
           <h2 className="text-2xl font-bold text-white mb-2">Your cart is empty</h2>
@@ -164,7 +164,7 @@ export default function CartPage() {
             className="group inline-flex items-center gap-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white px-6 py-2.5 rounded-full hover:from-blue-700 hover:to-blue-800 transition-all shadow-lg shadow-blue-500/25 text-sm"
           >
             Start Shopping
-            <ChevronRight size={16} className="group-hover:translate-x-1 transition-transform" />
+            <ChevronRight size={16} className="group-hover:translate-x-1 transition-transform" aria-hidden="true" />
           </Link>
         </motion.div>
       </div>
@@ -179,19 +179,20 @@ export default function CartPage() {
           <div className="flex items-center justify-between flex-wrap gap-3">
             <div>
               <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-gradient-to-r from-blue-500/10 to-purple-500/10 border border-blue-500/20 mb-3">
-                <ShoppingBag size={12} className="text-blue-400" />
+                <ShoppingBag size={12} className="text-blue-400" aria-hidden="true" />
                 <span className="text-xs text-blue-400">Shopping Cart</span>
               </div>
               <h1 className="text-2xl md:text-3xl font-bold text-white">
-                Your Cart <span className="text-gray-500 text-lg md:text-xl">({cart.length})</span>
+                Your Cart <span className="text-gray-400 text-lg md:text-xl">({cart.length})</span>
               </h1>
             </div>
             {cart.length > 0 && (
               <button
                 onClick={clearCart}
-                className="text-gray-500 hover:text-red-400 text-xs flex items-center gap-1 transition-colors"
+                className="text-gray-400 hover:text-red-400 text-xs flex items-center gap-1 transition-colors"
+                aria-label="Clear entire cart"
               >
-                <Trash2 size={12} />
+                <Trash2 size={12} aria-hidden="true" />
                 Clear
               </button>
             )}
@@ -209,7 +210,7 @@ export default function CartPage() {
               href="/checkout"
               className="w-full py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg flex items-center justify-center gap-2 hover:from-blue-700 hover:to-blue-800 transition-all text-sm font-medium"
             >
-              <CreditCard size={16} />
+              <CreditCard size={16} aria-hidden="true" />
               Proceed to Checkout
             </Link>
             <button
@@ -217,7 +218,7 @@ export default function CartPage() {
                 const summary = document.getElementById('order-summary')
                 summary?.scrollIntoView({ behavior: 'smooth' })
               }}
-              className="w-full mt-2 text-center text-xs text-gray-500"
+              className="w-full mt-2 text-center text-xs text-gray-400"
             >
               View Details ↓
             </button>
@@ -261,16 +262,17 @@ export default function CartPage() {
                           </Link>
                           <button
                             onClick={() => removeItem(item.id)}
-                            className="text-gray-500 hover:text-red-400 transition-colors flex-shrink-0"
+                            className="text-gray-400 hover:text-red-400 transition-colors flex-shrink-0"
+                            aria-label={`Remove ${item.name} from cart`}
                           >
-                            <Trash2 size={14} />
+                            <Trash2 size={14} aria-hidden="true" />
                           </button>
                         </div>
 
                         <div className="flex items-center gap-2 mt-1">
                           <span className="text-base font-bold text-white">₹{item.price.toLocaleString()}</span>
                           {item.compare_at_price && item.compare_at_price > item.price && (
-                            <span className="text-xs text-gray-500 line-through">₹{item.compare_at_price.toLocaleString()}</span>
+                            <span className="text-xs text-gray-400 line-through">₹{item.compare_at_price.toLocaleString()}</span>
                           )}
                         </div>
 
@@ -279,20 +281,22 @@ export default function CartPage() {
                             <button
                               onClick={() => updateQuantity(item.id, item.quantity - 1)}
                               className="w-7 h-7 flex items-center justify-center hover:bg-gray-700 rounded-l-lg transition-colors"
+                              aria-label={`Decrease quantity of ${item.name}`}
                             >
-                              <Minus size={12} className="text-gray-400" />
+                              <Minus size={12} className="text-gray-400" aria-hidden="true" />
                             </button>
                             <span className="w-8 text-center text-white text-sm">{item.quantity}</span>
                             <button
                               onClick={() => updateQuantity(item.id, item.quantity + 1)}
                               className="w-7 h-7 flex items-center justify-center hover:bg-gray-700 rounded-r-lg transition-colors"
+                              aria-label={`Increase quantity of ${item.name}`}
                             >
-                              <Plus size={12} className="text-gray-400" />
+                              <Plus size={12} className="text-gray-400" aria-hidden="true" />
                             </button>
                           </div>
                           <div className="text-right">
                             <div className="text-sm font-semibold text-white">₹{(item.price * item.quantity).toLocaleString()}</div>
-                            <div className="text-[10px] text-gray-500">{item.stock} left</div>
+                            <div className="text-[10px] text-gray-400">{item.stock} left</div>
                           </div>
                         </div>
                       </div>
@@ -304,9 +308,9 @@ export default function CartPage() {
 
             <Link
               href="/products"
-              className="inline-flex items-center gap-1 text-gray-500 hover:text-blue-400 transition-colors mt-4 group text-sm"
+              className="inline-flex items-center gap-1 text-gray-400 hover:text-blue-400 transition-colors mt-4 group text-sm"
             >
-              <ArrowLeft size={14} className="group-hover:-translate-x-1 transition-transform" />
+              <ArrowLeft size={14} className="group-hover:-translate-x-1 transition-transform" aria-hidden="true" />
               Continue Shopping
             </Link>
           </div>
@@ -316,14 +320,14 @@ export default function CartPage() {
             <div className="sticky top-24">
               <div className="hidden lg:block bg-gradient-to-br from-gray-900 to-gray-900/50 rounded-xl border border-gray-800 p-5">
                 <div className="flex items-center gap-2 mb-4">
-                  <Sparkles size={16} className="text-blue-400" />
+                  <Sparkles size={16} className="text-blue-400" aria-hidden="true" />
                   <h2 className="text-base font-semibold text-white">Order Summary</h2>
                 </div>
 
                 {savings > 0 && (
                   <div className="bg-green-500/10 rounded-lg p-2 mb-4 border border-green-500/20">
                     <div className="flex items-center gap-2 text-green-400 text-xs">
-                      <Gift size={12} />
+                      <Gift size={12} aria-hidden="true" />
                       <span>You're saving ₹{savings.toLocaleString()}!</span>
                     </div>
                   </div>
@@ -346,9 +350,9 @@ export default function CartPage() {
                     </button>
                   </div>
                   <div className="flex gap-2 mt-2">
-                    <span className="text-[10px] text-gray-500 cursor-pointer hover:text-blue-400" onClick={() => setCouponCode('WELCOME10')}>WELCOME10</span>
-                    <span className="text-[10px] text-gray-500">•</span>
-                    <span className="text-[10px] text-gray-500 cursor-pointer hover:text-blue-400" onClick={() => setCouponCode('BRAND20')}>BRAND20</span>
+                    <span className="text-[10px] text-gray-400 cursor-pointer hover:text-blue-400" onClick={() => setCouponCode('WELCOME10')}>WELCOME10</span>
+                    <span className="text-[10px] text-gray-400">•</span>
+                    <span className="text-[10px] text-gray-400 cursor-pointer hover:text-blue-400" onClick={() => setCouponCode('BRAND20')}>BRAND20</span>
                   </div>
                 </div>
 
@@ -373,7 +377,7 @@ export default function CartPage() {
                   {subtotal < 5000 && subtotal > 0 && (
                     <div className="bg-blue-500/10 rounded-lg p-2">
                       <div className="flex items-center gap-2 text-blue-400 text-[11px]">
-                        <Truck size={12} />
+                        <Truck size={12} aria-hidden="true" />
                         <span>Add ₹{(5000 - subtotal).toLocaleString()} for free shipping</span>
                       </div>
                       <div className="w-full bg-gray-700 rounded-full h-1 mt-2">
@@ -390,7 +394,7 @@ export default function CartPage() {
                       <span>Total</span>
                       <span>₹{total.toLocaleString()}</span>
                     </div>
-                    <p className="text-[10px] text-gray-500 mt-1">Inclusive of all taxes</p>
+                    <p className="text-[10px] text-gray-400 mt-1">Inclusive of all taxes</p>
                   </div>
                 </div>
 
@@ -398,22 +402,22 @@ export default function CartPage() {
                   href="/checkout"
                   className="w-full mt-5 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg flex items-center justify-center gap-2 hover:from-blue-700 hover:to-blue-800 transition-all text-sm font-medium"
                 >
-                  <CreditCard size={16} />
+                  <CreditCard size={16} aria-hidden="true" />
                   Proceed to Checkout
                 </Link>
 
                 <div className="grid grid-cols-3 gap-2 mt-4 pt-4 border-t border-gray-800">
                   <div className="text-center">
-                    <Shield size={14} className="text-blue-400 mx-auto mb-1" />
-                    <p className="text-[10px] text-gray-500">Secure Payment</p>
+                    <Shield size={14} className="text-blue-400 mx-auto mb-1" aria-hidden="true" />
+                    <p className="text-[10px] text-gray-400">Secure Payment</p>
                   </div>
                   <div className="text-center">
-                    <Truck size={14} className="text-blue-400 mx-auto mb-1" />
-                    <p className="text-[10px] text-gray-500">Fast Delivery</p>
+                    <Truck size={14} className="text-blue-400 mx-auto mb-1" aria-hidden="true" />
+                    <p className="text-[10px] text-gray-400">Fast Delivery</p>
                   </div>
                   <div className="text-center">
-                    <Clock size={14} className="text-blue-400 mx-auto mb-1" />
-                    <p className="text-[10px] text-gray-500">14 Day Returns</p>
+                    <Clock size={14} className="text-blue-400 mx-auto mb-1" aria-hidden="true" />
+                    <p className="text-[10px] text-gray-400">14 Day Returns</p>
                   </div>
                 </div>
               </div>

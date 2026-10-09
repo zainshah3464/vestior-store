@@ -24,10 +24,10 @@ export default function ProductGrid({ products }: { products: Product[] }) {
         className="flex flex-col items-center justify-center min-h-[400px] text-center"
       >
         <div className="w-20 h-20 rounded-full bg-white/5 flex items-center justify-center mb-4">
-          <Package size={32} className="text-gray-500" />
+          <Package size={32} className="text-gray-400" />
         </div>
         <p className="text-gray-400 text-lg">No products found in this collection.</p>
-        <p className="text-gray-500 text-sm mt-2">Check back soon for new arrivals!</p>
+        <p className="text-gray-400 text-sm mt-2">Check back soon for new arrivals!</p>
       </motion.div>
     )
   }

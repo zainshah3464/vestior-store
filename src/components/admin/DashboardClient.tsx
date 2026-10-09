@@ -302,7 +302,7 @@ export default function DashboardClient({
             </table>
           </div>
         ) : (
-          <p className="text-gray-500 text-center py-12">No orders yet.</p>
+          <p className="text-gray-400 text-center py-12">No orders yet.</p>
         )}
       </motion.div>
     </div>

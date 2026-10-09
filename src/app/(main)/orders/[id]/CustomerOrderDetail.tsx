@@ -75,7 +75,7 @@ export default function CustomerOrderDetail({ detail }: { detail: OrderDetail })
         {/* Header */}
         <div className="flex items-start justify-between flex-wrap gap-4 mb-8">
           <div>
-            <p className="text-xs text-gray-500 font-mono">
+            <p className="text-xs text-gray-400 font-mono">
               ORDER #{detail.order.id.slice(0, 8).toUpperCase()}
             </p>
             <h1 className="text-2xl md:text-3xl font-bold text-white mt-1">
@@ -179,7 +179,7 @@ export default function CustomerOrderDetail({ detail }: { detail: OrderDetail })
                       <p className="text-sm font-medium text-white truncate">
                         {item.productName}
                       </p>
-                      <p className="text-xs text-gray-500 mt-0.5">
+                      <p className="text-xs text-gray-400 mt-0.5">
                         Qty: {item.quantity} × ₹{item.price.toLocaleString()}
                       </p>
                     </div>
@@ -251,13 +251,13 @@ export default function CustomerOrderDetail({ detail }: { detail: OrderDetail })
               </h2>
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
-                  <span className="text-gray-500">Method</span>
+                  <span className="text-gray-400">Method</span>
                   <span className="text-white uppercase">
                     {detail.order.paymentProvider ?? detail.order.paymentMethod}
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-500">Status</span>
+                  <span className="text-gray-400">Status</span>
                   <span
                     className={`text-xs px-2 py-0.5 rounded-full ${
                       detail.order.paymentStatus === 'completed'
@@ -272,7 +272,7 @@ export default function CustomerOrderDetail({ detail }: { detail: OrderDetail })
                 </div>
                 {detail.order.paidAt && (
                   <div className="flex justify-between">
-                    <span className="text-gray-500">Paid on</span>
+                    <span className="text-gray-400">Paid on</span>
                     <span className="text-white text-xs">
                       {new Date(detail.order.paidAt).toLocaleDateString('en-GB')}
                     </span>

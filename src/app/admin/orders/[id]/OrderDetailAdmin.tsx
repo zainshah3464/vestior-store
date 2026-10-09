@@ -131,7 +131,7 @@ export default function OrderDetailAdmin({ detail }: { detail: OrderDetail }) {
                     >
                       {item.productName}
                     </Link>
-                    <p className="text-xs text-gray-500">
+                    <p className="text-xs text-gray-400">
                       Qty: {item.quantity} × ₹{item.price.toLocaleString()}
                     </p>
                   </div>
@@ -201,7 +201,7 @@ export default function OrderDetailAdmin({ detail }: { detail: OrderDetail }) {
                       <p className="text-xs text-white font-mono break-all">
                         {e.event}
                       </p>
-                      <p className="text-[10px] text-gray-500 mt-0.5">
+                      <p className="text-[10px] text-gray-400 mt-0.5">
                         {new Date(e.at).toLocaleString('en-GB')}
                       </p>
                     </div>
@@ -228,7 +228,7 @@ export default function OrderDetailAdmin({ detail }: { detail: OrderDetail }) {
               <option value="delivered">Delivered</option>
               <option value="cancelled">Cancelled</option>
             </select>
-            <p className="text-xs text-gray-500 mt-2">
+            <p className="text-xs text-gray-400 mt-2">
               Customer is notified automatically on shipped / delivered /
               cancelled.
             </p>
@@ -303,7 +303,7 @@ export default function OrderDetailAdmin({ detail }: { detail: OrderDetail }) {
                     className="text-xs p-2 bg-black/30 rounded border border-white/5"
                   >
                     <p className="text-white font-medium">{log.action}</p>
-                    <p className="text-gray-500 mt-0.5">
+                    <p className="text-gray-400 mt-0.5">
                       {log.actorEmail} ·{' '}
                       {new Date(log.timestamp).toLocaleString('en-GB')}
                     </p>
@@ -366,7 +366,7 @@ function Row({
 
   return (
     <div className="flex justify-between items-center">
-      <span className="text-gray-500">{label}</span>
+      <span className="text-gray-400">{label}</span>
       {badge ? (
         <span className={`text-xs px-2 py-0.5 rounded-full ${badgeClass}`}>
           {value}

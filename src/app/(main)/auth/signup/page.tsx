@@ -111,7 +111,7 @@ export default function SignupPage() {
         {/* Divider */}
         <div className="flex items-center gap-4 my-6">
           <div className="flex-1 h-px bg-gray-800" />
-          <span className="text-xs text-gray-500 uppercase">or</span>
+          <span className="text-xs text-gray-400 uppercase">or</span>
           <div className="flex-1 h-px bg-gray-800" />
         </div>
 
@@ -142,7 +142,7 @@ export default function SignupPage() {
           Continue with Google
         </button>
 
-        <p className="text-center text-gray-500 mt-6 text-sm">
+        <p className="text-center text-gray-400 mt-6 text-sm">
           Already have an account?{' '}
           <Link href="/auth/login" className="text-blue-500 hover:underline">
             Sign in

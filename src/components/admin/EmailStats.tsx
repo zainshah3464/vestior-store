@@ -34,7 +34,7 @@ export default function EmailStatsCards({ stats }: { stats: EmailStats }) {
             </div>
             <p className="text-sm text-gray-400">{c.label}</p>
             <p className="text-2xl font-bold text-white mt-1">{c.value}</p>
-            <p className="text-xs text-gray-500 mt-1">{c.sub}</p>
+            <p className="text-xs text-gray-400 mt-1">{c.sub}</p>
           </div>
         </motion.div>
       ))}

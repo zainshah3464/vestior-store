@@ -77,8 +77,11 @@ export default function ProductCard({ product }: { product: Product }) {
           initial={false}
           animate={{ opacity: isHovered ? 1 : 0 }}
         >
-          <button className="bg-white text-black px-4 py-1.5 rounded-full text-xs font-medium flex items-center gap-1">
-            <Eye size={12} />
+          <button
+            className="bg-white text-black px-4 py-1.5 rounded-full text-xs font-medium flex items-center gap-1"
+            aria-label={`Quick view: ${product.name}`}
+          >
+            <Eye size={12} aria-hidden="true" />
             Quick View
           </button>
         </motion.div>
@@ -109,8 +112,9 @@ export default function ProductCard({ product }: { product: Product }) {
             isWishlisted ? 'text-red-500' : 'text-white hover:text-red-500'
           }`}
           whileTap={{ scale: 0.9 }}
+          aria-label={isWishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
         >
-          <Heart size={14} fill={isWishlisted ? 'currentColor' : 'none'} />
+          <Heart size={14} fill={isWishlisted ? 'currentColor' : 'none'} aria-hidden="true" />
         </motion.button>
       </Link>
 
@@ -125,7 +129,7 @@ export default function ProductCard({ product }: { product: Product }) {
         <div className="flex items-center gap-2 mt-2">
           <span className="text-base font-semibold text-white">₹{product.price.toLocaleString()}</span>
           {product.compare_at_price && product.compare_at_price > product.price && (
-            <span className="text-xs text-gray-500 line-through">₹{product.compare_at_price.toLocaleString()}</span>
+            <span className="text-xs text-gray-400 line-through">₹{product.compare_at_price.toLocaleString()}</span>
           )}
         </div>
 
@@ -135,7 +139,7 @@ export default function ProductCard({ product }: { product: Product }) {
           className="mt-3 w-full py-2 bg-white/5 text-white rounded-lg text-sm hover:bg-blue-500 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1"
           whileTap={{ scale: 0.98 }}
         >
-          <ShoppingCart size={14} />
+          <ShoppingCart size={14} aria-hidden="true" />
           {product.stock === 0 ? 'Out of Stock' : 'Add to Cart'}
         </motion.button>
       </div>

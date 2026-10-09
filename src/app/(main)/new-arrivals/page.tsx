@@ -34,7 +34,7 @@ export default async function NewArrivalsPage() {
           <ProductGrid products={parsedProducts} />
         ) : (
           <div className="text-center py-16">
-            <p className="text-gray-500">No new arrivals yet.</p>
+            <p className="text-gray-400">No new arrivals yet.</p>
           </div>
         )}
       </div>

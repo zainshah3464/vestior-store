@@ -33,7 +33,7 @@ export default function AdminSidebar({ onClose }: { onClose?: () => void }) {
           <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-500 to-blue-400 bg-clip-text text-transparent">
             VESTIOR
           </h1>
-          <span className="text-xs text-gray-500">Admin Panel</span>
+          <span className="text-xs text-gray-400">Admin Panel</span>
         </div>
         {onClose && (
           <button onClick={onClose} className="text-gray-400 hover:text-white lg:hidden">
@@ -44,7 +44,7 @@ export default function AdminSidebar({ onClose }: { onClose?: () => void }) {
 
       {/* Navigation */}
       <nav className="flex-1 p-4 space-y-1">
-        <p className="px-4 text-xs text-gray-500 uppercase tracking-wider mb-2">Main Menu</p>
+        <p className="px-4 text-xs text-gray-400 uppercase tracking-wider mb-2">Main Menu</p>
         {menuItems.map((item) => {
           const isActive = pathname === item.href || (item.href !== '/admin' && pathname.startsWith(item.href))
           return (

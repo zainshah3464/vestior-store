@@ -71,7 +71,7 @@ export default async function CategoryPage({
           {parsedProducts.length > 0 ? (
             <ProductGrid products={parsedProducts} />
           ) : (
-            <p className="text-gray-500">No products in this category.</p>
+            <p className="text-gray-400">No products in this category.</p>
           )}
         </div>
       </div>

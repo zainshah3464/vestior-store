@@ -41,7 +41,7 @@ export default function OrdersTable({ orders, fetchError }: { orders: Order[], f
         <h1 className="text-2xl font-bold text-white">Orders</h1>
         <div className="flex gap-3">
           <div className="relative flex-1 sm:w-72">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <input
               type="text"
               placeholder="Search order ID or email..."
@@ -69,7 +69,7 @@ export default function OrdersTable({ orders, fetchError }: { orders: Order[], f
       )}
 
       {!fetchError && filtered.length === 0 && (
-        <div className="text-gray-500 text-center py-16">No orders found.</div>
+        <div className="text-gray-400 text-center py-16">No orders found.</div>
       )}
 
       {filtered.length > 0 && (

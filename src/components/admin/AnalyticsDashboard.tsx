@@ -112,7 +112,7 @@ export default function AnalyticsDashboard({
               </div>
               <p className="text-sm text-gray-400">{c.label}</p>
               <p className="text-2xl font-bold text-white mt-1">{c.value}</p>
-              <p className="text-xs text-gray-500 mt-1">{c.sub}</p>
+              <p className="text-xs text-gray-400 mt-1">{c.sub}</p>
             </div>
           </motion.div>
         ))}
@@ -139,7 +139,7 @@ export default function AnalyticsDashboard({
             Top Products (7 days)
           </h2>
           {topProducts.length === 0 ? (
-            <p className="text-gray-500 text-center py-8">
+            <p className="text-gray-400 text-center py-8">
               No data yet — start browsing to generate events.
             </p>
           ) : (
@@ -153,7 +153,7 @@ export default function AnalyticsDashboard({
                     <p className="text-sm text-white truncate">
                       {p.productName}
                     </p>
-                    <p className="text-xs text-gray-500">
+                    <p className="text-xs text-gray-400">
                       {p.views} views · {p.adds} adds · {p.orders} orders
                     </p>
                   </div>
@@ -175,7 +175,7 @@ export default function AnalyticsDashboard({
               Devices (7 days)
             </h2>
             {devices.length === 0 ? (
-              <p className="text-gray-500 text-sm">No data</p>
+              <p className="text-gray-400 text-sm">No data</p>
             ) : (
               <div className="space-y-3">
                 {devices.map((d) => {
@@ -187,7 +187,7 @@ export default function AnalyticsDashboard({
                         <span className="text-gray-300 capitalize">
                           {d.type}
                         </span>
-                        <span className="text-gray-500">
+                        <span className="text-gray-400">
                           {d.count} ({pct.toFixed(0)}%)
                         </span>
                       </div>
@@ -212,7 +212,7 @@ export default function AnalyticsDashboard({
               Traffic Sources (7 days)
             </h2>
             {referrers.length === 0 ? (
-              <p className="text-gray-500 text-sm">No data</p>
+              <p className="text-gray-400 text-sm">No data</p>
             ) : (
               <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
                 {referrers.map((r, i) => (
@@ -223,7 +223,7 @@ export default function AnalyticsDashboard({
                     <span className="text-gray-300 truncate max-w-[200px]">
                       {r.referrer}
                     </span>
-                    <span className="text-gray-500">{r.count}</span>
+                    <span className="text-gray-400">{r.count}</span>
                   </div>
                 ))}
               </div>

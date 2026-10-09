@@ -73,7 +73,7 @@ export default async function HomePage() {
             <HomeProductSection products={parsedFeatured} />
           ) : (
             <div className="text-center py-12">
-              <p className="text-gray-500">No featured products available</p>
+              <p className="text-gray-400">No featured products available</p>
             </div>
           )}
         </div>
@@ -105,7 +105,7 @@ export default async function HomePage() {
             <HomeProductSection products={parsedNewArrivals} />
           ) : (
             <div className="text-center py-12">
-              <p className="text-gray-500">No new arrivals available</p>
+              <p className="text-gray-400">No new arrivals available</p>
             </div>
           )}
 

@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import Image from 'next/image'
 import { ArrowRight, Sparkles, Shield, Award, ChevronDown } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -24,63 +25,42 @@ export default function Hero() {
 
   return (
     <>
-      {/* ─────────────────────────────────────────────────────────
-          LCP image preloads
-          React 19 automatically hoists these to <head>
-          Note: next/head is NOT supported in App Router
-          ───────────────────────────────────────────────────────── */}
-      <link
-        rel="preload"
-        as="image"
-        href="/suits/hero-image.webp"
-        type="image/webp"
-        media="(min-width: 768px)"
-      />
-      <link
-        rel="preload"
-        as="image"
-        href="/suits/mobile-bg.jpg"
-        type="image/jpeg"
-        media="(max-width: 767px)"
-      />
-
       {/* Avoid hydration mismatch — server renders placeholder, client swaps in */}
       {!mounted ? (
         <div className="relative min-h-screen w-full bg-black pt-16" />
       ) : (
         <div className="relative min-h-screen w-full flex items-center justify-start bg-black pt-16 overflow-hidden">
-          {/* Background Image */}
+          {/* Background Image — optimized via next/image */}
           <div className="absolute inset-0 z-0">
             <div className="absolute inset-0 bg-black/25 z-0" />
 
-            <picture>
-              {/* Mobile: smaller dedicated image */}
-              <source
-                media="(max-width: 767px)"
-                srcSet="/suits/mobile-bg.jpg"
-                type="image/jpeg"
-              />
-              {/* Desktop: WebP first, JPEG fallback */}
-              <source
-                media="(min-width: 768px)"
-                srcSet="/suits/hero-image.webp"
-                type="image/webp"
-              />
-              <img
-                src="/suits/hero-image.jpg"
-                alt="Premium tailored suit — VESTIOR collection"
-                className={`absolute inset-0 w-full h-full object-cover object-center z-0 transition-opacity duration-500 ${
-                  imageLoaded ? 'opacity-100' : 'opacity-0'
-                }`}
-                style={{ objectPosition: 'center' }}
-                onLoad={() => setImageLoaded(true)}
-                fetchPriority="high"
-                loading="eager"
-                decoding="async"
-                width={1920}
-                height={1080}
-              />
-            </picture>
+            {/* Mobile: smaller dedicated image (hidden on desktop) */}
+            <Image
+              src="/suits/mobile-bg.jpg"
+              alt="Premium tailored suit — VESTIOR collection"
+              fill
+              priority
+              sizes="100vw"
+              quality={80}
+              className={`md:hidden object-cover object-center z-0 transition-opacity duration-500 ${
+                imageLoaded ? 'opacity-100' : 'opacity-0'
+              }`}
+              onLoad={() => setImageLoaded(true)}
+            />
+
+            {/* Desktop: hero image (hidden on mobile) */}
+            <Image
+              src="/suits/hero-image.jpg"
+              alt="Premium tailored suit — VESTIOR collection"
+              fill
+              priority
+              sizes="100vw"
+              quality={85}
+              className={`hidden md:block object-cover object-center z-0 transition-opacity duration-500 ${
+                imageLoaded ? 'opacity-100' : 'opacity-0'
+              }`}
+              onLoad={() => setImageLoaded(true)}
+            />
 
             {/* Gradient overlay for text readability */}
             <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-black/30 to-transparent z-0" />

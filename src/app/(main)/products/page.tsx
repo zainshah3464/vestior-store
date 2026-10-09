@@ -76,7 +76,7 @@ export default async function ProductsPage({
         ) : (
           <div className="text-center py-16">
             <Filter size={32} className="text-gray-600 mx-auto mb-2" />
-            <p className="text-gray-500">No products found in this category.</p>
+            <p className="text-gray-400">No products found in this category.</p>
           </div>
         )}
       </div>

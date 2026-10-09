@@ -34,7 +34,7 @@ export default async function FeaturedPage() {
           <ProductGrid products={parsedProducts} />
         ) : (
           <div className="text-center py-16">
-            <p className="text-gray-500">No featured products at the moment.</p>
+            <p className="text-gray-400">No featured products at the moment.</p>
           </div>
         )}
       </div>

@@ -79,7 +79,7 @@ export default function Footer() {
               <h3 className="text-xl font-bold bg-gradient-to-r from-white to-blue-400 bg-clip-text text-transparent mb-2">
                 VESTIOR
               </h3>
-              <p className="text-gray-500 text-xs leading-relaxed">
+              <p className="text-gray-400 text-xs leading-relaxed">
                 Premium fashion for the modern gentleman.
               </p>
             </motion.div>
@@ -92,19 +92,19 @@ export default function Footer() {
               <div className="flex flex-col sm:flex-row lg:flex-col gap-1.5 justify-center sm:justify-start">
                 <Link
                   href="/category/Suits"
-                  className="text-gray-500 hover:text-blue-400 text-xs transition-colors"
+                  className="text-gray-400 hover:text-blue-400 text-xs transition-colors"
                 >
                   Shop
                 </Link>
                 <Link
                   href="/contact"
-                  className="text-gray-500 hover:text-blue-400 text-xs transition-colors"
+                  className="text-gray-400 hover:text-blue-400 text-xs transition-colors"
                 >
                   Contact
                 </Link>
                 <Link
                   href="/shipping"
-                  className="text-gray-500 hover:text-blue-400 text-xs transition-colors"
+                  className="text-gray-400 hover:text-blue-400 text-xs transition-colors"
                 >
                   Shipping
                 </Link>
@@ -119,14 +119,14 @@ export default function Footer() {
               <div className="space-y-1.5">
                 <a
                   href="mailto:hello@vestior.com"
-                  className="flex items-center justify-center sm:justify-start gap-2 text-gray-500 hover:text-blue-400 text-xs transition-colors"
+                  className="flex items-center justify-center sm:justify-start gap-2 text-gray-400 hover:text-blue-400 text-xs transition-colors"
                 >
                   <Mail size={12} />
                   <span>hello@vestior.com</span>
                 </a>
                 <a
                   href="tel:+1234567890"
-                  className="flex items-center justify-center sm:justify-start gap-2 text-gray-500 hover:text-blue-400 text-xs transition-colors"
+                  className="flex items-center justify-center sm:justify-start gap-2 text-gray-400 hover:text-blue-400 text-xs transition-colors"
                 >
                   <Phone size={12} />
                   <span>+1 (234) 567-890</span>
@@ -145,7 +145,7 @@ export default function Footer() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="Email"
-                  className="w-full px-3 py-1.5 bg-white/10 border border-white/20 rounded-lg text-white text-xs placeholder:text-gray-500 focus:outline-none focus:border-blue-500 transition-all duration-300 backdrop-blur-sm"
+                  className="w-full px-3 py-1.5 bg-white/10 border border-white/20 rounded-lg text-white text-xs placeholder:text-gray-400 focus:outline-none focus:border-blue-500 transition-all duration-300 backdrop-blur-sm"
                   required
                 />
                 <button
@@ -176,7 +176,7 @@ export default function Footer() {
               <motion.a
                 href="#"
                 whileHover={{ scale: 1.1, y: -2 }}
-                className="text-gray-500 hover:text-blue-400 transition-colors"
+                className="text-gray-400 hover:text-blue-400 transition-colors"
                 aria-label="Instagram"
               >
                 <svg
@@ -197,7 +197,7 @@ export default function Footer() {
               <motion.a
                 href="#"
                 whileHover={{ scale: 1.1, y: -2 }}
-                className="text-gray-500 hover:text-blue-400 transition-colors"
+                className="text-gray-400 hover:text-blue-400 transition-colors"
                 aria-label="Twitter"
               >
                 <svg
@@ -216,7 +216,7 @@ export default function Footer() {
               <motion.a
                 href="#"
                 whileHover={{ scale: 1.1, y: -2 }}
-                className="text-gray-500 hover:text-blue-400 transition-colors"
+                className="text-gray-400 hover:text-blue-400 transition-colors"
                 aria-label="Facebook"
               >
                 <svg

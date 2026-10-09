@@ -124,7 +124,7 @@ export default function PaymentDetailsModal({
                 <p className="text-gray-400 text-sm">
                   No MongoDB payment record found.
                 </p>
-                <p className="text-gray-500 text-xs mt-1">
+                <p className="text-gray-400 text-xs mt-1">
                   Order ID: {orderId.slice(0, 12)}…
                 </p>
               </div>
@@ -185,7 +185,7 @@ export default function PaymentDetailsModal({
                             <p className="text-sm text-white font-mono break-all">
                               {evt.event}
                             </p>
-                            <p className="text-xs text-gray-500 mt-0.5">
+                            <p className="text-xs text-gray-400 mt-0.5">
                               {new Date(evt.at).toLocaleString('en-GB')}
                             </p>
                           </div>
@@ -240,7 +240,7 @@ function InfoBlock({
 }) {
   return (
     <div className="bg-black/30 rounded-lg p-3 border border-white/5">
-      <p className="text-xs text-gray-500 mb-1 flex items-center gap-1.5">
+      <p className="text-xs text-gray-400 mb-1 flex items-center gap-1.5">
         {icon}
         {label}
       </p>

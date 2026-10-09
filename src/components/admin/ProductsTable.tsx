@@ -115,7 +115,7 @@ export default function ProductsTable({ products }: { products: Product[] }) {
       {/* Filters */}
       <div className="relative z-10 flex flex-col sm:flex-row gap-3 mb-6">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
           <input
             type="text"
             placeholder="Search products..."
@@ -140,7 +140,7 @@ export default function ProductsTable({ products }: { products: Product[] }) {
       {/* Table */}
       <div className="relative z-10">
         {paginated.length === 0 ? (
-          <div className="text-center py-16 text-gray-500">No products found.</div>
+          <div className="text-center py-16 text-gray-400">No products found.</div>
         ) : (
           <div className="bg-[#0f0f0f]/60 backdrop-blur-md border border-white/10 rounded-2xl overflow-hidden shadow-xl">
             <div className="overflow-x-auto">

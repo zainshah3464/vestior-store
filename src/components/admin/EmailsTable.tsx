@@ -73,7 +73,7 @@ export default function EmailsTable({ rows, total, page, totalPages, initialFilt
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
           <input
             type="text"
             placeholder="Search by email..."
@@ -143,7 +143,7 @@ export default function EmailsTable({ rows, total, page, totalPages, initialFilt
                     <td className="p-4 text-sm text-gray-400 hidden md:table-cell">
                       {new Date(row.createdAt).toLocaleString('en-GB')}
                     </td>
-                    <td className="p-4 text-xs text-gray-500 font-mono hidden lg:table-cell truncate max-w-[200px]">
+                    <td className="p-4 text-xs text-gray-400 font-mono hidden lg:table-cell truncate max-w-[200px]">
                       {row.providerMessageId || '—'}
                     </td>
                   </motion.tr>

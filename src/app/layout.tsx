@@ -129,8 +129,8 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
+  // maximum-scale + user-scalable removed — Lighthouse flags these as WCAG violations.
+  // Users must be able to zoom for accessibility.
   themeColor: [
     { media: "(prefers-color-scheme: dark)", color: "#0A0A0A" },
     { media: "(prefers-color-scheme: light)", color: "#0A0A0A" },

@@ -18,7 +18,7 @@ export default function VerifyEmailPage() {
         </p>
 
         <div className="bg-white/5 border border-white/10 rounded-xl p-4 mb-8 text-left">
-          <p className="text-xs text-gray-500 mb-2">Didn't receive the email?</p>
+          <p className="text-xs text-gray-400 mb-2">Didn't receive the email?</p>
           <ul className="text-xs text-gray-400 space-y-1.5 list-disc list-inside">
             <li>Check your spam or junk folder</li>
             <li>Make sure you entered the correct email</li>

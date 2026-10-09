@@ -449,7 +449,7 @@ export default function CheckoutPage() {
                   <span>₹{total.toLocaleString()}</span>
                 </div>
               </div>
-              <div className="mt-4 pt-4 border-t border-white/10 flex justify-around text-gray-500">
+              <div className="mt-4 pt-4 border-t border-white/10 flex justify-around text-gray-400">
                 <div className="flex flex-col items-center gap-1">
                   <Truck size={18} className="text-indigo-400" />
                   <span className="text-xs">Free Delivery</span>
@@ -505,7 +505,7 @@ function PaymentOption({
       </div>
       <div className="flex-1 min-w-0">
         <p className="text-sm font-medium text-white">{title}</p>
-        <p className="text-xs text-gray-500">{subtitle}</p>
+        <p className="text-xs text-gray-400">{subtitle}</p>
       </div>
       {active && (
         <div className="w-4 h-4 rounded-full bg-indigo-500 flex items-center justify-center">
@@ -589,7 +589,7 @@ function StripePaymentForm({
         )}
         {loading ? 'Processing Payment...' : 'Pay Now'}
       </button>
-      <p className="text-xs text-gray-500 text-center">
+      <p className="text-xs text-gray-400 text-center">
         Payments are secured by Stripe. You will be redirected on success.
       </p>
     </form>

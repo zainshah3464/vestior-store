@@ -51,7 +51,7 @@ export default function NotFound() {
           4
         </motion.h1>
         <p className="text-xl text-gray-400 mb-2">Page Not Found</p>
-        <p className="text-gray-500 mb-8">
+        <p className="text-gray-400 mb-8">
           The page you&apos;re looking for doesn&apos;t exist or has been moved.
         </p>
         <Link

@@ -178,7 +178,7 @@ export default function CategorySection() {
                     </div>
                     
                     <div className="flex items-center justify-between">
-                      <p className="text-xs text-gray-500">
+                      <p className="text-xs text-gray-400">
                         {cat.items}
                       </p>
                       {cat.items !== '0 styles' && (

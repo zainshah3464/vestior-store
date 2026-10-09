@@ -11,7 +11,7 @@ export default function Loading() {
           className="w-12 h-12 rounded-full border-2 border-blue-500 border-t-transparent animate-spin"
           aria-hidden="true"
         />
-        <p className="text-gray-500 text-sm tracking-wider">Loading…</p>
+        <p className="text-gray-400 text-sm tracking-wider">Loading…</p>
         <span className="sr-only">Please wait while we load your content.</span>
       </div>
     </div>

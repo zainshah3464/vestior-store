@@ -190,7 +190,7 @@ export default function ProductDetailClient({ product }: { product: Product }) {
             <div className="flex items-baseline gap-3 mb-6">
               <span className="text-3xl font-bold text-white">₹{product.price.toLocaleString()}</span>
               {product.compare_at_price && product.compare_at_price > product.price && (
-                <span className="text-lg text-gray-500 line-through">₹{product.compare_at_price.toLocaleString()}</span>
+                <span className="text-lg text-gray-400 line-through">₹{product.compare_at_price.toLocaleString()}</span>
               )}
             </div>
 
@@ -265,15 +265,15 @@ export default function ProductDetailClient({ product }: { product: Product }) {
             <div className="grid grid-cols-3 gap-4 pt-6 border-t border-white/10">
               <div className="text-center">
                 <Truck size={20} className="text-blue-400 mx-auto mb-1" />
-                <p className="text-xs text-gray-500">Free Shipping</p>
+                <p className="text-xs text-gray-400">Free Shipping</p>
               </div>
               <div className="text-center">
                 <Shield size={20} className="text-blue-400 mx-auto mb-1" />
-                <p className="text-xs text-gray-500">Secure Payment</p>
+                <p className="text-xs text-gray-400">Secure Payment</p>
               </div>
               <div className="text-center">
                 <RotateCcw size={20} className="text-blue-400 mx-auto mb-1" />
-                <p className="text-xs text-gray-500">Easy Returns</p>
+                <p className="text-xs text-gray-400">Easy Returns</p>
               </div>
             </div>
           </div>

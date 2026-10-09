@@ -6,7 +6,7 @@ import type { FunnelStep } from '@/lib/tracking/queries'
 export default function FunnelChart({ funnel }: { funnel: FunnelStep[] }) {
   if (funnel.length === 0) {
     return (
-      <p className="text-gray-500 text-center py-8">
+      <p className="text-gray-400 text-center py-8">
         No funnel data yet.
       </p>
     )
@@ -25,7 +25,7 @@ export default function FunnelChart({ funnel }: { funnel: FunnelStep[] }) {
         >
           <div className="flex items-center justify-between text-sm mb-1.5">
             <span className="text-gray-300 font-medium">{step.name}</span>
-            <span className="text-gray-500">
+            <span className="text-gray-400">
               {step.count.toLocaleString()} ·{' '}
               <span className="text-indigo-400">{step.pct.toFixed(1)}%</span>
             </span>
