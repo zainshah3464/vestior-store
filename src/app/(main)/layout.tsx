@@ -10,7 +10,7 @@ export default function MainLayout({
   return (
     <>
       <Navbar />
-      <main className="relative">{children}</main>
+      <main id="main-content" className="relative">{children}</main>
       <Footer />
     </>
   );

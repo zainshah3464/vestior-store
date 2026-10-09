@@ -1,13 +1,24 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // Enable standalone output only for Docker builds (set NEXT_OUTPUT=standalone).
-  // Vercel's build system doesn't need this, and `next start` doesn't work with it.
   ...(process.env.NEXT_OUTPUT === 'standalone' && {
     output: 'standalone' as const,
   }),
 
+  // ─────────────────────────────────────────────────────────────
+  // Image optimization
+  // ─────────────────────────────────────────────────────────────
   images: {
+    // Modern formats first — Next.js auto-serves based on Accept header
+    formats: ['image/avif', 'image/webp'],
+
+    // Breakpoints for responsive images
+    deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048],
+    imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
+
+    // Cache optimized images for 60 days
+    minimumCacheTTL: 60 * 60 * 24 * 60,
+
     remotePatterns: [
       {
         protocol: 'https',
@@ -19,6 +30,30 @@ const nextConfig: NextConfig = {
         hostname: 'placehold.co',
       },
     ],
+  },
+
+  // ─────────────────────────────────────────────────────────────
+  // Performance
+  // ─────────────────────────────────────────────────────────────
+
+  // Trim unnecessary client-side JS from React
+  reactStrictMode: true,
+
+  // Tree-shake icon library — only bundle icons actually used
+  experimental: {
+    optimizePackageImports: ['lucide-react', 'framer-motion'],
+  },
+
+  // ─────────────────────────────────────────────────────────────
+  // Production hygiene
+  // ─────────────────────────────────────────────────────────────
+
+  // Remove console logs in production (saves bytes)
+  compiler: {
+    removeConsole:
+      process.env.NODE_ENV === 'production'
+        ? { exclude: ['error', 'warn'] }
+        : false,
   },
 };
 

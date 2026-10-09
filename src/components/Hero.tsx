@@ -22,224 +22,247 @@ export default function Hero() {
     { value: 'Free', label: 'Tailoring', icon: Sparkles },
   ]
 
-  // Avoid hydration mismatch — server renders placeholder, client swaps in
-  if (!mounted) {
-    return (
-      <div className="relative min-h-screen w-full bg-black pt-16" />
-    )
-  }
-
   return (
-    <div className="relative min-h-screen w-full flex items-center justify-start bg-black pt-16 overflow-hidden">
-      {/* Background Image */}
-      <div className="absolute inset-0 z-0">
-        <div className="absolute inset-0 bg-black/25 z-0" />
+    <>
+      {/* ─────────────────────────────────────────────────────────
+          LCP image preloads
+          React 19 automatically hoists these to <head>
+          Note: next/head is NOT supported in App Router
+          ───────────────────────────────────────────────────────── */}
+      <link
+        rel="preload"
+        as="image"
+        href="/suits/hero-image.webp"
+        type="image/webp"
+        media="(min-width: 768px)"
+      />
+      <link
+        rel="preload"
+        as="image"
+        href="/suits/mobile-bg.jpg"
+        type="image/jpeg"
+        media="(max-width: 767px)"
+      />
 
-        <picture>
-          {/* Mobile: smaller dedicated image */}
-          <source
-            media="(max-width: 767px)"
-            srcSet="/suits/mobile-bg.jpg"
-            type="image/jpeg"
-          />
-          {/* Desktop: WebP first, JPEG fallback */}
-          <source
-            media="(min-width: 768px)"
-            srcSet="/suits/hero-image.webp"
-            type="image/webp"
-          />
-          <img
-            src="/suits/hero-image.jpg"
-            alt="Premium Suit Background"
-            className={`absolute inset-0 w-full h-full object-cover object-center z-0 transition-opacity duration-500 ${
-              imageLoaded ? 'opacity-100' : 'opacity-0'
-            }`}
-            style={{ objectPosition: 'center' }}
-            onLoad={() => setImageLoaded(true)}
-            fetchPriority="high"
-            decoding="async"
-          />
-        </picture>
+      {/* Avoid hydration mismatch — server renders placeholder, client swaps in */}
+      {!mounted ? (
+        <div className="relative min-h-screen w-full bg-black pt-16" />
+      ) : (
+        <div className="relative min-h-screen w-full flex items-center justify-start bg-black pt-16 overflow-hidden">
+          {/* Background Image */}
+          <div className="absolute inset-0 z-0">
+            <div className="absolute inset-0 bg-black/25 z-0" />
 
-        {/* Gradient overlay for text readability */}
-        <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-black/30 to-transparent z-0" />
-      </div>
+            <picture>
+              {/* Mobile: smaller dedicated image */}
+              <source
+                media="(max-width: 767px)"
+                srcSet="/suits/mobile-bg.jpg"
+                type="image/jpeg"
+              />
+              {/* Desktop: WebP first, JPEG fallback */}
+              <source
+                media="(min-width: 768px)"
+                srcSet="/suits/hero-image.webp"
+                type="image/webp"
+              />
+              <img
+                src="/suits/hero-image.jpg"
+                alt="Premium tailored suit — VESTIOR collection"
+                className={`absolute inset-0 w-full h-full object-cover object-center z-0 transition-opacity duration-500 ${
+                  imageLoaded ? 'opacity-100' : 'opacity-0'
+                }`}
+                style={{ objectPosition: 'center' }}
+                onLoad={() => setImageLoaded(true)}
+                fetchPriority="high"
+                loading="eager"
+                decoding="async"
+                width={1920}
+                height={1080}
+              />
+            </picture>
 
-      {/* Content */}
-      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 z-20 w-full">
-        <div className="max-w-2xl lg:max-w-3xl">
-          {/* Badge */}
+            {/* Gradient overlay for text readability */}
+            <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-black/30 to-transparent z-0" />
+          </div>
+
+          {/* Content */}
+          <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 z-20 w-full">
+            <div className="max-w-2xl lg:max-w-3xl">
+              {/* Badge */}
+              <motion.div
+                initial={{ opacity: 0, x: -50 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.6, ease: 'easeOut' }}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-black/40 border border-blue-500/30 mb-6"
+                whileHover={{ scale: 1.05, borderColor: 'rgba(59,130,246,0.6)' }}
+              >
+                <motion.div
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
+                >
+                  <Sparkles size={14} className="text-blue-500" />
+                </motion.div>
+                <span className="text-xs text-gray-200 tracking-wide uppercase">
+                  Bespoke Tailoring Since 1968
+                </span>
+              </motion.div>
+
+              {/* Main Heading */}
+              <motion.h1
+                className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-bold tracking-tighter mb-4"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.8, delay: 0.2 }}
+              >
+                <motion.span
+                  className="text-white block"
+                  initial={{ opacity: 0, y: 30 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.6, delay: 0.3, type: 'spring', stiffness: 100 }}
+                >
+                  ART OF
+                </motion.span>
+                <motion.span
+                  className="text-blue-500 block"
+                  initial={{ opacity: 0, y: 30 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.6, delay: 0.5, type: 'spring', stiffness: 100 }}
+                >
+                  ELEGANCE
+                </motion.span>
+              </motion.h1>
+
+              {/* Description */}
+              <motion.p
+                className="text-sm sm:text-base md:text-lg text-gray-200 max-w-xl mb-8 leading-relaxed"
+                initial={{ opacity: 0, x: -40 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.7, delay: 0.7 }}
+              >
+                Experience the pinnacle of craftsmanship with our premium collection of
+                hand-tailored suits. Each piece is a masterpiece of precision, using only
+                the finest Italian wools and British linens.
+              </motion.p>
+
+              {/* Buttons */}
+              <motion.div
+                className="flex flex-col sm:flex-row gap-4 justify-start"
+                initial={{ opacity: 0, y: 30 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.9 }}
+              >
+                <motion.div
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onHoverStart={() => setHoveredButton('primary')}
+                  onHoverEnd={() => setHoveredButton(null)}
+                >
+                  <Link
+                    href="/new-arrivals"
+                    className="inline-flex items-center justify-center gap-2 px-6 sm:px-8 py-3 sm:py-4 bg-blue-600 text-white rounded-full text-sm font-medium hover:bg-blue-700 transition-all duration-300 shadow-lg shadow-blue-600/30"
+                  >
+                    New Collection
+                    <motion.div
+                      animate={{ x: hoveredButton === 'primary' ? 5 : 0 }}
+                      transition={{ duration: 0.2 }}
+                    >
+                      <ArrowRight size={16} />
+                    </motion.div>
+                  </Link>
+                </motion.div>
+
+                <motion.div
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onHoverStart={() => setHoveredButton('secondary')}
+                  onHoverEnd={() => setHoveredButton(null)}
+                >
+                  <Link
+                    href="/featured"
+                    className="inline-flex items-center justify-center gap-2 px-6 sm:px-8 py-3 sm:py-4 border border-blue-500 text-blue-500 rounded-full text-sm font-medium hover:bg-blue-500 hover:text-white transition-all duration-300"
+                  >
+                    Featured Product
+                    <motion.div
+                      animate={{
+                        rotate: hoveredButton === 'secondary' ? 360 : 0,
+                        scale: hoveredButton === 'secondary' ? 1.2 : 1,
+                      }}
+                      transition={{ duration: 0.3 }}
+                    >
+                      <Sparkles size={16} />
+                    </motion.div>
+                  </Link>
+                </motion.div>
+              </motion.div>
+
+              {/* Stats */}
+              <motion.div
+                className="flex flex-wrap justify-start gap-6 sm:gap-10 md:gap-14 mt-10 sm:mt-12 pt-6 sm:pt-8 border-t border-white/20"
+                initial={{ opacity: 0, y: 30 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 1.1 }}
+              >
+                {stats.map((stat, index) => (
+                  <motion.div
+                    key={index}
+                    className="relative text-center cursor-pointer"
+                    onHoverStart={() => setHoveredStat(index)}
+                    onHoverEnd={() => setHoveredStat(null)}
+                    whileHover={{ y: -5 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    <motion.p
+                      className="text-xl sm:text-2xl md:text-3xl font-bold text-blue-500"
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      transition={{ delay: 1.2 + index * 0.1, type: 'spring', stiffness: 200 }}
+                    >
+                      {stat.value}
+                    </motion.p>
+                    <p className="text-[10px] sm:text-xs text-gray-300 mt-1">{stat.label}</p>
+                    <AnimatePresence>
+                      {hoveredStat === index && (
+                        <motion.div
+                          initial={{ opacity: 0, y: 5 }}
+                          animate={{ opacity: 1, y: -8 }}
+                          exit={{ opacity: 0, y: 5 }}
+                          className="absolute -top-6 left-1/2 transform -translate-x-1/2"
+                        >
+                          <stat.icon size={12} className="text-blue-500" />
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </motion.div>
+                ))}
+              </motion.div>
+            </div>
+          </div>
+
+          {/* Scroll Indicator */}
           <motion.div
-            initial={{ opacity: 0, x: -50 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.6, ease: 'easeOut' }}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-black/40 border border-blue-500/30 mb-6"
-            whileHover={{ scale: 1.05, borderColor: 'rgba(59,130,246,0.6)' }}
-          >
-            <motion.div
-              animate={{ rotate: 360 }}
-              transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
-            >
-              <Sparkles size={14} className="text-blue-500" />
-            </motion.div>
-            <span className="text-xs text-gray-200 tracking-wide uppercase">
-              Bespoke Tailoring Since 1968
-            </span>
-          </motion.div>
-
-          {/* Main Heading */}
-          <motion.h1
-            className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-bold tracking-tighter mb-4"
+            className="absolute bottom-4 sm:bottom-6 left-1/2 transform -translate-x-1/2 z-20"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ duration: 0.8, delay: 0.2 }}
-          >
-            <motion.span
-              className="text-white block"
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.3, type: 'spring', stiffness: 100 }}
-            >
-              ART OF
-            </motion.span>
-            <motion.span
-              className="text-blue-500 block"
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.5, type: 'spring', stiffness: 100 }}
-            >
-              ELEGANCE
-            </motion.span>
-          </motion.h1>
-
-          {/* Description */}
-          <motion.p
-            className="text-sm sm:text-base md:text-lg text-gray-200 max-w-xl mb-8 leading-relaxed"
-            initial={{ opacity: 0, x: -40 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.7, delay: 0.7 }}
-          >
-            Experience the pinnacle of craftsmanship with our premium collection of
-            hand-tailored suits. Each piece is a masterpiece of precision, using only
-            the finest Italian wools and British linens.
-          </motion.p>
-
-          {/* Buttons */}
-          <motion.div
-            className="flex flex-col sm:flex-row gap-4 justify-start"
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.9 }}
+            transition={{ delay: 1.5 }}
           >
             <motion.div
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onHoverStart={() => setHoveredButton('primary')}
-              onHoverEnd={() => setHoveredButton(null)}
+              className="flex flex-col items-center gap-1"
+              animate={{ y: [0, 8, 0] }}
+              transition={{ duration: 1.5, repeat: Infinity, ease: 'easeInOut' }}
             >
-              <Link
-                href="/new-arrivals"
-                className="inline-flex items-center justify-center gap-2 px-6 sm:px-8 py-3 sm:py-4 bg-blue-600 text-white rounded-full text-sm font-medium hover:bg-blue-700 transition-all duration-300 shadow-lg shadow-blue-600/30"
+              <motion.span
+                className="text-[10px] sm:text-xs text-gray-300 uppercase tracking-wider font-medium"
+                animate={{ opacity: [0.6, 1, 0.6] }}
+                transition={{ duration: 1.5, repeat: Infinity }}
               >
-                New Collection
-                <motion.div
-                  animate={{ x: hoveredButton === 'primary' ? 5 : 0 }}
-                  transition={{ duration: 0.2 }}
-                >
-                  <ArrowRight size={16} />
-                </motion.div>
-              </Link>
+                Scroll
+              </motion.span>
+              <ChevronDown size={16} className="text-gray-300" />
             </motion.div>
-
-            <motion.div
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onHoverStart={() => setHoveredButton('secondary')}
-              onHoverEnd={() => setHoveredButton(null)}
-            >
-              <Link
-                href="/featured"
-                className="inline-flex items-center justify-center gap-2 px-6 sm:px-8 py-3 sm:py-4 border border-blue-500 text-blue-500 rounded-full text-sm font-medium hover:bg-blue-500 hover:text-white transition-all duration-300"
-              >
-                Featured Product
-                <motion.div
-                  animate={{
-                    rotate: hoveredButton === 'secondary' ? 360 : 0,
-                    scale: hoveredButton === 'secondary' ? 1.2 : 1,
-                  }}
-                  transition={{ duration: 0.3 }}
-                >
-                  <Sparkles size={16} />
-                </motion.div>
-              </Link>
-            </motion.div>
-          </motion.div>
-
-          {/* Stats */}
-          <motion.div
-            className="flex flex-wrap justify-start gap-6 sm:gap-10 md:gap-14 mt-10 sm:mt-12 pt-6 sm:pt-8 border-t border-white/20"
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 1.1 }}
-          >
-            {stats.map((stat, index) => (
-              <motion.div
-                key={index}
-                className="relative text-center cursor-pointer"
-                onHoverStart={() => setHoveredStat(index)}
-                onHoverEnd={() => setHoveredStat(null)}
-                whileHover={{ y: -5 }}
-                transition={{ duration: 0.2 }}
-              >
-                <motion.p
-                  className="text-xl sm:text-2xl md:text-3xl font-bold text-blue-500"
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  transition={{ delay: 1.2 + index * 0.1, type: 'spring', stiffness: 200 }}
-                >
-                  {stat.value}
-                </motion.p>
-                <p className="text-[10px] sm:text-xs text-gray-300 mt-1">{stat.label}</p>
-                <AnimatePresence>
-                  {hoveredStat === index && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 5 }}
-                      animate={{ opacity: 1, y: -8 }}
-                      exit={{ opacity: 0, y: 5 }}
-                      className="absolute -top-6 left-1/2 transform -translate-x-1/2"
-                    >
-                      <stat.icon size={12} className="text-blue-500" />
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </motion.div>
-            ))}
           </motion.div>
         </div>
-      </div>
-
-      {/* Scroll Indicator */}
-      <motion.div
-        className="absolute bottom-4 sm:bottom-6 left-1/2 transform -translate-x-1/2 z-20"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 1.5 }}
-      >
-        <motion.div
-          className="flex flex-col items-center gap-1"
-          animate={{ y: [0, 8, 0] }}
-          transition={{ duration: 1.5, repeat: Infinity, ease: 'easeInOut' }}
-        >
-          <motion.span
-            className="text-[10px] sm:text-xs text-gray-300 uppercase tracking-wider font-medium"
-            animate={{ opacity: [0.6, 1, 0.6] }}
-            transition={{ duration: 1.5, repeat: Infinity }}
-          >
-            Scroll
-          </motion.span>
-          <ChevronDown size={16} className="text-gray-300" />
-        </motion.div>
-      </motion.div>
-    </div>
+      )}
+    </>
   )
 }

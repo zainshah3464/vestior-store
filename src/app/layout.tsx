@@ -159,6 +159,14 @@ export default function RootLayout({
         className="font-sans bg-[#0A0A0A] text-white antialiased"
         suppressHydrationWarning
       >
+        {/* Skip link for keyboard / screen reader users (WCAG AA) */}
+        <a
+          href="#main-content"
+          className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-[100] focus:px-4 focus:py-2 focus:bg-blue-600 focus:text-white focus:rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400"
+        >
+          Skip to main content
+        </a>
+
         <OrganizationSchema
           siteUrl={process.env.NEXT_PUBLIC_SITE_URL || 'https://vestior.vercel.app'}
         />
@@ -169,17 +177,26 @@ export default function RootLayout({
           <TrackingProvider />
           {children}
         </AuthProvider>
-        <Toaster
-          position="top-right"
-          toastOptions={{
-            style: {
-              background: "#1f1f1f",
-              color: "#fff",
-              border: "1px solid rgba(255,255,255,0.1)",
-            },
-            duration: 3000,
-          }}
-        />
+
+        {/* Toaster — aria-live wrapper so screen readers announce toasts */}
+        <div aria-live="polite" aria-atomic="true">
+          <Toaster
+            position="top-right"
+            toastOptions={{
+              style: {
+                background: "#1f1f1f",
+                color: "#fff",
+                border: "1px solid rgba(255,255,255,0.1)",
+              },
+              duration: 3000,
+              ariaProps: {
+                role: 'status',
+                'aria-live': 'polite',
+              },
+            }}
+          />
+        </div>
+
         {/* GA4 Tracking for page views & device/browser data */}
         <Suspense fallback={null}>
           <GoogleAnalytics />
