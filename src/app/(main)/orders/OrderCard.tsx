@@ -1,7 +1,10 @@
 'use client'
 
+import Link from 'next/link'
 import { motion } from 'framer-motion'
-import { Package, Clock, CheckCircle, XCircle, Truck, ChevronDown } from 'lucide-react'
+import {
+  Package, Clock, CheckCircle, XCircle, Truck, ChevronDown, ChevronRight,
+} from 'lucide-react'
 import { useState } from 'react'
 
 const statusIcons: Record<string, React.ElementType> = {
@@ -28,11 +31,28 @@ const statusBg: Record<string, string> = {
   cancelled: 'bg-red-400/10',
 }
 
-export default function OrderCard({ order }: { order: any }) {
+interface OrderItem {
+  product_name: string
+  quantity: number
+  price: number
+}
+
+interface Order {
+  id: string
+  status: string
+  payment_status: string
+  total: number
+  created_at: string
+  items: OrderItem[]
+  payment_method?: string
+}
+
+export default function OrderCard({ order }: { order: Order }) {
   const StatusIcon = statusIcons[order.status] || Package
   const color = statusColors[order.status] || 'text-gray-400'
   const bg = statusBg[order.status] || 'bg-gray-400/10'
   const [expanded, setExpanded] = useState(false)
+  const [stopExpand, setStopExpand] = useState(false)
 
   return (
     <motion.div
@@ -42,7 +62,6 @@ export default function OrderCard({ order }: { order: any }) {
       transition={{ type: 'spring', stiffness: 200, damping: 20 }}
       className="bg-[#0f0f0f]/80 backdrop-blur-sm border border-white/10 rounded-2xl p-6 relative overflow-hidden group"
     >
-      {/* Subtle top gradient bar */}
       <div className={`absolute top-0 left-0 w-full h-1 ${bg}`} />
 
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4">
@@ -69,32 +88,52 @@ export default function OrderCard({ order }: { order: any }) {
       <div className="border-t border-white/10 pt-4">
         <p className="text-sm text-gray-300 font-medium mb-2">Items</p>
         {Array.isArray(order.items) &&
-          order.items.slice(0, expanded ? order.items.length : 2).map((item: any, idx: number) => (
-            <div key={idx} className="flex justify-between text-sm text-gray-400 py-1">
-              <span>{item.product_name} × {item.quantity}</span>
-              <span>₹{(item.price * item.quantity).toLocaleString()}</span>
-            </div>
-          ))}
+          order.items
+            .slice(0, expanded ? order.items.length : 2)
+            .map((item: OrderItem, idx: number) => (
+              <div key={idx} className="flex justify-between text-sm text-gray-400 py-1">
+                <span>{item.product_name} × {item.quantity}</span>
+                <span>₹{(item.price * item.quantity).toLocaleString()}</span>
+              </div>
+            ))}
         {Array.isArray(order.items) && order.items.length > 2 && (
           <button
-            onClick={() => setExpanded(!expanded)}
+            onClick={(e) => {
+              e.preventDefault()
+              setStopExpand(true)
+              setExpanded(!expanded)
+              setTimeout(() => setStopExpand(false), 0)
+            }}
             className="text-xs text-indigo-400 mt-1 flex items-center gap-1 hover:underline"
           >
             {expanded ? 'Show less' : `+${order.items.length - 2} more`}
-            <motion.span animate={{ rotate: expanded ? 180 : 0 }}><ChevronDown size={14} /></motion.span>
+            <motion.span animate={{ rotate: expanded ? 180 : 0 }}>
+              <ChevronDown size={14} />
+            </motion.span>
           </button>
         )}
       </div>
 
       <div className="flex justify-between items-center mt-4 pt-4 border-t border-white/10">
         <span className="text-sm font-semibold text-white">Total</span>
-        <span className="text-lg font-bold text-white">₹{order.total?.toLocaleString()}</span>
+        <span className="text-lg font-bold text-white">
+          ₹{order.total?.toLocaleString()}
+        </span>
       </div>
 
-      <div className="mt-2 text-xs text-gray-500 flex items-center gap-2">
-        <span className="capitalize">{order.payment_status}</span>
-        <span className="w-1 h-1 rounded-full bg-gray-600" />
-        <span>{order.payment_method || 'COD'}</span>
+      <div className="mt-3 flex items-center justify-between">
+        <div className="text-xs text-gray-500 flex items-center gap-2">
+          <span className="capitalize">{order.payment_status}</span>
+          <span className="w-1 h-1 rounded-full bg-gray-600" />
+          <span>{order.payment_method || 'COD'}</span>
+        </div>
+        <Link
+          href={`/orders/${order.id}`}
+          className="inline-flex items-center gap-1 text-sm text-indigo-400 hover:text-indigo-300 transition font-medium"
+        >
+          View Details
+          <ChevronRight size={14} />
+        </Link>
       </div>
     </motion.div>
   )

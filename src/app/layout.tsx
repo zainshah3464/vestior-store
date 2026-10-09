@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next"
 import { Geist, Geist_Mono } from "next/font/google"
 import { Toaster } from "react-hot-toast"
 import AuthProvider from "@/providers/AuthProvider"
+import TrackingProvider from "@/components/TrackingProvider"
 import GoogleAnalytics from "@/components/GoogleAnalytics"
 import { OrganizationSchema, WebsiteSchema } from "@/components/StructuredData"
 import { Suspense } from "react"
@@ -164,7 +165,10 @@ export default function RootLayout({
         <WebsiteSchema
           siteUrl={process.env.NEXT_PUBLIC_SITE_URL || 'https://vestior.vercel.app'}
         />
-        <AuthProvider>{children}</AuthProvider>
+        <AuthProvider>
+          <TrackingProvider />
+          {children}
+        </AuthProvider>
         <Toaster
           position="top-right"
           toastOptions={{

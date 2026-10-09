@@ -102,6 +102,34 @@ export async function confirmPayment(
         console.error('[confirmPayment] mongo log failed:', err)
       }
 
+      // ────────────────────────────────────────────
+      // 9. Queue "payment-confirmed" email (non-blocking)
+      //    Email failure must NOT break payment confirmation.
+      // ────────────────────────────────────────────
+      try {
+        const { queueEmail } = await import('@/lib/email/queue')
+        const { data: orderData } = await supabaseAdmin
+          .from('orders')
+          .select('user_email, total')
+          .eq('id', orderId)
+          .single()
+
+        if (orderData?.user_email) {
+          await queueEmail({
+            template: 'payment-confirmed',
+            to: orderData.user_email,
+            userId: user.id,
+            data: {
+              orderId,
+              total: orderData.total,
+              siteUrl: process.env.NEXT_PUBLIC_SITE_URL,
+            },
+          })
+        }
+      } catch (err) {
+        console.error('[confirmPayment] email queue failed:', err)
+      }
+
       revalidatePath('/orders')
       revalidatePath('/admin/orders')
       revalidatePath('/admin')

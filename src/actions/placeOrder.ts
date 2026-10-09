@@ -199,7 +199,70 @@ export async function placeOrder(
   }
 
   // ────────────────────────────────────────────
-  // 7. Revalidate (unchanged)
+  // 7. Track order_placed (fire-and-forget, non-blocking)
+  //    Uses dynamic imports so MongoDB/env code
+  //    never enters the client bundle.
+  // ────────────────────────────────────────────
+  try {
+    const { getDb, COLLECTIONS } = await import('@/lib/mongodb')
+
+    const db = await getDb()
+    await db.collection(COLLECTIONS.EVENTS).insertOne({
+      user_id: user.id,
+      session_id: 'server', // server-side has no session
+      event_type: 'order_placed',
+      properties: {
+        orderId: result.order_id,
+        total: result.total,
+        itemCount: normalizedItems.length,
+        paymentMethod,
+      },
+      ip_hash: 'server',
+      country: null,
+      city: null,
+      device: { type: 'server', os: 'server', browser: 'server' },
+      referrer: null,
+      path: '/checkout',
+      timestamp: new Date(),
+    })
+  } catch (err) {
+    console.error('[placeOrder] track failed:', err)
+  }
+
+  // ────────────────────────────────────────────
+  // 7.5. Queue "order-placed" email (non-blocking)
+  //      Email failure must NOT break order placement.
+  // ────────────────────────────────────────────
+  try {
+    const { queueEmail } = await import('@/lib/email/queue')
+
+    // Get items for the email (product names + quantity + price)
+    const { data: orderItems } = await supabaseAdmin
+      .from('order_items')
+      .select('product_name, quantity, price')
+      .eq('order_id', result.order_id)
+
+    await queueEmail({
+      template: 'order-placed',
+      to: user.email!,
+      userId: user.id,
+      data: {
+        orderId: result.order_id,
+        items: orderItems ?? [],
+        subtotal: result.subtotal,
+        shipping: result.shipping,
+        total: result.total,
+        paymentMethod,
+        siteUrl: process.env.NEXT_PUBLIC_SITE_URL,
+      },
+    })
+  } catch (err) {
+    // Email failure must not break order placement
+    console.error('[placeOrder] email queue failed:', err)
+  }
+
+  // ────────────────────────────────────────────
+  // 8. Revalidate (unchanged)
   // ────────────────────────────────────────────
   revalidatePath('/orders')
   revalidatePath('/admin/orders')

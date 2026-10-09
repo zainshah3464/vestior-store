@@ -1,0 +1,24 @@
+{
+  "framework": "nextjs",
+  "regions": ["iad1"],
+  "crons": [
+    {
+      "path": "/api/cron/low-stock-alert",
+      "schedule": "0 9 * * *"
+    }
+  ],
+  "functions": {
+    "src/app/api/webhooks/stripe/route.ts": {
+      "maxDuration": 30
+    },
+    "src/app/api/jobs/send-email/route.ts": {
+      "maxDuration": 30
+    },
+    "src/app/api/cron/low-stock-alert/route.ts": {
+      "maxDuration": 60
+    },
+    "src/app/api/admin/export/route.ts": {
+      "maxDuration": 60
+    }
+  }
+}

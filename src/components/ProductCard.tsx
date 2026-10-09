@@ -6,6 +6,7 @@ import { ShoppingCart, Heart, Eye } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useState } from 'react'
 import { motion } from 'framer-motion'
+import { track } from '@/lib/tracking/client'
 
 interface Product {
   id: string
@@ -38,6 +39,16 @@ export default function ProductCard({ product }: { product: Product }) {
     localStorage.setItem('cart', JSON.stringify(cart))
     toast.success('Added to cart!', { icon: '🛒' })
     window.dispatchEvent(new Event('cartUpdated'))
+
+    // ─────────────────────────────────────────────
+    // Track add_to_cart
+    // ─────────────────────────────────────────────
+    track('add_to_cart', {
+      productId: product.id,
+      productName: product.name,
+      price: product.price,
+      quantity: 1,
+    })
   }
 
   return (

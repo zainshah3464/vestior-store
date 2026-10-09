@@ -28,6 +28,20 @@ export default function SignupPage() {
       toast.error(error.message)
     } else {
       toast.success('Account created! Please check your email to verify your account.')
+
+      // ─────────────────────────────────────────────
+      // Queue welcome email (fire-and-forget)
+      // Non-blocking: user is redirected regardless of
+      // whether the email queue succeeds.
+      // ─────────────────────────────────────────────
+      fetch('/api/auth/welcome', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, fullName: name }),
+      }).catch(() => {
+        // Silently ignore — welcome email is best-effort
+      })
+
       router.push('/auth/verify-email')
     }
     setLoading(false)

@@ -5,8 +5,8 @@
  *   const intent = await provider.createPaymentIntent({...})
  */
 
-import { codProvider } from '../providers/cod' 
-import { stripeProvider } from '../providers/stripe'
+import { codProvider } from './providers/cod' 
+import { stripeProvider } from './providers/stripe'
 import type { PaymentProvider, PaymentProviderId } from './types'
 
 const providers: Record<PaymentProviderId, PaymentProvider> = {

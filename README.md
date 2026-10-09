@@ -8,6 +8,12 @@
 [![Upstash](https://img.shields.io/badge/Upstash-Rate_Limiting-00E9A3?logo=upstash&logoColor=white)](https://upstash.com)
 [![Vercel](https://img.shields.io/badge/Deployed_on-Vercel-000000?logo=vercel&logoColor=white)](https://vercel.com)
 
+[![CI](https://github.com/zainshah3464/vestior-store/actions/workflows/ci.yml/badge.svg)](https://github.com/zainshah3464/vestior-store/actions/workflows/ci.yml)
+[![Tests](https://img.shields.io/badge/tests-53%20passing-brightgreen)](#-testing)
+[![Coverage](https://img.shields.io/badge/coverage-55%25-yellowgreen)](#-testing)
+[![Playwright](https://img.shields.io/badge/Playwright-E2E-2EAD33?logo=playwright&logoColor=white)](#-testing)
+[![Vitest](https://img.shields.io/badge/Vitest-Unit-6E9F18?logo=vitest&logoColor=white)](#-testing)
+
 [![Lighthouse Performance](https://img.shields.io/badge/Lighthouse_Performance-87-brightgreen?logo=lighthouse&logoColor=white)](#-lighthouse-scores)
 [![Lighthouse Accessibility](https://img.shields.io/badge/Lighthouse_Accessibility-85-brightgreen?logo=lighthouse&logoColor=white)](#-lighthouse-scores)
 [![Lighthouse Best Practices](https://img.shields.io/badge/Lighthouse_Best_Practices-100-brightgreen?logo=lighthouse&logoColor=white)](#-lighthouse-scores)
@@ -583,65 +589,79 @@ Extends `auth.users` — matches `id`, adds `role` (`customer` / `admin`), conta
 
 ---
 
-## 🧪 Testing (Manual QA)
+```markdown
+## 🧪 Testing
 
-Testing is currently **manual**. Automated E2E suite is on the roadmap.
+### Unit Tests (Vitest)
 
-### Test Accounts
+```bash
+npm run test          # run once
+npm run test:watch    # watch mode
+npm run test:coverage # with coverage report
+```
 
-| Role | Email | Password |
-|------|-------|----------|
-| Admin | `admin@test.com` | `Test@123` |
-| Customer | `user@test.com` | `Test@123` |
+**53 tests** covering:
+- CSV export utilities
+- Product image parsing
+- Idempotency (Redis)
+- Rate limiter tiers
+- COD payment provider
+- ProductCard component
+- PaymentOption component
 
-> ⚠️ **Create your own test accounts.** Above are suggested credentials for local testing.
+### E2E Tests (Playwright)
 
-### Customer Flow Tests
+```bash
+npm run test:e2e          # headless
+npm run test:e2e:ui       # interactive UI
+npm run test:e2e:report   # view last report
+```
 
-- [ ] Signup with email → verification email received
-- [ ] Verify email → login successful
-- [ ] Google OAuth login (existing Google account)
-- [ ] Browse products → filter by category
-- [ ] Live search returns matching products
-- [ ] Add to cart → refresh → cart persists
-- [ ] Update quantity → totals recalculate
-- [ ] Remove item → cart updates
-- [ ] Checkout with COD → order appears in `/orders`
-- [ ] Order status changes propagate in real-time (admin → customer)
-- [ ] Profile update saves successfully
-- [ ] Logout clears session
+**Covers:**
+- Public pages (home, products, category, featured)
+- Auth guards (redirects to /auth/login)
+- Cart flow (add, update, remove)
+- Navigation & search modal
+- robots.txt & sitemap.xml
 
-### Admin Flow Tests
+### CI/CD
 
-- [ ] `/admin` access with admin account
-- [ ] `/admin` access **denied** for customer account (redirect to `/`)
-- [ ] `/admin` access **denied** when logged out (redirect to `/auth/login`)
-- [ ] Create product with multi-image upload
-- [ ] Edit product → changes persist
-- [ ] Delete product → removed from storefront
-- [ ] Filter orders by status
-- [ ] Update order status (pending → shipped → delivered)
-- [ ] User table search and role filter
-- [ ] Dashboard stats match DB counts
+GitHub Actions runs on every push and PR:
+1. **Lint & Typecheck**
+2. **Unit Tests** + coverage upload
+3. **E2E Tests** (Playwright + Chromium)
+4. **Security Audit** (`npm audit`)
+```
 
-### Edge Cases
+---
 
-- [ ] Out-of-stock product → add to cart → checkout shows "Insufficient stock"
-- [ ] Concurrent orders (two tabs, same product, stock=1) → only one succeeds
-- [ ] Manipulated `localStorage.cart` prices → server rejects, uses DB prices
-- [ ] Rate limit trigger: 15 rapid `/auth/login` → 429 after 10
-- [ ] Session expiry: refresh page after 1h idle → still logged in (if refresh token valid)
-- [ ] Open redirect: `/auth/callback?next=https://evil.com` → redirects to `/`, not `evil.com`
-- [ ] Anonymous Supabase delete on `products` → blocked by RLS
-- [ ] Anonymous Supabase update on `orders` → blocked by RLS
+## 🎯 Test Karo
 
-### Security Regression Tests
+### 1. Unit tests still pass
 
-- [ ] Non-admin user cannot invoke `updateOrderStatus` (server rejects)
-- [ ] Non-authenticated user cannot invoke `placeOrder`
-- [ ] Product DELETE via anon client → RLS error
-- [ ] Order UPDATE via anon client → RLS error
-- [ ] Direct RPC calls to `place_order_atomic` from anon client → permission denied
+```bash
+npm run test
+```
+
+### 2. TypeScript check
+
+```bash
+npm run typecheck
+```
+
+### 3. Build (with standalone output)
+
+```bash
+npm run build
+```
+
+Expected: `.next/standalone/` folder create hoga.
+
+### 4. E2E locally (optional, slow)
+
+```bash
+npm run test:e2e
+```
 
 ---
 

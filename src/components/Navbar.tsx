@@ -8,6 +8,7 @@ import { createClient } from '@/lib/supabase/client'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useAuth } from '@/providers/AuthProvider'
 import { parseProductImages } from '@/lib/utils' // ← safe parser
+import { track } from '@/lib/tracking/client'
 
 interface SearchProduct {
   id: string
@@ -94,6 +95,16 @@ export default function Navbar() {
       }))
       setSearchResults(parsed as SearchProduct[])
       setIsSearching(false)
+
+      // ─────────────────────────────────────────────
+      // Track search (Step 7.6)
+      // ─────────────────────────────────────────────
+      if (searchQuery.trim().length >= 2) {
+        track('search', {
+          query: searchQuery,
+          resultCount: parsed.length,
+        })
+      }
     }
     const debounce = setTimeout(searchProducts, 300)
     return () => clearTimeout(debounce)

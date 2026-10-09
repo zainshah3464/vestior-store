@@ -1,15 +1,8 @@
-/**
- * Audit logging — records admin actions in MongoDB.
- *
- * Every privileged mutation (product create, order status update,
- * user role change) should call `logAudit()` so there's a full
- * trail for compliance and debugging.
- */
-
+import 'server-only'
 import { getDb, COLLECTIONS } from '@/lib/mongodb'
 import { env } from '@/lib/env'
 import { createHash } from 'crypto'
-import type { ObjectId } from 'mongodb'
+import type { Filter } from 'mongodb'
 
 export interface AuditLogInput {
   actorId: string
@@ -23,18 +16,11 @@ export interface AuditLogInput {
   metadata?: Record<string, unknown>
 }
 
-/**
- * Persist an audit log entry. Never throws — logs to console on failure
- * so that a broken audit pipeline can't break a business operation.
- */
 export async function logAudit(input: AuditLogInput): Promise<void> {
   try {
     const db = await getDb()
-
     const ipHash = input.ip
-      ? createHash('sha256')
-          .update(env.IP_HASH_SALT + input.ip)
-          .digest('hex')
+      ? createHash('sha256').update(env.IP_HASH_SALT + input.ip).digest('hex')
       : null
 
     await db.collection(COLLECTIONS.AUDIT_LOGS).insertOne({
@@ -50,56 +36,146 @@ export async function logAudit(input: AuditLogInput): Promise<void> {
       timestamp: new Date(),
     })
   } catch (err) {
-    // Audit must never break the calling operation
     console.error('[audit] failed to write log:', err)
   }
 }
 
-/**
- * Simple query helper for the future admin audit dashboard (Phase 5).
- */
-export interface AuditLogQuery {
-  actorId?: string
-  targetType?: string
-  targetId?: string
-  action?: string
-  from?: Date
-  to?: Date
-  limit?: number
-}
-
-export async function queryAuditLogs(query: AuditLogQuery) {
-  const db = await getDb()
-  const filter: Record<string, unknown> = {}
-
-  if (query.actorId) filter.actor_id = query.actorId
-  if (query.targetType) filter.target_type = query.targetType
-  if (query.targetId) filter.target_id = query.targetId
-  if (query.action) filter.action = query.action
-  if (query.from || query.to) {
-    filter.timestamp = {}
-    if (query.from) (filter.timestamp as Record<string, Date>).$gte = query.from
-    if (query.to) (filter.timestamp as Record<string, Date>).$lte = query.to
-  }
-
-  return db
-    .collection(COLLECTIONS.AUDIT_LOGS)
-    .find(filter)
-    .sort({ timestamp: -1 })
-    .limit(query.limit ?? 100)
-    .toArray()
-}
-
-export type AuditLogDoc = {
-  _id: ObjectId
-  actor_id: string
-  actor_email: string
+// ─────────────────────────────────────────────────────────────
+// Query helpers
+// ─────────────────────────────────────────────────────────────
+export interface AuditLogRow {
+  id: string
+  actorId: string
+  actorEmail: string
   action: string
-  target_type: string
-  target_id: string
+  targetType: string
+  targetId: string
   before: Record<string, unknown> | null
   after: Record<string, unknown> | null
-  ip_hash: string | null
+  ipHash: string | null
   metadata: Record<string, unknown>
-  timestamp: Date
+  timestamp: string
+}
+
+export interface AuditFilters {
+  actorEmail?: string
+  action?: string
+  targetType?: string
+  targetId?: string
+  search?: string
+  page?: number
+  perPage?: number
+}
+
+export async function fetchAuditLogs(filters: AuditFilters = {}): Promise<{
+  rows: AuditLogRow[]
+  total: number
+  page: number
+  perPage: number
+  totalPages: number
+}> {
+  const page = Math.max(1, filters.page ?? 1)
+  const perPage = Math.min(100, Math.max(10, filters.perPage ?? 25))
+  const skip = (page - 1) * perPage
+
+  const db = await getDb()
+  const coll = db.collection(COLLECTIONS.AUDIT_LOGS)
+
+  const filter: Filter<Record<string, unknown>> = {}
+
+  if (filters.actorEmail && filters.actorEmail !== 'all') {
+    filter.actor_email = filters.actorEmail
+  }
+  if (filters.action && filters.action !== 'all') {
+    filter.action = filters.action
+  }
+  if (filters.targetType && filters.targetType !== 'all') {
+    filter.target_type = filters.targetType
+  }
+  if (filters.targetId) {
+    filter.target_id = filters.targetId
+  }
+  if (filters.search) {
+    filter.$or = [
+      { actor_email: { $regex: filters.search, $options: 'i' } },
+      { action: { $regex: filters.search, $options: 'i' } },
+      { target_id: { $regex: filters.search, $options: 'i' } },
+    ]
+  }
+
+  const [docs, total] = await Promise.all([
+    coll.find(filter).sort({ timestamp: -1 }).skip(skip).limit(perPage).toArray(),
+    coll.countDocuments(filter),
+  ])
+
+  const rows: AuditLogRow[] = docs.map((d) => ({
+    id: String(d._id),
+    actorId: d.actor_id,
+    actorEmail: d.actor_email,
+    action: d.action,
+    targetType: d.target_type,
+    targetId: d.target_id,
+    before: d.before ?? null,
+    after: d.after ?? null,
+    ipHash: d.ip_hash ?? null,
+    metadata: d.metadata ?? {},
+    timestamp:
+      d.timestamp instanceof Date
+        ? d.timestamp.toISOString()
+        : String(d.timestamp),
+  }))
+
+  return {
+    rows,
+    total,
+    page,
+    perPage,
+    totalPages: Math.ceil(total / perPage),
+  }
+}
+
+export interface AuditStats {
+  total: number
+  last24h: number
+  byAction: Record<string, number>
+  byActor: Array<{ email: string; count: number }>
+}
+
+export async function fetchAuditStats(): Promise<AuditStats> {
+  const db = await getDb()
+  const coll = db.collection(COLLECTIONS.AUDIT_LOGS)
+  const dayAgo = new Date(Date.now() - 24 * 3600 * 1000)
+
+  const [total, last24h, byActionAgg, byActorAgg] = await Promise.all([
+    coll.countDocuments({}),
+    coll.countDocuments({ timestamp: { $gte: dayAgo } }),
+    coll
+      .aggregate([
+        { $group: { _id: '$action', count: { $sum: 1 } } },
+        { $sort: { count: -1 } },
+      ])
+      .toArray(),
+    coll
+      .aggregate([
+        { $group: { _id: '$actor_email', count: { $sum: 1 } } },
+        { $sort: { count: -1 } },
+        { $limit: 10 },
+      ])
+      .toArray(),
+  ])
+
+  const byAction: Record<string, number> = {}
+  for (const row of byActionAgg) {
+    byAction[String(row._id)] = row.count
+  }
+
+  return {
+    total,
+    last24h,
+    byAction,
+    byActor: byActorAgg.map((r) => ({
+      email: String(r._id),
+      count: r.count,
+    })),
+  }
 }

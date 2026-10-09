@@ -1,16 +1,17 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { ShoppingCart, Heart, Share2, ChevronLeft, ChevronRight, Truck, Shield, RotateCcw, Copy, MessageCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { motion } from 'framer-motion';
+import { track } from '@/lib/tracking/client';
 
 interface Product {
   id: string;
   name: string;
-  description: string | null;   // 👈 CHANGE: `string` → `string | null`
+  description: string | null;
   price: number;
   compare_at_price: number | null;
   images: string[];
@@ -26,6 +27,18 @@ export default function ProductDetailClient({ product }: { product: Product }) {
   const [quantity, setQuantity] = useState(1);
   const [selectedSize, setSelectedSize] = useState<string | null>(null);
   const router = useRouter();
+
+  // ─────────────────────────────────────────────
+  // Track product_view when product loads
+  // ─────────────────────────────────────────────
+  useEffect(() => {
+    track('product_view', {
+      productId: product.id,
+      productName: product.name,
+      price: product.price,
+      category: product.category_main,
+    })
+  }, [product.id, product.name, product.price, product.category_main]);
 
   const discount = product.compare_at_price && product.compare_at_price > product.price
     ? Math.round(((product.compare_at_price - product.price) / product.compare_at_price) * 100)
@@ -60,6 +73,16 @@ export default function ProductDetailClient({ product }: { product: Product }) {
     localStorage.setItem('cart', JSON.stringify(cart));
     toast.success('Added to cart!', { icon: '🛒' });
     window.dispatchEvent(new Event('cartUpdated'));
+
+    // ─────────────────────────────────────────────
+    // Track add_to_cart
+    // ─────────────────────────────────────────────
+    track('add_to_cart', {
+      productId: product.id,
+      productName: product.name,
+      price: product.price,
+      quantity,
+    });
   };
 
   const toggleWishlist = () => {

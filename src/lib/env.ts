@@ -44,19 +44,38 @@ const serverSchema = z.object({
   // Admin
   ADMIN_EMAIL: z.string().email('ADMIN_EMAIL must be a valid email'),
 
-  // Optional (Phase 2+)
+  // ── Email (Gmail SMTP) ─────────────────────────────────────
+  GMAIL_USER: z.string().email('GMAIL_USER must be a valid email'),
+  GMAIL_APP_PASSWORD: z
+    .string()
+    .min(16, 'GMAIL_APP_PASSWORD must be 16 characters'),
+  EMAIL_FROM: z.string().min(1, 'EMAIL_FROM is required'),
+
+  // ── QStash (production queue) ──────────────────────────────
+  QSTASH_URL: z.string().url('QSTASH_URL must be a valid URL'),
+  QSTASH_TOKEN: z.string().min(1, 'QSTASH_TOKEN is required'),
+  QSTASH_CURRENT_SIGNING_KEY: z
+    .string()
+    .min(1, 'QSTASH_CURRENT_SIGNING_KEY is required'),
+  QSTASH_NEXT_SIGNING_KEY: z
+    .string()
+    .min(1, 'QSTASH_NEXT_SIGNING_KEY is required'),
+
+  // ── Resend (optional — disabled for now) ───────────────────
   RESEND_API_KEY: z.string().optional(),
-  EMAIL_FROM: z.string().optional(),
-  QSTASH_TOKEN: z.string().optional(),
-  QSTASH_CURRENT_SIGNING_KEY: z.string().optional(),
-  QSTASH_NEXT_SIGNING_KEY: z.string().optional(),
+
+  // ── Payments (Phase 4+) ────────────────────────────────────
   STRIPE_SECRET_KEY: z.string().optional(),
   STRIPE_WEBHOOK_SECRET: z.string().optional(),
   PAYPAL_CLIENT_ID: z.string().optional(),
   PAYPAL_CLIENT_SECRET: z.string().optional(),
   PAYPAL_SANDBOX: z.string().optional(),
+
+  // ── Media (Phase 5+) ───────────────────────────────────────
   CLOUDINARY_API_KEY: z.string().optional(),
   CLOUDINARY_API_SECRET: z.string().optional(),
+
+  // ── Monitoring (Phase 6+) ──────────────────────────────────
   SENTRY_DSN: z.string().url().optional().or(z.literal('')),
 })
 

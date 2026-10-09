@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { motion } from 'framer-motion'
 import { Search, Filter } from 'lucide-react'
 import OrderStatusUpdater from './OrderStatusUpdater'
@@ -95,7 +96,14 @@ export default function OrdersTable({ orders, fetchError }: { orders: Order[], f
                     transition={{ delay: i * 0.03 }}
                     className="border-t border-white/5 hover:bg-white/5 transition-colors"
                   >
-                    <td className="p-4 text-sm text-blue-400 font-mono">#{order.id.slice(0, 8)}</td>
+                    <td className="p-4 text-sm text-blue-400 font-mono">
+                      <Link
+                        href={`/admin/orders/${order.id}`}
+                        className="hover:underline"
+                      >
+                        #{order.id.slice(0, 8)}
+                      </Link>
+                    </td>
                     <td className="p-4 text-sm text-white">{order.user_email}</td>
                     <td className="p-4 text-sm text-white font-medium">₹{order.total?.toLocaleString()}</td>
                     <td className="p-4">

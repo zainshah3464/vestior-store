@@ -20,6 +20,7 @@ import {
   useStripe,
   useElements,
 } from '@stripe/react-stripe-js'
+import { track } from '@/lib/tracking/client'
 
 /* ---------------------------------- */
 /*  Types                             */
@@ -85,6 +86,19 @@ export default function CheckoutPage() {
     )
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setCart(cartData)
+
+    // ─────────────────────────────────────────────
+    // Track checkout_started
+    // ─────────────────────────────────────────────
+    if (cartData.length > 0) {
+      track('checkout_started', {
+        itemCount: cartData.length,
+        subtotal: cartData.reduce(
+          (s: number, i: CartItem) => s + i.price * i.quantity,
+          0
+        ),
+      })
+    }
 
     const getUser = async () => {
       const { data: { user: authUser } } = await supabase.auth.getUser()

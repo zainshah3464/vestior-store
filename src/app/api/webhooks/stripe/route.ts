@@ -109,6 +109,27 @@ async function handleEvent(type: string, data: Record<string, unknown>) {
         updated_at: new Date(),
       })
 
+      // ────────────────────────────────────────────
+      // Queue payment-confirmed email (non-blocking)
+      // ────────────────────────────────────────────
+      try {
+        const { queueEmail } = await import('@/lib/email/queue')
+        const email = (data as { receipt_email?: string }).receipt_email
+        if (email) {
+          await queueEmail({
+            template: 'payment-confirmed',
+            to: email,
+            data: {
+              orderId,
+              total: Math.round(intent.amount / 100),
+              siteUrl: process.env.NEXT_PUBLIC_SITE_URL,
+            },
+          })
+        }
+      } catch (err) {
+        console.error('[stripe-webhook] email queue failed:', err)
+      }
+
       revalidatePath('/orders')
       revalidatePath('/admin/orders')
       revalidatePath('/admin')
@@ -143,6 +164,29 @@ async function handleEvent(type: string, data: Record<string, unknown>) {
         created_at: new Date(),
         updated_at: new Date(),
       })
+
+      // ────────────────────────────────────────────
+      // Queue payment-failed email (non-blocking)
+      // ────────────────────────────────────────────
+      try {
+        const { queueEmail } = await import('@/lib/email/queue')
+        const email = (data as { receipt_email?: string }).receipt_email
+        if (email) {
+          await queueEmail({
+            template: 'payment-failed',
+            to: email,
+            data: {
+              orderId,
+              reason:
+                intent.last_payment_error?.message ||
+                'Your payment could not be processed',
+              siteUrl: process.env.NEXT_PUBLIC_SITE_URL,
+            },
+          })
+        }
+      } catch (err) {
+        console.error('[stripe-webhook] payment-failed email queue failed:', err)
+      }
 
       revalidatePath('/orders')
       revalidatePath('/admin/orders')
