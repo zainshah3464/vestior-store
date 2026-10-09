@@ -4,14 +4,12 @@ export default defineConfig({
   testDir: './e2e',
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
-  retries: process.env.CI ? 2 : 1, // 1 retry locally for flaky FS
+  retries: process.env.CI ? 2 : 1,
   workers: 1,
   reporter: process.env.CI ? 'github' : 'list',
 
-  // Overall per-test timeout — larger for slow F: drive
   timeout: 60_000,
 
-  // Assertion timeout
   expect: {
     timeout: 15_000,
   },
@@ -32,14 +30,22 @@ export default defineConfig({
     },
   ],
 
-  webServer: process.env.CI
-    ? undefined
-    : {
-        command: 'npm run dev',
-        url: 'http://localhost:3000',
-        reuseExistingServer: true,
-        timeout: 180_000,
-        stdout: 'ignore',
-        stderr: 'pipe',
-      },
+  /**
+   * Auto-start the app before running E2E tests.
+   *
+   * • Local: uses `next dev` (fast enough).
+   * • CI: uses `next start` against the production build (more stable
+   *   in the sandbox, and mirrors what users actually see).
+   *
+   * The CI workflow builds the app in a previous step, so `next start`
+   * picks up `.next/` immediately.
+   */
+  webServer: {
+    command: process.env.CI ? 'npm run start' : 'npm run dev',
+    url: 'http://localhost:3000',
+    reuseExistingServer: !process.env.CI,
+    timeout: 180_000,
+    stdout: process.env.CI ? 'pipe' : 'ignore',
+    stderr: 'pipe',
+  },
 })
