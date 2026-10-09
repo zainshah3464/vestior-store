@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import Link from 'next/link'
 import { Trash2, Plus, Minus, ShoppingBag, ArrowLeft, CreditCard, Shield, Truck, Gift, Sparkles, Clock, ChevronRight } from 'lucide-react'
 import toast from 'react-hot-toast'
@@ -55,20 +55,20 @@ export default function CartPage() {
   const [discount, setDiscount] = useState(0)
   const [appliedCoupon, setAppliedCoupon] = useState('')
 
-  useEffect(() => {
-    loadCart()
-    window.addEventListener('cartUpdated', loadCart)
-    return () => window.removeEventListener('cartUpdated', loadCart)
-  }, [])
-
-  const loadCart = () => {
+  const loadCart = useCallback(() => {
     const savedCart = JSON.parse(localStorage.getItem('cart') || '[]')
     const merged = mergeCartItems(savedCart)
     setCart(merged)
     // Sync merged version back to storage so future reads are clean
     localStorage.setItem('cart', JSON.stringify(merged))
     setLoading(false)
-  }
+  }, [])
+
+  useEffect(() => {
+    loadCart()
+    window.addEventListener('cartUpdated', loadCart)
+    return () => window.removeEventListener('cartUpdated', loadCart)
+  }, [loadCart])
 
   const updateQuantity = (id: string, newQuantity: number) => {
     if (newQuantity < 1) return

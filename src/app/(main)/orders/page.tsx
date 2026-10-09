@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import OrdersRealtime from '@/components/OrdersRealtime'
@@ -22,9 +23,9 @@ export default async function OrdersPage() {
         ) : (
           <div className="text-center py-16">
             <p className="text-gray-400 text-lg">No orders yet.</p>
-            <a href="/products" className="mt-4 inline-block text-blue-400 hover:underline">
-              Start shopping
-            </a>
+           <Link href="/products" className="mt-4 inline-block text-blue-400 hover:underline">
+  Start shopping
+</Link>
           </div>
         )}
       </div>

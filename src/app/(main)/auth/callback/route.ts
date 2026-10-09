@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
 
   // Build the redirect response FIRST so we can attach cookies to it
   const redirectUrl = new URL(safeNext, request.url)
-  let response = NextResponse.redirect(redirectUrl)
+const response = NextResponse.redirect(redirectUrl)
 
   // Server client bound to `response.cookies` — every cookie it sets
   // will land on the redirect response, not on next/headers
