@@ -2,11 +2,12 @@
 
 import Link from 'next/link'
 import { useState, useEffect, useRef } from 'react'
-import { ShoppingBag, Menu, X, Search, User, TrendingUp, Package, ChevronDown, LogOut, UserCircle } from 'lucide-react'
+import { ShoppingBag, Menu, X, Search, User, TrendingUp, Package, ChevronDown, LogOut, UserCircle, Heart } from 'lucide-react'
 import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useAuth } from '@/providers/AuthProvider'
+import { useWishlist } from '@/components/WishlistProvider'
 import { parseProductImages } from '@/lib/utils' // ← safe parser
 import { track } from '@/lib/tracking/client'
 
@@ -40,6 +41,7 @@ export default function Navbar() {
   const router = useRouter()
   const supabase = createClient()
   const { user } = useAuth()
+  const { count: wishlistCount } = useWishlist()
 
   // ---- Helpers ----
   const isHomePage = pathname === '/'
@@ -309,6 +311,20 @@ export default function Navbar() {
                 </Link>
               )}
 
+              {/* Wishlist icon */}
+              <Link
+                href="/wishlist"
+                className="relative text-gray-300 hover:text-white transition"
+                aria-label={`Wishlist${wishlistCount > 0 ? ` (${wishlistCount} items)` : ''}`}
+              >
+                <Heart size={18} aria-hidden="true" />
+                {wishlistCount > 0 && (
+                  <span className="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] rounded-full w-4 h-4 flex items-center justify-center font-medium">
+                    {wishlistCount > 9 ? '9+' : wishlistCount}
+                  </span>
+                )}
+              </Link>
+
               <Link
                 href="/cart"
                 className="relative text-gray-300 hover:text-white transition"
@@ -379,6 +395,13 @@ export default function Navbar() {
                       onClick={() => setIsOpen(false)}
                     >
                       Orders
+                    </Link>
+                    <Link
+                      href="/wishlist"
+                      className="block py-2 text-gray-300 hover:text-white text-sm"
+                      onClick={() => setIsOpen(false)}
+                    >
+                      Wishlist ({wishlistCount})
                     </Link>
                     <button
                       onClick={() => {

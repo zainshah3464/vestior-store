@@ -7,6 +7,7 @@ import toast from 'react-hot-toast'
 import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { track } from '@/lib/tracking/client'
+import { useWishlist } from '@/components/WishlistProvider'
 
 interface Product {
   id: string
@@ -20,15 +21,21 @@ interface Product {
 
 export default function ProductCard({ product }: { product: Product }) {
   const [isHovered, setIsHovered] = useState(false)
-  const [isWishlisted, setIsWishlisted] = useState(false)
+  const { isInWishlist, toggle } = useWishlist()
+  const wishlisted = isInWishlist(product.id)
 
-  const discount = product.compare_at_price && product.compare_at_price > product.price
-    ? Math.round(((product.compare_at_price - product.price) / product.compare_at_price) * 100)
-    : 0
+  const discount =
+    product.compare_at_price && product.compare_at_price > product.price
+      ? Math.round(
+          ((product.compare_at_price - product.price) /
+            product.compare_at_price) *
+            100
+        )
+      : 0
 
   const addToCart = () => {
     const cart = JSON.parse(localStorage.getItem('cart') || '[]')
-    const existingItem = cart.find((item: any) => item.id === product.id)
+    const existingItem = cart.find((item: { id: string }) => item.id === product.id)
 
     if (existingItem) {
       existingItem.quantity += 1
@@ -40,14 +47,23 @@ export default function ProductCard({ product }: { product: Product }) {
     toast.success('Added to cart!', { icon: '🛒' })
     window.dispatchEvent(new Event('cartUpdated'))
 
-    // ─────────────────────────────────────────────
-    // Track add_to_cart
-    // ─────────────────────────────────────────────
     track('add_to_cart', {
       productId: product.id,
       productName: product.name,
       price: product.price,
       quantity: 1,
+    })
+  }
+
+  const handleWishlistClick = async (
+    e: React.MouseEvent<HTMLButtonElement>
+  ) => {
+    e.preventDefault()
+    e.stopPropagation()
+    await toggle(product.id)
+    track('wishlist_add', {
+      productId: product.id,
+      productName: product.name,
     })
   }
 
@@ -59,17 +75,21 @@ export default function ProductCard({ product }: { product: Product }) {
       whileHover={{ y: -4 }}
       transition={{ duration: 0.2 }}
     >
-      {/* Image Container */}
-      <Link href={`/products/${product.id}`} className="relative block aspect-square overflow-hidden bg-gray-900">
+      <Link
+        href={`/products/${product.id}`}
+        className="relative block aspect-square overflow-hidden bg-gray-900"
+      >
         <Image
-          src={product.images?.[0] || 'https://placehold.co/400x400/1a1a1a/3B82F6?text=No+Image'}
+          src={
+            product.images?.[0] ||
+            'https://placehold.co/400x400/1a1a1a/3B82F6?text=No+Image'
+          }
           alt={product.name}
           fill
           sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, (max-width: 1024px) 25vw, 20vw"
           className="object-cover group-hover:scale-110 transition duration-500"
         />
 
-        {/* Quick View Overlay */}
         <motion.div
           className={`absolute inset-0 bg-black/60 flex items-center justify-center transition-opacity duration-300 ${
             isHovered ? 'opacity-100' : 'opacity-0'
@@ -86,7 +106,6 @@ export default function ProductCard({ product }: { product: Product }) {
           </button>
         </motion.div>
 
-        {/* Badges */}
         <div className="absolute top-3 left-3 flex gap-2">
           {discount > 0 && (
             <span className="bg-gradient-to-r from-blue-500 to-blue-600 text-white text-xs px-2 py-0.5 rounded-full font-medium shadow-lg">
@@ -105,20 +124,23 @@ export default function ProductCard({ product }: { product: Product }) {
           )}
         </div>
 
-        {/* Wishlist Button */}
         <motion.button
-          onClick={() => setIsWishlisted(!isWishlisted)}
+          onClick={handleWishlistClick}
           className={`absolute top-3 right-3 p-1.5 rounded-full bg-black/50 backdrop-blur-sm transition ${
-            isWishlisted ? 'text-red-500' : 'text-white hover:text-red-500'
+            wishlisted ? 'text-red-500' : 'text-white hover:text-red-500'
           }`}
           whileTap={{ scale: 0.9 }}
-          aria-label={isWishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
+          aria-label={wishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
+          aria-pressed={wishlisted}
         >
-          <Heart size={14} fill={isWishlisted ? 'currentColor' : 'none'} aria-hidden="true" />
+          <Heart
+            size={14}
+            fill={wishlisted ? 'currentColor' : 'none'}
+            aria-hidden="true"
+          />
         </motion.button>
       </Link>
 
-      {/* Content */}
       <div className="p-4">
         <Link href={`/products/${product.id}`}>
           <h3 className="font-medium text-white text-sm hover:text-blue-400 transition line-clamp-1">
@@ -127,10 +149,15 @@ export default function ProductCard({ product }: { product: Product }) {
         </Link>
 
         <div className="flex items-center gap-2 mt-2">
-          <span className="text-base font-semibold text-white">₹{product.price.toLocaleString()}</span>
-          {product.compare_at_price && product.compare_at_price > product.price && (
-            <span className="text-xs text-gray-400 line-through">₹{product.compare_at_price.toLocaleString()}</span>
-          )}
+          <span className="text-base font-semibold text-white">
+            ₹{product.price.toLocaleString()}
+          </span>
+          {product.compare_at_price &&
+            product.compare_at_price > product.price && (
+              <span className="text-xs text-gray-400 line-through">
+                ₹{product.compare_at_price.toLocaleString()}
+              </span>
+            )}
         </div>
 
         <motion.button

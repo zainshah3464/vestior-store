@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next"
 import { Geist, Geist_Mono } from "next/font/google"
 import { Toaster } from "react-hot-toast"
 import AuthProvider from "@/providers/AuthProvider"
+import WishlistProvider from "@/components/WishlistProvider"
 import TrackingProvider from "@/components/TrackingProvider"
 import GoogleAnalytics from "@/components/GoogleAnalytics"
 import { OrganizationSchema, WebsiteSchema } from "@/components/StructuredData"
@@ -187,8 +188,10 @@ export default function RootLayout({
           siteUrl={process.env.NEXT_PUBLIC_SITE_URL || 'https://vestior.vercel.app'}
         />
         <AuthProvider>
-          <TrackingProvider />
-          {children}
+          <WishlistProvider>
+            <TrackingProvider />
+            {children}
+          </WishlistProvider>
         </AuthProvider>
 
         {/* Toaster — aria-live wrapper so screen readers announce toasts */}

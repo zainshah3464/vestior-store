@@ -7,6 +7,7 @@ import { ShoppingCart, Heart, Share2, ChevronLeft, ChevronRight, Truck, Shield, 
 import toast from 'react-hot-toast';
 import { motion } from 'framer-motion';
 import { track } from '@/lib/tracking/client';
+import { useWishlist } from '@/components/WishlistProvider';
 
 interface Product {
   id: string;
@@ -27,6 +28,10 @@ export default function ProductDetailClient({ product }: { product: Product }) {
   const [quantity, setQuantity] = useState(1);
   const [selectedSize, setSelectedSize] = useState<string | null>(null);
   const router = useRouter();
+
+  // Wishlist context
+  const { isInWishlist, toggle } = useWishlist();
+  const wishlisted = isInWishlist(product.id);
 
   // ─────────────────────────────────────────────
   // Track product_view when product loads
@@ -85,18 +90,13 @@ export default function ProductDetailClient({ product }: { product: Product }) {
     });
   };
 
-  const toggleWishlist = () => {
-    const wishlist = JSON.parse(localStorage.getItem('wishlist') || '[]');
-    if (wishlist.includes(product.id)) {
-      const newWishlist = wishlist.filter((id: string) => id !== product.id);
-      localStorage.setItem('wishlist', JSON.stringify(newWishlist));
-      toast.success('Removed from wishlist');
-    } else {
-      wishlist.push(product.id);
-      localStorage.setItem('wishlist', JSON.stringify(wishlist));
-      toast.success('Added to wishlist');
-    }
-  };
+  const handleWishlistToggle = async () => {
+    await toggle(product.id)
+    track('wishlist_add', {
+      productId: product.id,
+      productName: product.name,
+    })
+  }
 
   const copyLink = async () => {
     const url = `${window.location.origin}/products/${product.id}`;
@@ -241,9 +241,18 @@ export default function ProductDetailClient({ product }: { product: Product }) {
             </button>
 
             <div className="flex gap-4 mb-8">
-              <button onClick={toggleWishlist} className="flex items-center gap-2 text-gray-400 hover:text-red-500 transition">
-                <Heart size={18} />
-                <span className="text-sm">Wishlist</span>
+              <button
+                onClick={handleWishlistToggle}
+                className={`flex items-center gap-2 transition ${
+                  wishlisted ? 'text-red-500' : 'text-gray-400 hover:text-red-500'
+                }`}
+                aria-pressed={wishlisted}
+                aria-label={wishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
+              >
+                <Heart size={18} fill={wishlisted ? 'currentColor' : 'none'} />
+                <span className="text-sm">
+                  {wishlisted ? 'Wishlisted' : 'Wishlist'}
+                </span>
               </button>
               <button onClick={copyLink} className="flex items-center gap-2 text-gray-400 hover:text-blue-500 transition">
                 <Copy size={18} />
