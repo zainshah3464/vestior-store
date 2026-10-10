@@ -1,5 +1,5 @@
 // src/app/(main)/category/[slug]/page.tsx
-import { createClient } from '@/lib/supabase/server'
+import { supabasePublic } from '@/lib/supabase/public'
 import type { Metadata } from 'next'
 import ProductGrid from '@/components/ProductGrid'
 import { parseProductImages } from '@/lib/utils'
@@ -7,6 +7,9 @@ import { BreadcrumbSchema } from '@/components/StructuredData'
 
 const SITE_URL =
   process.env.NEXT_PUBLIC_SITE_URL || 'https://vestior.vercel.app'
+
+// Cache for 5 minutes — category pages are public
+export const revalidate = 300
 
 export async function generateMetadata({
   params,
@@ -36,7 +39,7 @@ export default async function CategoryPage({
   params: Promise<{ slug: string }>
 }) {
   const { slug } = await params
-  const supabase = await createClient()
+  const supabase = supabasePublic
 
   const decodedSlug = decodeURIComponent(slug)
 

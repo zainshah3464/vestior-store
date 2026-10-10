@@ -1,9 +1,12 @@
 // src/app/(main)/products/page.tsx
-import { createClient } from '@/lib/supabase/server'
+import { supabasePublic } from '@/lib/supabase/public'
 import ProductGrid from '@/components/ProductGrid'
 import { Filter } from 'lucide-react'
 import Link from 'next/link'
 import { parseProductImages } from '@/lib/utils'
+
+// Cache for 5 minutes
+export const revalidate = 300
 
 const categories = ['Pants', 'Shirts', 'Coats', 'Waistcoats', 'Suits', 'Gurkha', '2 Piece', '3 Piece']
 
@@ -14,7 +17,7 @@ export default async function ProductsPage({
 }) {
   const { category } = await searchParams
 
-  const supabase = await createClient()
+  const supabase = supabasePublic
   let query = supabase
     .from('products')
     .select('id, name, price, compare_at_price, images, stock, is_new_arrival, category_main')

@@ -1,10 +1,13 @@
-import { createClient } from '@/lib/supabase/server'
+import { supabasePublic } from '@/lib/supabase/public'
 import ProductGrid from '@/components/ProductGrid'
 import { Sparkles } from 'lucide-react'
 import { parseProductImages } from '@/lib/utils'
 
+// Cache for 5 minutes
+export const revalidate = 300
+
 export default async function FeaturedPage() {
-  const supabase = await createClient()
+  const supabase = supabasePublic
 
   const { data: products } = await supabase
     .from('products')

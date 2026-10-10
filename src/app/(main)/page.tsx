@@ -2,16 +2,19 @@
 import Hero from '@/components/Hero'
 import CategorySection from '@/components/CategorySection'
 import HomeProductSection from '@/components/HomeProductSection'
-import { createClient } from '@/lib/supabase/server'
+import { supabasePublic } from '@/lib/supabase/public'
 import { parseProductImages } from '@/lib/utils'
 import { Sparkles, Clock, ArrowRight } from 'lucide-react'
 import Link from 'next/link'
+
+// Cache homepage for 5 minutes — great for LCP
+export const revalidate = 300
 
 // Columns actually used by <ProductCard />
 const PRODUCT_COLUMNS = 'id, name, price, compare_at_price, images, stock, is_new_arrival'
 
 export default async function HomePage() {
-  const supabase = await createClient()
+  const supabase = supabasePublic
 
   // ────────────────────────────────────────────
   // Parallel fetch — both queries fire simultaneously
