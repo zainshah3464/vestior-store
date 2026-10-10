@@ -1,10 +1,16 @@
-// src/app/(main)/products/[id]/page.tsx
 import { createClient } from '@/lib/supabase/server'
+import { supabasePublic } from '@/lib/supabase/public'
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import ProductDetailClient from './ProductDetailClient'
+import ReviewsSection from '@/components/reviews/ReviewsSection'
 import { parseProductImages } from '@/lib/utils'
 import { ProductSchema, BreadcrumbSchema } from '@/components/StructuredData'
+import {
+  getApprovedReviews,
+  getReviewStats,
+  getUserReview,
+} from '@/lib/reviews/queries'
 
 const SITE_URL =
   process.env.NEXT_PUBLIC_SITE_URL || 'https://vestior.vercel.app'
@@ -15,19 +21,13 @@ export async function generateMetadata({
   params: Promise<{ id: string }>
 }): Promise<Metadata> {
   const { id } = await params
-  const supabase = await createClient()
-
-  const { data: product } = await supabase
+  const { data: product } = await supabasePublic
     .from('products')
     .select('name, description, price, images, category_main')
     .eq('id', id)
     .single()
 
-  if (!product) {
-    return {
-      title: 'Product Not Found',
-    }
-  }
+  if (!product) return { title: 'Product Not Found' }
 
   const images = parseProductImages(product.images)
   const firstImage = images[0] || '/og-image.png'
@@ -37,23 +37,12 @@ export async function generateMetadata({
     description:
       product.description ||
       `Shop ${product.name} at VESTIOR — premium tailored menswear.`,
-    alternates: {
-      canonical: `/products/${id}`,
-    },
+    alternates: { canonical: `/products/${id}` },
     openGraph: {
       type: 'website',
       title: product.name,
-      description:
-        product.description ||
-        `Shop ${product.name} at VESTIOR — premium tailored menswear.`,
-      images: [
-        {
-          url: firstImage,
-          width: 1200,
-          height: 630,
-          alt: product.name,
-        },
-      ],
+      description: product.description || `Shop ${product.name} at VESTIOR.`,
+      images: [{ url: firstImage, width: 1200, height: 630, alt: product.name }],
       url: `${SITE_URL}/products/${id}`,
     },
     twitter: {
@@ -71,24 +60,40 @@ export default async function ProductPage({
   params: Promise<{ id: string }>
 }) {
   const { id } = await params
-  const supabase = await createClient()
 
-  const { data: product, error } = await supabase
+  // Public data (no cookies)
+  const { data: product, error } = await supabasePublic
     .from('products')
     .select('*')
     .eq('id', id)
     .single()
 
-  if (error || !product) {
-    notFound()
-  }
+  if (error || !product) notFound()
+
+  // Auth-aware data (cookies) — separate client
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  // Fetch reviews + stats + user's own review (if logged in)
+  const [reviews, stats, userReview] = await Promise.all([
+    getApprovedReviews(id),
+    getReviewStats(id),
+    user ? getUserReview(user.id, id) : Promise.resolve(null),
+  ])
 
   const images = parseProductImages(product.images)
   const productWithParsedImages = { ...product, images }
 
   return (
     <>
-      <ProductSchema product={productWithParsedImages} siteUrl={SITE_URL} />
+      <ProductSchema
+        product={productWithParsedImages}
+        siteUrl={SITE_URL}
+        reviewStats={stats}
+        reviews={reviews.slice(0, 5)}
+      />
       <BreadcrumbSchema
         items={[
           { name: 'Home', url: SITE_URL },
@@ -105,6 +110,16 @@ export default async function ProductPage({
         ]}
       />
       <ProductDetailClient product={productWithParsedImages} />
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-16">
+        <ReviewsSection
+          productId={id}
+          initialReviews={reviews}
+          stats={stats}
+          currentUserId={user?.id ?? null}
+          userReview={userReview}
+        />
+      </div>
     </>
   )
 }

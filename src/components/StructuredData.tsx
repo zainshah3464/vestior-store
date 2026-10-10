@@ -59,6 +59,23 @@ export function WebsiteSchema({ siteUrl }: WebsiteProps) {
   )
 }
 
+// ─────────────────────────────────────────────────────────────
+// Product Schema (with reviews + aggregate rating)
+// ─────────────────────────────────────────────────────────────
+
+interface ProductSchemaReviewStats {
+  averageRating: number
+  totalCount: number
+}
+
+interface ProductSchemaReview {
+  userName: string
+  rating: number
+  title: string | null
+  comment: string
+  createdAt: string
+}
+
 interface ProductSchemaProps {
   product: {
     id: string
@@ -71,10 +88,17 @@ interface ProductSchemaProps {
     category_main: string | null
   }
   siteUrl: string
+  reviewStats?: ProductSchemaReviewStats
+  reviews?: ProductSchemaReview[]
 }
 
-export function ProductSchema({ product, siteUrl }: ProductSchemaProps) {
-  const data = {
+export function ProductSchema({
+  product,
+  siteUrl,
+  reviewStats,
+  reviews,
+}: ProductSchemaProps) {
+  const data: Record<string, unknown> = {
     '@context': 'https://schema.org',
     '@type': 'Product',
     name: product.name,
@@ -103,6 +127,34 @@ export function ProductSchema({ product, siteUrl }: ProductSchemaProps) {
         name: 'VESTIOR',
       },
     },
+  }
+
+  // Add aggregate rating (for Google stars in search results)
+  if (reviewStats && reviewStats.totalCount > 0) {
+    data.aggregateRating = {
+      '@type': 'AggregateRating',
+      ratingValue: reviewStats.averageRating.toFixed(1),
+      reviewCount: reviewStats.totalCount,
+      bestRating: 5,
+      worstRating: 1,
+    }
+  }
+
+  // Add individual reviews
+  if (reviews && reviews.length > 0) {
+    data.review = reviews.map((r) => ({
+      '@type': 'Review',
+      author: { '@type': 'Person', name: r.userName },
+      datePublished: r.createdAt,
+      reviewBody: r.comment,
+      ...(r.title ? { name: r.title } : {}),
+      reviewRating: {
+        '@type': 'Rating',
+        ratingValue: r.rating,
+        bestRating: 5,
+        worstRating: 1,
+      },
+    }))
   }
 
   return (
