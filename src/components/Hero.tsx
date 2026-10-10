@@ -78,42 +78,18 @@ export default function Hero() {
             </span>
           </motion.div>
 
-          {/* Main Heading */}
-          <motion.h1
-            className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-bold tracking-tighter mb-4"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.8, delay: 0.2 }}
-          >
-            <motion.span
-              className="text-white block"
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.3, type: 'spring', stiffness: 100 }}
-            >
-              ART OF
-            </motion.span>
-            <motion.span
-              className="text-blue-500 block"
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.5, type: 'spring', stiffness: 100 }}
-            >
-              ELEGANCE
-            </motion.span>
-          </motion.h1>
+          {/* Main Heading — no animation (LCP element) */}
+          <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-bold tracking-tighter mb-4">
+            <span className="text-white block">ART OF</span>
+            <span className="text-blue-500 block">ELEGANCE</span>
+          </h1>
 
-          {/* Description */}
-          <motion.p
-            className="text-sm sm:text-base md:text-lg text-gray-200 max-w-xl mb-8 leading-relaxed"
-            initial={{ opacity: 0, x: -40 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.5, delay: 0.4 }}
-          >
+          {/* Description — no animation (LCP element) */}
+          <p className="text-sm sm:text-base md:text-lg text-gray-200 max-w-xl mb-8 leading-relaxed">
             Experience the pinnacle of craftsmanship with our premium collection of
             hand-tailored suits. Each piece is a masterpiece of precision, using only
             the finest Italian wools and British linens.
-          </motion.p>
+          </p>
 
           {/* Buttons */}
           <motion.div
