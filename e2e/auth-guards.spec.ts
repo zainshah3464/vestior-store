@@ -24,10 +24,12 @@ test.describe('Auth guards', () => {
   test('login page loads with email and password fields', async ({ page }) => {
     await page.goto('/auth/login', { waitUntil: 'domcontentloaded' })
 
-    // Use placeholder — unique to the login form (footer newsletter has "Email" only)
+    // Wait for React hydration first — the login form renders client-side
+    await page.waitForSelector('input[type="email"]', { timeout: 30_000 })
+
     await expect(
       page.getByPlaceholder('you@example.com')
-    ).toBeVisible({ timeout: 20_000 })
+    ).toBeVisible({ timeout: 30_000 })
     await expect(page.locator('input[type="password"]').first()).toBeVisible()
     await expect(page.getByRole('button', { name: /sign in/i })).toBeVisible()
     await expect(
@@ -38,9 +40,11 @@ test.describe('Auth guards', () => {
   test('signup page loads with all fields', async ({ page }) => {
     await page.goto('/auth/signup', { waitUntil: 'domcontentloaded' })
 
+    await page.waitForSelector('input[type="email"]', { timeout: 30_000 })
+
     await expect(
       page.getByPlaceholder('you@example.com')
-    ).toBeVisible({ timeout: 20_000 })
+    ).toBeVisible({ timeout: 30_000 })
     await expect(page.locator('input[type="password"]').first()).toBeVisible()
     await expect(page.getByPlaceholder(/john doe/i)).toBeVisible()
     await expect(

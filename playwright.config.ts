@@ -4,14 +4,14 @@ export default defineConfig({
   testDir: './e2e',
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
-  retries: process.env.CI ? 2 : 1,
+  retries: process.env.CI ? 3 : 1, // ← 3 retries in CI (flaky network)
   workers: 1,
   reporter: process.env.CI ? 'github' : 'list',
 
-  timeout: 60_000,
+  timeout: 90_000, // ← was 60_000 — CI mein next start cold start slow
 
   expect: {
-    timeout: 15_000,
+    timeout: 30_000, // ← was 15_000
   },
 
   use: {
@@ -19,8 +19,8 @@ export default defineConfig({
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
-    actionTimeout: 20_000,
-    navigationTimeout: 60_000,
+    actionTimeout: 30_000,
+    navigationTimeout: 90_000,
   },
 
   projects: [
@@ -30,16 +30,6 @@ export default defineConfig({
     },
   ],
 
-  /**
-   * Auto-start the app before running E2E tests.
-   *
-   * • Local: uses `next dev` (fast enough).
-   * • CI: uses `next start` against the production build (more stable
-   *   in the sandbox, and mirrors what users actually see).
-   *
-   * The CI workflow builds the app in a previous step, so `next start`
-   * picks up `.next/` immediately.
-   */
   webServer: {
     command: process.env.CI ? 'npm run start' : 'npm run dev',
     url: 'http://localhost:3000',

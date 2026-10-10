@@ -302,6 +302,7 @@ export default function Navbar() {
                 <Link
                   href="/auth/login"
                   className="text-sm text-gray-300 hover:text-white transition flex items-center gap-1"
+                  aria-label="Sign in"
                 >
                   <User size={18} aria-hidden="true" />
                   <span className="hidden md:inline">Sign In</span>

@@ -119,8 +119,9 @@ export default function HomeProductSection({ products }: { products: Product[] }
             className="absolute -left-3 md:-left-5 top-1/2 -translate-y-1/2 z-20 bg-black/90 backdrop-blur-sm border border-blue-500/30 p-2 md:p-3 rounded-full hover:bg-blue-500 hover:border-blue-500 transition-all duration-300 shadow-xl hover:shadow-blue-500/25"
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.9 }}
+            aria-label="Scroll products left"
           >
-            <ChevronLeft size={18} className="text-white md:w-5 md:h-5" />
+            <ChevronLeft size={18} className="text-white md:w-5 md:h-5" aria-hidden="true" />
           </motion.button>
         )}
       </AnimatePresence>
@@ -135,8 +136,9 @@ export default function HomeProductSection({ products }: { products: Product[] }
             className="absolute -right-3 md:-right-5 top-1/2 -translate-y-1/2 z-20 bg-black/90 backdrop-blur-sm border border-blue-500/30 p-2 md:p-3 rounded-full hover:bg-blue-500 hover:border-blue-500 transition-all duration-300 shadow-xl hover:shadow-blue-500/25"
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.9 }}
+            aria-label="Scroll products right"
           >
-            <ChevronRight size={18} className="text-white md:w-5 md:h-5" />
+            <ChevronRight size={18} className="text-white md:w-5 md:h-5" aria-hidden="true" />
           </motion.button>
         )}
       </AnimatePresence>
