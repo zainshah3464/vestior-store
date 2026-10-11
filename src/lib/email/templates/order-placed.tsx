@@ -102,6 +102,26 @@ export default function OrderPlacedEmail({
             </Button>
           </Section>
 
+          {/* View Invoice — outline button */}
+          <Section style={{ textAlign: 'center', marginTop: 12 }}>
+            <Button
+              href={`${siteUrl}/orders/${orderId}/invoice`}
+              style={{
+                background: 'transparent',
+                color: '#3B82F6',
+                padding: '8px 20px',
+                borderRadius: 8,
+                textDecoration: 'none',
+                fontSize: 14,
+                fontWeight: 500,
+                border: '1px solid #3B82F6',
+                display: 'inline-block',
+              }}
+            >
+              View Invoice
+            </Button>
+          </Section>
+
           <Text style={footerSmall}>
             Payment method: {paymentMethod.toUpperCase()}
           </Text>

@@ -6,7 +6,7 @@ import Image from 'next/image'
 import { motion } from 'framer-motion'
 import {
   ChevronLeft, Package, Clock, CheckCircle, XCircle, Truck,
-  MapPin, CreditCard, Receipt, Calendar,
+  MapPin, CreditCard, Receipt, Calendar, Download,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import type { OrderDetail } from '@/lib/orders/queries'
@@ -92,11 +92,20 @@ export default function CustomerOrderDetail({ detail }: { detail: OrderDetail })
               })}
             </p>
           </div>
-          <div
-            className={`flex items-center gap-2 px-4 py-2 rounded-full border ${statusStyle.bg} ${statusStyle.border} ${statusStyle.text}`}
-          >
-            <StatusIcon size={16} />
-            <span className="text-sm font-medium capitalize">{currentStatus}</span>
+          <div className="flex items-center gap-3 flex-wrap">
+            <div
+              className={`flex items-center gap-2 px-4 py-2 rounded-full border ${statusStyle.bg} ${statusStyle.border} ${statusStyle.text}`}
+            >
+              <StatusIcon size={16} />
+              <span className="text-sm font-medium capitalize">{currentStatus}</span>
+            </div>
+            <Link
+              href={`/orders/${detail.order.id}/invoice`}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/10 text-gray-300 hover:text-white hover:border-indigo-500/30 hover:bg-indigo-500/10 transition text-sm"
+            >
+              <Download size={14} />
+              Invoice
+            </Link>
           </div>
         </div>
 
@@ -203,9 +212,9 @@ export default function CustomerOrderDetail({ detail }: { detail: OrderDetail })
                 </p>
                 <p>{String(detail.order.address.phone ?? '')}</p>
                 <p>{String(detail.order.address.line1 ?? '')}</p>
-              {Boolean(detail.order.address.line2) && (
-  <p>{String(detail.order.address.line2)}</p>
-)}
+                {Boolean(detail.order.address.line2) && (
+                  <p>{String(detail.order.address.line2)}</p>
+                )}
                 <p>
                   {String(detail.order.address.city ?? '')},{' '}
                   {String(detail.order.address.state ?? '')} —{' '}

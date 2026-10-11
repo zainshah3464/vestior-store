@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import {
   ArrowLeft, Package, MapPin, CreditCard, User, Clock, CheckCircle,
-  AlertCircle, RotateCcw, Mail, ShieldCheck, Bell,
+  AlertCircle, RotateCcw, Mail, ShieldCheck, Bell, Download,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { updateOrderStatus } from '@/actions/updateOrderStatus'
@@ -91,13 +91,22 @@ export default function OrderDetailAdmin({ detail }: { detail: OrderDetail }) {
             {new Date(detail.order.createdAt).toLocaleString('en-GB')}
           </p>
         </div>
-        <span
-          className={`px-4 py-2 rounded-full border text-sm font-medium capitalize ${
-            STATUS_COLORS[status] ?? 'bg-gray-500/20 text-gray-400'
-          }`}
-        >
-          {status}
-        </span>
+        <div className="flex items-center gap-3 flex-wrap">
+          <span
+            className={`px-4 py-2 rounded-full border text-sm font-medium capitalize ${
+              STATUS_COLORS[status] ?? 'bg-gray-500/20 text-gray-400'
+            }`}
+          >
+            {status}
+          </span>
+          <Link
+            href={`/admin/orders/${detail.order.id}/invoice`}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/10 text-gray-300 hover:text-white hover:border-indigo-500/30 hover:bg-indigo-500/10 transition text-sm"
+          >
+            <Download size={14} />
+            Invoice
+          </Link>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

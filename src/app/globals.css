@@ -115,3 +115,20 @@ body {
   animation-delay: 0.3s;
 }
 
+/* ─────────────────────────────────────────────
+   Print styles
+   Hide app chrome when printing; only invoice visible
+   ───────────────────────────────────────────── */
+@media print {
+  body {
+    background: white !important;
+    color: black !important;
+  }
+
+  /* Hide fixed elements during print */
+  nav,
+  footer,
+  .print\:hidden {
+    display: none !important;
+  }
+}
