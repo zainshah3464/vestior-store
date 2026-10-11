@@ -4,6 +4,8 @@ import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import ProductDetailClient from './ProductDetailClient'
 import ReviewsSection from '@/components/reviews/ReviewsSection'
+import RecommendedRow from '@/components/recommendations/RecommendedRow'
+import RecentlyViewed from '@/components/recommendations/RecentlyViewed'
 import { parseProductImages } from '@/lib/utils'
 import { ProductSchema, BreadcrumbSchema } from '@/components/StructuredData'
 import {
@@ -11,6 +13,10 @@ import {
   getReviewStats,
   getUserReview,
 } from '@/lib/reviews/queries'
+import {
+  getRelatedProducts,
+  getYouMayAlsoLike,
+} from '@/lib/recommendations/queries'
 
 const SITE_URL =
   process.env.NEXT_PUBLIC_SITE_URL || 'https://vestior.vercel.app'
@@ -76,11 +82,13 @@ export default async function ProductPage({
     data: { user },
   } = await supabase.auth.getUser()
 
-  // Fetch reviews + stats + user's own review (if logged in)
-  const [reviews, stats, userReview] = await Promise.all([
+  // Fetch reviews + stats + user's own review + recommendations (parallel)
+  const [reviews, stats, userReview, related, alsoLike] = await Promise.all([
     getApprovedReviews(id),
     getReviewStats(id),
     user ? getUserReview(user.id, id) : Promise.resolve(null),
+    getRelatedProducts(id, product.category_main ?? '', product.price, 8),
+    getYouMayAlsoLike(id, product.price, product.category_main, 8),
   ])
 
   const images = parseProductImages(product.images)
@@ -118,6 +126,21 @@ export default async function ProductPage({
           stats={stats}
           currentUserId={user?.id ?? null}
           userReview={userReview}
+        />
+      </div>
+
+      {/* Recommendations */}
+      <div className="bg-[#0A0A0A]">
+        <RecommendedRow
+          title="You May Also Like"
+          subtitle="Handpicked for you from our collection"
+          products={alsoLike}
+        />
+        <RecentlyViewed excludeId={id} />
+        <RecommendedRow
+          title="Related Products"
+          subtitle={`More from ${product.category_main ?? 'this category'}`}
+          products={related}
         />
       </div>
     </>

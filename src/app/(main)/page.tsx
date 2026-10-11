@@ -2,7 +2,9 @@
 import Hero from '@/components/Hero'
 import CategorySection from '@/components/CategorySection'
 import HomeProductSection from '@/components/HomeProductSection'
+import RecommendedRow from '@/components/recommendations/RecommendedRow'
 import { supabasePublic } from '@/lib/supabase/public'
+import { getTrendingProducts } from '@/lib/recommendations/queries'
 import { parseProductImages } from '@/lib/utils'
 import { Sparkles, Clock, ArrowRight } from 'lucide-react'
 import Link from 'next/link'
@@ -17,9 +19,9 @@ export default async function HomePage() {
   const supabase = supabasePublic
 
   // ────────────────────────────────────────────
-  // Parallel fetch — both queries fire simultaneously
+  // Parallel fetch — all three queries fire simultaneously
   // ────────────────────────────────────────────
-  const [featuredResult, newArrivalsResult] = await Promise.all([
+  const [featuredResult, newArrivalsResult, trending] = await Promise.all([
     supabase
       .from('products')
       .select(PRODUCT_COLUMNS)
@@ -33,6 +35,8 @@ export default async function HomePage() {
       .eq('is_active', true)
       .eq('is_new_arrival', true)
       .order('created_at', { ascending: false }),
+
+    getTrendingProducts(8, 7),
   ])
 
   // Parse images for both arrays
@@ -126,6 +130,17 @@ export default async function HomePage() {
           </div>
         </div>
       </div>
+
+      {/* Trending */}
+      {trending.length > 0 && (
+        <div className="bg-[#0A0A0A]">
+          <RecommendedRow
+            title="Trending Now"
+            subtitle="What everyone's viewing this week"
+            products={trending}
+          />
+        </div>
+      )}
     </>
   )
 }

@@ -8,6 +8,7 @@ import toast from 'react-hot-toast';
 import { motion } from 'framer-motion';
 import { track } from '@/lib/tracking/client';
 import { useWishlist } from '@/components/WishlistProvider';
+import { trackViewed } from '@/components/recommendations/RecentlyViewed';
 
 interface Product {
   id: string;
@@ -43,6 +44,9 @@ export default function ProductDetailClient({ product }: { product: Product }) {
       price: product.price,
       category: product.category_main,
     })
+
+    // Track in localStorage for "Recently Viewed"
+    trackViewed(product.id)
   }, [product.id, product.name, product.price, product.category_main]);
 
   const discount = product.compare_at_price && product.compare_at_price > product.price
