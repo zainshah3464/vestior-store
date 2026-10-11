@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Menu, ChevronDown, LogOut, Clock } from 'lucide-react'
+import NotificationBell from './NotificationBell'
 
 interface AdminHeaderProps {
   user: { email?: string }
@@ -50,8 +51,9 @@ export default function AdminHeader({ user, onToggleSidebar }: AdminHeaderProps)
         <button
           onClick={onToggleSidebar}
           className="text-gray-400 hover:text-white lg:hidden"
+          aria-label="Toggle sidebar"
         >
-          <Menu size={24} />
+          <Menu size={24} aria-hidden="true" />
         </button>
 
         {/* Live Clock with subtle glow */}
@@ -60,25 +62,29 @@ export default function AdminHeader({ user, onToggleSidebar }: AdminHeaderProps)
             whileHover={{ scale: 1.02 }}
             className="flex items-center gap-1.5 bg-white/5 rounded-xl px-3 py-1.5 border border-white/10 shadow-[0_0_12px_rgba(99,102,241,0.15)]"
           >
-            <Clock size={15} className="text-indigo-400" />
+            <Clock size={15} className="text-indigo-400" aria-hidden="true" />
             <span className="text-sm font-medium text-white">{timeString}</span>
-            <span className="text-xs text-gray-400 ml-1">{dateString}</span>
+            <span className="text-xs text-gray-500 ml-1">{dateString}</span>
           </motion.div>
         </div>
       </div>
 
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-3">
+        {/* Notification Bell */}
+        <NotificationBell />
+
         {/* User Dropdown */}
         <div className="relative">
           <button
             onClick={() => setDropdownOpen(!dropdownOpen)}
             className="flex items-center gap-2 text-sm text-gray-300 hover:text-white transition"
+            aria-label="Open user menu"
           >
             <div className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center text-white font-semibold shadow-md">
               {user?.email?.[0]?.toUpperCase() || 'A'}
             </div>
             <span className="hidden md:inline">{user?.email}</span>
-            <ChevronDown size={16} />
+            <ChevronDown size={16} aria-hidden="true" />
           </button>
 
           <AnimatePresence>
@@ -91,7 +97,7 @@ export default function AdminHeader({ user, onToggleSidebar }: AdminHeaderProps)
                 className="absolute right-0 mt-2 w-48 bg-[#121212]/90 backdrop-blur-lg border border-white/10 rounded-xl shadow-2xl overflow-hidden z-50"
               >
                 <div className="p-2">
-                  <div className="px-3 py-2 text-xs text-gray-400 border-b border-white/10 mb-1">
+                  <div className="px-3 py-2 text-xs text-gray-500 border-b border-white/10 mb-1">
                     {user?.email}
                   </div>
                   <button
@@ -101,7 +107,7 @@ export default function AdminHeader({ user, onToggleSidebar }: AdminHeaderProps)
                     }}
                     className="flex items-center gap-2 w-full px-4 py-2.5 text-sm text-gray-300 hover:bg-white/5 rounded-lg transition"
                   >
-                    <LogOut size={16} className="text-red-400" />
+                    <LogOut size={16} className="text-red-400" aria-hidden="true" />
                     Sign out
                   </button>
                 </div>
