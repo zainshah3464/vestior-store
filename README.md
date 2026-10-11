@@ -497,6 +497,8 @@ Audited with **Google Lighthouse 13.5.0** on a **production build** with **mobil
 
 ## 🏗️ Architecture
 
+> 📖 For deep dives, see **[docs/architecture.md](./docs/architecture.md)** and **[docs/security.md](./docs/security.md)**.
+
 ### High-Level Data Flow
 
 ```mermaid
