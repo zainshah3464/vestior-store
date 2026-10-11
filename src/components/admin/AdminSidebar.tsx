@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { motion } from 'framer-motion'
-import { LayoutDashboard, Package, ShoppingCart,BarChart3,  Wallet,ShieldCheck, Users, Mail,Download, Star, LogOut, X } from 'lucide-react'
+import { LayoutDashboard, Package, ShoppingCart,BarChart3,  Wallet,ShieldCheck, Users,Ticket, Mail,Download, Star, LogOut, X } from 'lucide-react'
 
 const menuItems = [
   { name: 'Dashboard', href: '/admin', icon: LayoutDashboard },
@@ -11,6 +11,7 @@ const menuItems = [
   { name: 'Orders', href: '/admin/orders', icon: ShoppingCart },
   { name: 'Payments', href: '/admin/payments', icon: Wallet }, // ← NEW
     { name: 'Reviews', href: '/admin/reviews', icon: Star },
+      { name: 'Coupons', href: '/admin/coupons', icon: Ticket },
   { name: 'Analytics', href: '/admin/analytics', icon: BarChart3 },  // ← N
   { name: 'Emails', href: '/admin/emails', icon: Mail },  
   { name: 'Audit', href: '/admin/audit', icon: ShieldCheck }, 

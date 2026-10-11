@@ -14,6 +14,8 @@ interface OrderPlacedEmailProps {
   items?: OrderItem[]
   subtotal?: number
   shipping?: number
+  discount?: number
+  couponCode?: string | null
   total?: number
   paymentMethod?: string
   siteUrl?: string
@@ -24,6 +26,8 @@ export default function OrderPlacedEmail({
   items = [],
   subtotal = 0,
   shipping = 0,
+  discount = 0,
+  couponCode = null,
   total = 0,
   paymentMethod = 'cod',
   siteUrl = 'https://vestior.vercel.app',
@@ -69,6 +73,18 @@ export default function OrderPlacedEmail({
             <Text style={totalLabel}>Subtotal</Text>
             <Text style={totalValue}>₹{subtotal.toLocaleString()}</Text>
           </Section>
+
+          {discount > 0 && (
+            <Section style={totalRow}>
+              <Text style={{ ...totalLabel, color: '#10B981' }}>
+                Discount {couponCode ? `(${couponCode})` : ''}
+              </Text>
+              <Text style={{ ...totalValue, color: '#10B981' }}>
+                -₹{discount.toLocaleString()}
+              </Text>
+            </Section>
+          )}
+
           <Section style={totalRow}>
             <Text style={totalLabel}>Shipping</Text>
             <Text style={totalValue}>

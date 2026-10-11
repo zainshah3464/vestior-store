@@ -29,6 +29,8 @@ interface PlaceOrderResult {
   orderId: string
   subtotal: number
   shipping: number
+  discountAmount: number
+  couponCode: string | null
   total: number
   /** Present only when payment_method is not 'cod' */
   clientSecret?: string
@@ -39,7 +41,8 @@ interface PlaceOrderResult {
 export async function placeOrder(
   items: CartItemInput[],
   address: AddressInput,
-  paymentMethod: PaymentProviderId = 'cod'
+  paymentMethod: PaymentProviderId = 'cod',
+  couponCode?: string | null
 ): Promise<PlaceOrderResult> {
   // ────────────────────────────────────────────
   // 0. Validate payment method
@@ -49,7 +52,7 @@ export async function placeOrder(
   }
 
   // ────────────────────────────────────────────
-  // 1. Validate input shape (unchanged)
+  // 1. Validate input shape
   // ────────────────────────────────────────────
   if (!Array.isArray(items) || items.length === 0) {
     throw new Error('Cart is empty')
@@ -89,7 +92,7 @@ export async function placeOrder(
   }
 
   // ────────────────────────────────────────────
-  // 2. Merge duplicates (unchanged)
+  // 2. Merge duplicate cart items
   // ────────────────────────────────────────────
   const mergedMap = new Map<string, number>()
   for (const item of items) {
@@ -112,7 +115,7 @@ export async function placeOrder(
   }
 
   // ────────────────────────────────────────────
-  // 3. Authenticate (unchanged)
+  // 3. Authenticate
   // ────────────────────────────────────────────
   const supabase = await createClient()
   const {
@@ -124,7 +127,8 @@ export async function placeOrder(
   }
 
   // ────────────────────────────────────────────
-  // 4. Atomic order creation (unchanged RPC)
+  // 4. Atomic order creation
+  //    (stock lock + order + items in one transaction)
   //    Order is created with payment_status='pending'
   // ────────────────────────────────────────────
   const { data, error } = await supabaseAdmin.rpc('place_order_atomic', {
@@ -159,7 +163,62 @@ export async function placeOrder(
   }
 
   // ────────────────────────────────────────────
-  // 5. Tag order with payment provider
+  // 5. Redeem coupon (atomic, with locking)
+  // ────────────────────────────────────────────
+  let discountAmount = 0
+  let appliedCouponCode: string | null = null
+
+  if (couponCode && couponCode.trim().length > 0) {
+    const { data: couponResult, error: couponErr } = await supabaseAdmin.rpc(
+      'redeem_coupon_atomic',
+      {
+        p_code: couponCode.trim().toUpperCase(),
+        p_user_id: user.id,
+        p_order_id: result.order_id,
+        p_subtotal: result.subtotal,
+      }
+    )
+
+    if (couponErr) {
+      console.error('[placeOrder] coupon redeem failed:', couponErr)
+    } else {
+      const cr = couponResult as {
+        valid: boolean
+        code?: string
+        discount_amount?: number
+        error?: string
+      }
+
+      if (cr.valid) {
+        discountAmount = Number(cr.discount_amount ?? 0)
+        appliedCouponCode = cr.code ?? null
+      } else {
+        // Coupon became invalid between checkout and order placement.
+        // Order still goes through, but without the discount. Optionally
+        // we could reject here, but that's user-hostile if inventory is
+        // already locked. Log and continue.
+        console.warn('[placeOrder] coupon invalid on redemption:', cr.error)
+      }
+    }
+
+    // Persist coupon fields on the order
+    if (appliedCouponCode && discountAmount > 0) {
+      const finalTotal = result.subtotal + result.shipping - discountAmount
+      await supabaseAdmin
+        .from('orders')
+        .update({
+          coupon_code: appliedCouponCode,
+          discount_amount: discountAmount,
+          total: finalTotal,
+        })
+        .eq('id', result.order_id)
+
+      result.total = finalTotal
+    }
+  }
+
+  // ────────────────────────────────────────────
+  // 6. Tag order with payment provider
   // ────────────────────────────────────────────
   await supabaseAdmin
     .from('orders')
@@ -167,7 +226,7 @@ export async function placeOrder(
     .eq('id', result.order_id)
 
   // ────────────────────────────────────────────
-  // 6. For non-COD: create PaymentIntent
+  // 7. For non-COD: create PaymentIntent
   // ────────────────────────────────────────────
   let clientSecret: string | undefined
   let paymentIntentId: string | undefined
@@ -199,7 +258,7 @@ export async function placeOrder(
   }
 
   // ────────────────────────────────────────────
-  // 7. Track order_placed (fire-and-forget, non-blocking)
+  // 8. Track order_placed (fire-and-forget, non-blocking)
   //    Uses dynamic imports so MongoDB/env code
   //    never enters the client bundle.
   // ────────────────────────────────────────────
@@ -216,6 +275,8 @@ export async function placeOrder(
         total: result.total,
         itemCount: normalizedItems.length,
         paymentMethod,
+        couponCode: appliedCouponCode,
+        discountAmount,
       },
       ip_hash: 'server',
       country: null,
@@ -230,8 +291,8 @@ export async function placeOrder(
   }
 
   // ────────────────────────────────────────────
-  // 7.5. Queue "order-placed" email (non-blocking)
-  //      Email failure must NOT break order placement.
+  // 9. Queue "order-placed" email (non-blocking)
+  //    Email failure must NOT break order placement.
   // ────────────────────────────────────────────
   try {
     const { queueEmail } = await import('@/lib/email/queue')
@@ -251,6 +312,8 @@ export async function placeOrder(
         items: orderItems ?? [],
         subtotal: result.subtotal,
         shipping: result.shipping,
+        discount: discountAmount,
+        couponCode: appliedCouponCode,
         total: result.total,
         paymentMethod,
         siteUrl: process.env.NEXT_PUBLIC_SITE_URL,
@@ -262,7 +325,7 @@ export async function placeOrder(
   }
 
   // ────────────────────────────────────────────
-  // 8. Revalidate (unchanged)
+  // 10. Revalidate
   // ────────────────────────────────────────────
   revalidatePath('/orders')
   revalidatePath('/admin/orders')
@@ -275,6 +338,8 @@ export async function placeOrder(
     orderId: result.order_id,
     subtotal: result.subtotal,
     shipping: result.shipping,
+    discountAmount,
+    couponCode: appliedCouponCode,
     total: result.total,
     clientSecret,
     paymentIntentId,
