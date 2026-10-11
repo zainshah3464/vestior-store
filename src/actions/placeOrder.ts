@@ -325,7 +325,19 @@ export async function placeOrder(
   }
 
   // ────────────────────────────────────────────
-  // 10. Revalidate
+  // 10. Mark cart as recovered (for abandoned-cart tracking)
+  //     Prevents the daily cron from sending a reminder
+  //     for a cart that has already been converted.
+  // ────────────────────────────────────────────
+  try {
+    const { markCartRecovered } = await import('@/lib/carts/queries')
+    await markCartRecovered(user.id, result.order_id)
+  } catch (err) {
+    console.error('[placeOrder] mark recovered failed:', err)
+  }
+
+  // ────────────────────────────────────────────
+  // 11. Revalidate
   // ────────────────────────────────────────────
   revalidatePath('/orders')
   revalidatePath('/admin/orders')

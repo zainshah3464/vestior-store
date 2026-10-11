@@ -4,6 +4,7 @@ import { Toaster } from "react-hot-toast"
 import AuthProvider from "@/providers/AuthProvider"
 import WishlistProvider from "@/components/WishlistProvider"
 import TrackingProvider from "@/components/TrackingProvider"
+import CartTracker from "@/components/CartTracker"
 import GoogleAnalytics from "@/components/GoogleAnalytics"
 import { OrganizationSchema, WebsiteSchema } from "@/components/StructuredData"
 import { Suspense } from "react"
@@ -190,6 +191,7 @@ export default function RootLayout({
         <AuthProvider>
           <WishlistProvider>
             <TrackingProvider />
+            <CartTracker />
             {children}
           </WishlistProvider>
         </AuthProvider>

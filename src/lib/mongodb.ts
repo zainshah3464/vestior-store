@@ -80,6 +80,7 @@ export const COLLECTIONS = {
   PAYMENT_TRANSACTIONS: 'payment_transactions',
   AUDIT_LOGS: 'audit_logs',
   ANALYTICS_DAILY: 'analytics_daily',
+  CART_SNAPSHOTS: 'cart_snapshots', 
 } as const
 
 export type CollectionName = (typeof COLLECTIONS)[keyof typeof COLLECTIONS]

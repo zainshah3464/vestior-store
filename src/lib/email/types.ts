@@ -11,6 +11,7 @@ export type EmailTemplate =
   | 'order-delivered'
   | 'order-cancelled'
   | 'low-stock-alert'
+  | 'abandoned-cart'
 
 export interface QueueEmailParams {
   template: EmailTemplate

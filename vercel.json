@@ -3,7 +3,7 @@
   "regions": ["iad1"],
   "crons": [
     {
-      "path": "/api/cron/low-stock-alert",
+      "path": "/api/cron/daily",
       "schedule": "0 9 * * *"
     }
   ],
@@ -14,7 +14,13 @@
     "src/app/api/jobs/send-email/route.ts": {
       "maxDuration": 30
     },
+    "src/app/api/cron/daily/route.ts": {
+      "maxDuration": 60
+    },
     "src/app/api/cron/low-stock-alert/route.ts": {
+      "maxDuration": 60
+    },
+    "src/app/api/cron/abandoned-carts/route.ts": {
       "maxDuration": 60
     },
     "src/app/api/admin/export/route.ts": {

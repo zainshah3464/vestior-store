@@ -9,6 +9,7 @@ import OrderShippedEmail from './templates/order-shipped'
 import OrderDeliveredEmail from './templates/order-delivered'
 import OrderCancelledEmail from './templates/order-cancelled'
 import LowStockAlertEmail from './templates/low-stock-alert'
+import AbandonedCartEmail from './templates/abandoned-cart'
 
 const SUBJECTS: Record<EmailTemplate, string> = {
   welcome: 'Welcome to VESTIOR',
@@ -19,6 +20,7 @@ const SUBJECTS: Record<EmailTemplate, string> = {
   'order-delivered': 'Your VESTIOR order has arrived',
   'order-cancelled': 'Your VESTIOR order was cancelled',
   'low-stock-alert': 'Low stock alert — action needed',
+  'abandoned-cart': 'Still thinking? Your VESTIOR cart is waiting',
 }
 
 export async function renderEmail(
@@ -52,6 +54,9 @@ export async function renderEmail(
       break
     case 'low-stock-alert':
       html = await render(LowStockAlertEmail(data as never))
+      break
+    case 'abandoned-cart':
+      html = await render(AbandonedCartEmail(data as never))
       break
     default:
       throw new Error(`No renderer for template: ${template}`)
