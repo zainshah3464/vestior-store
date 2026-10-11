@@ -103,6 +103,16 @@
 </details>
 
 ---
+## 📚 Documentation
+
+Deep dives for engineers and evaluators:
+
+- **[Architecture](./docs/architecture.md)** — Design philosophy, dual-database rationale, atomic operation patterns, scalability path
+- **[Security](./docs/security.md)** — Threat model, defense layers, RLS patterns, incident response
+- **[Deployment](./docs/deployment.md)** — Vercel/Docker/VPS setup, env vars, monitoring, rollback
+- **[Features](./docs/features.md)** — Every feature with use cases, technical implementation, edge cases
+
+---
 
 ## 🎯 Overview
 
