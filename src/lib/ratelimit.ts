@@ -3,7 +3,7 @@
  *
  * Design:
  *   • Different tiers for different route groups:
- *     auth, admin, orders, cart, search, track, general
+ *     auth, admin, orders, cart, search, track, chat, general
  *   • Centralized Redis client from @/lib/redis (single source of truth)
  *   • Type-safe tier keys via LimiterTier
  *   • User-aware client identifier (user ID preferred over IP)
@@ -66,6 +66,14 @@ const limiters = {
     prefix: 'ratelimit:track',
   }),
 
+  // ── Chat: 20 messages per minute per IP (prevents abuse)
+  chat: new Ratelimit({
+    redis,
+    limiter: Ratelimit.slidingWindow(20, '60 s'),
+    analytics: true,
+    prefix: 'ratelimit:chat',
+  }),
+
   // ── General: default page views (lenient)
   general: new Ratelimit({
     redis,
@@ -86,6 +94,7 @@ export const orderLimiter = limiters.orders
 export const cartLimiter = limiters.cart
 export const searchLimiter = limiters.search
 export const trackLimiter = limiters.track
+export const chatLimiter = limiters.chat
 export const generalLimiter = limiters.general
 
 // ─────────────────────────────────────────────────────────────
@@ -125,6 +134,11 @@ export function getLimiterForPath(pathname: string): {
     return { limiter: limiters.track, name: 'track' }
   }
 
+  // Chat (AI chatbot) — abuse protection
+  if (pathname.startsWith('/api/chat')) {
+    return { limiter: limiters.chat, name: 'chat' }
+  }
+
   // Search — DB query protection
   if (
     pathname.startsWith('/search') ||
@@ -155,6 +169,6 @@ export function getClientKey(
 // ─────────────────────────────────────────────────────────────
 // Direct limiter access (for non-middleware usage — e.g., API routes)
 //   Example:
-//     const { success } = await limiters.track.limit(userKey)
+//     const { success } = await limiters.chat.limit(userKey)
 // ─────────────────────────────────────────────────────────────
 export { limiters }

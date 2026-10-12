@@ -19,6 +19,9 @@ const nextConfig: NextConfig = {
     // Cache optimized images for 60 days
     minimumCacheTTL: 60 * 60 * 24 * 60,
 
+    // Allow these quality values (used in Hero + ProductCard)
+    qualities: [70, 75, 80, 85],
+
     remotePatterns: [
       {
         protocol: 'https',

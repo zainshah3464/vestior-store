@@ -64,6 +64,9 @@ const serverSchema = z.object({
   // ── Resend (optional — disabled for now) ───────────────────
   RESEND_API_KEY: z.string().optional(),
 
+  // ── AI (Groq — optional so site works even if chatbot off) ─
+  GROQ_API_KEY: z.string().optional(),
+
   // ── Payments (Phase 4+) ────────────────────────────────────
   STRIPE_SECRET_KEY: z.string().optional(),
   STRIPE_WEBHOOK_SECRET: z.string().optional(),

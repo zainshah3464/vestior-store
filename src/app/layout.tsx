@@ -5,6 +5,7 @@ import AuthProvider from "@/providers/AuthProvider"
 import WishlistProvider from "@/components/WishlistProvider"
 import TrackingProvider from "@/components/TrackingProvider"
 import CartTracker from "@/components/CartTracker"
+import ChatWidget from '@/components/chat/ChatWidget'
 import GoogleAnalytics from "@/components/GoogleAnalytics"
 import { OrganizationSchema, WebsiteSchema } from "@/components/StructuredData"
 import { Suspense } from "react"
@@ -193,6 +194,7 @@ export default function RootLayout({
             <TrackingProvider />
             <CartTracker />
             {children}
+            <ChatWidget />
           </WishlistProvider>
         </AuthProvider>
 
