@@ -30,31 +30,46 @@ export default function SignupPage() {
     }
 
     setLoading(true)
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
         data: { full_name: name },
       },
     })
+
     if (error) {
       toast.error(error.message)
-    } else {
-      toast.success(
-        'Account created! Please check your email to verify your account.'
-      )
-
-      // Fire-and-forget welcome email queue
-      fetch('/api/auth/welcome', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, fullName: name }),
-      }).catch(() => {
-        // Best-effort only
-      })
-
-      router.push('/auth/verify-email')
+      setLoading(false)
+      return
     }
+
+    // Detect existing email: Supabase returns a user with empty
+    // `identities` array when the email already exists. This is
+    // intentional (prevents email enumeration) — we surface it as
+    // a friendly message instead of silently showing "created".
+    if (data.user && data.user.identities && data.user.identities.length === 0) {
+      toast.error(
+        'An account with this email already exists. Please sign in or reset your password.'
+      )
+      setLoading(false)
+      return
+    }
+
+    toast.success(
+      'Account created! Please check your email to verify your account.'
+    )
+
+    // Fire-and-forget welcome email queue
+    fetch('/api/auth/welcome', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, fullName: name }),
+    }).catch(() => {
+      // Best-effort only
+    })
+
+    router.push('/auth/verify-email')
     setLoading(false)
   }
 

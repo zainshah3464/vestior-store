@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Download, X, Smartphone } from 'lucide-react'
 
@@ -10,41 +10,58 @@ interface BeforeInstallPromptEvent extends Event {
 }
 
 const STORAGE_KEY = 'vestior-pwa-install-dismissed'
-const DISMISS_COOLDOWN_DAYS = 7
+const DISMISS_COOLDOWN_DAYS = 30 // 30 days cooldown after dismiss
+const AUTO_SHOW_DELAY_MS = 20_000
+
+function isDismissedRecently(): boolean {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY)
+    if (!raw) return false
+    const dismissedAt = parseInt(raw, 10)
+    const daysSince = (Date.now() - dismissedAt) / (1000 * 60 * 60 * 24)
+    return daysSince < DISMISS_COOLDOWN_DAYS
+  } catch {
+    return false
+  }
+}
 
 export default function InstallPrompt() {
   const [deferredPrompt, setDeferredPrompt] =
     useState<BeforeInstallPromptEvent | null>(null)
   const [show, setShow] = useState(false)
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
-    // Already installed as standalone? Skip.
-    if (window.matchMedia('(display-mode: standalone)').matches) {
-      return
-    }
-
-    // User dismissed recently? Skip.
-    try {
-      const dismissed = localStorage.getItem(STORAGE_KEY)
-      if (dismissed) {
-        const dismissedAt = parseInt(dismissed, 10)
-        const daysSince = (Date.now() - dismissedAt) / (1000 * 60 * 60 * 24)
-        if (daysSince < DISMISS_COOLDOWN_DAYS) return
-      }
-    } catch {
-      // ignore
-    }
+    if (typeof window === 'undefined') return
+    if (window.matchMedia('(display-mode: standalone)').matches) return
+    if (isDismissedRecently()) return
 
     const handler = (e: Event) => {
       e.preventDefault()
+
+      // Re-check dismissal (user may have dismissed in a prior session)
+      if (isDismissedRecently()) return
+
       setDeferredPrompt(e as BeforeInstallPromptEvent)
 
-      // Wait 15s before showing, so it's not aggressive
-      setTimeout(() => setShow(true), 15_000)
+      // Clear any existing timer
+      if (timeoutRef.current) clearTimeout(timeoutRef.current)
+
+      // Wait 20s before showing — less aggressive
+      timeoutRef.current = setTimeout(() => {
+        if (!isDismissedRecently()) setShow(true)
+      }, AUTO_SHOW_DELAY_MS)
     }
 
     window.addEventListener('beforeinstallprompt', handler)
-    return () => window.removeEventListener('beforeinstallprompt', handler)
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handler)
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current)
+        timeoutRef.current = null
+      }
+    }
   }, [])
 
   const handleInstall = async () => {
@@ -66,7 +83,14 @@ export default function InstallPrompt() {
   }
 
   const handleDismiss = () => {
+    // Clear any pending timer so it doesn't re-show
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current)
+      timeoutRef.current = null
+    }
+
     setShow(false)
+
     try {
       localStorage.setItem(STORAGE_KEY, Date.now().toString())
     } catch {

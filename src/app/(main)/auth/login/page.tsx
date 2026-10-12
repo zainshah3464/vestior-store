@@ -17,17 +17,38 @@ export default function LoginPage() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
+
     const { error } = await supabase.auth.signInWithPassword({
       email,
       password,
     })
+
     if (error) {
-      toast.error(error.message)
-    } else {
-      toast.success('Welcome back!')
-      router.push('/')
-      router.refresh()
+      const msg = error.message.toLowerCase()
+
+      if (msg.includes('email not confirmed')) {
+        toast.error(
+          'Please verify your email first. Check your inbox for the verification link.',
+          { duration: 6000 }
+        )
+      } else if (
+        msg.includes('invalid login credentials') ||
+        msg.includes('invalid credentials')
+      ) {
+        toast.error('Wrong email or password. Please try again.')
+      } else if (msg.includes('too many requests')) {
+        toast.error('Too many attempts. Please wait a moment.')
+      } else {
+        toast.error(error.message)
+      }
+
+      setLoading(false)
+      return
     }
+
+    toast.success('Welcome back!')
+    router.push('/')
+    router.refresh()
     setLoading(false)
   }
 
