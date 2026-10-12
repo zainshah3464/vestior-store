@@ -19,6 +19,9 @@ import { parseProductImages } from '@/lib/utils'
  *   • Auth-required tools (orders) use createClient + RLS
  */
 
+
+
+
 // ─────────────────────────────────────────────────────────────
 // searchProducts
 // ─────────────────────────────────────────────────────────────
