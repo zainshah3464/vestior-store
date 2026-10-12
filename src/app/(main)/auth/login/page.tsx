@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
+import PasswordInput from '@/components/auth/PasswordInput'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -16,7 +17,10 @@ export default function LoginPage() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    })
     if (error) {
       toast.error(error.message)
     } else {
@@ -27,7 +31,6 @@ export default function LoginPage() {
     setLoading(false)
   }
 
-  // 👇 Google OAuth handler
   const handleGoogleLogin = async () => {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
@@ -49,27 +52,51 @@ export default function LoginPage() {
         {/* Email/Password Form */}
         <form onSubmit={handleLogin} className="space-y-4">
           <div>
-            <label className="block text-sm text-gray-400 mb-1">Email</label>
+            <label
+              htmlFor="login-email"
+              className="block text-sm text-gray-400 mb-1"
+            >
+              Email
+            </label>
             <input
+              id="login-email"
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="w-full px-4 py-3 bg-gray-900 border border-gray-800 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition"
               placeholder="you@example.com"
+              autoComplete="email"
               required
+              disabled={loading}
             />
           </div>
+
           <div>
-            <label className="block text-sm text-gray-400 mb-1">Password</label>
-            <input
-              type="password"
+            <div className="flex items-center justify-between mb-1">
+              <label
+                htmlFor="login-password"
+                className="block text-sm text-gray-400"
+              >
+                Password
+              </label>
+              <Link
+                href="/auth/forgot-password"
+                className="text-xs text-blue-400 hover:text-blue-300 hover:underline transition"
+              >
+                Forgot password?
+              </Link>
+            </div>
+            <PasswordInput
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-4 py-3 bg-gray-900 border border-gray-800 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition"
+              onChange={setPassword}
+              name="login-password"
+              autoComplete="current-password"
               placeholder="••••••••"
               required
+              disabled={loading}
             />
           </div>
+
           <button
             type="submit"
             disabled={loading}
@@ -86,7 +113,7 @@ export default function LoginPage() {
           <div className="flex-1 h-px bg-gray-800" />
         </div>
 
-        {/* 👇 Google Sign-In Button */}
+        {/* Google Sign-In */}
         <button
           type="button"
           onClick={handleGoogleLogin}
@@ -114,7 +141,7 @@ export default function LoginPage() {
         </button>
 
         <p className="text-center text-gray-400 mt-6 text-sm">
-          Don't have an account?{' '}
+          Don&apos;t have an account?{' '}
           <Link href="/auth/signup" className="text-blue-500 hover:underline">
             Sign up
           </Link>

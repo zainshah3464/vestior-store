@@ -5,6 +5,9 @@ import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
+import { checkPasswordStrength } from '@/lib/password'
+import PasswordInput from '@/components/auth/PasswordInput'
+import PasswordStrengthMeter from '@/components/auth/PasswordStrengthMeter'
 
 export default function SignupPage() {
   const [email, setEmail] = useState('')
@@ -14,32 +17,40 @@ export default function SignupPage() {
   const router = useRouter()
   const supabase = createClient()
 
+  const strength = checkPasswordStrength(password)
+  const canSubmit =
+    name.trim().length >= 2 && email.length > 0 && strength.isValid
+
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault()
+
+    if (!strength.isValid) {
+      toast.error('Password does not meet the requirements')
+      return
+    }
+
     setLoading(true)
     const { error } = await supabase.auth.signUp({
       email,
       password,
       options: {
-        data: { full_name: name }
-      }
+        data: { full_name: name },
+      },
     })
     if (error) {
       toast.error(error.message)
     } else {
-      toast.success('Account created! Please check your email to verify your account.')
+      toast.success(
+        'Account created! Please check your email to verify your account.'
+      )
 
-      // ─────────────────────────────────────────────
-      // Queue welcome email (fire-and-forget)
-      // Non-blocking: user is redirected regardless of
-      // whether the email queue succeeds.
-      // ─────────────────────────────────────────────
+      // Fire-and-forget welcome email queue
       fetch('/api/auth/welcome', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, fullName: name }),
       }).catch(() => {
-        // Silently ignore — welcome email is best-effort
+        // Best-effort only
       })
 
       router.push('/auth/verify-email')
@@ -47,7 +58,6 @@ export default function SignupPage() {
     setLoading(false)
   }
 
-  // 👇 Google OAuth handler
   const handleGoogleLogin = async () => {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
@@ -65,43 +75,70 @@ export default function SignupPage() {
           <h1 className="text-3xl font-bold text-white">Create Account</h1>
           <p className="text-gray-400 mt-2">Join VESTIOR today</p>
         </div>
+
         <form onSubmit={handleSignup} className="space-y-4">
           <div>
-            <label className="block text-sm text-gray-400 mb-1">Full Name</label>
+            <label
+              htmlFor="signup-name"
+              className="block text-sm text-gray-400 mb-1"
+            >
+              Full Name
+            </label>
             <input
+              id="signup-name"
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
               className="w-full px-4 py-3 bg-gray-900 border border-gray-800 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition"
               placeholder="John Doe"
+              autoComplete="name"
               required
+              disabled={loading}
             />
           </div>
+
           <div>
-            <label className="block text-sm text-gray-400 mb-1">Email</label>
+            <label
+              htmlFor="signup-email"
+              className="block text-sm text-gray-400 mb-1"
+            >
+              Email
+            </label>
             <input
+              id="signup-email"
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="w-full px-4 py-3 bg-gray-900 border border-gray-800 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition"
               placeholder="you@example.com"
+              autoComplete="email"
               required
+              disabled={loading}
             />
           </div>
+
           <div>
-            <label className="block text-sm text-gray-400 mb-1">Password</label>
-            <input
-              type="password"
+            <label
+              htmlFor="signup-password"
+              className="block text-sm text-gray-400 mb-1"
+            >
+              Password
+            </label>
+            <PasswordInput
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-4 py-3 bg-gray-900 border border-gray-800 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition"
-              placeholder="•••••••• (min 6 chars)"
+              onChange={setPassword}
+              name="signup-password"
+              autoComplete="new-password"
+              placeholder="Create a strong password"
               required
+              disabled={loading}
             />
+            <PasswordStrengthMeter password={password} />
           </div>
+
           <button
             type="submit"
-            disabled={loading}
+            disabled={!canSubmit || loading}
             className="w-full py-3 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition disabled:opacity-50"
           >
             {loading ? 'Creating account...' : 'Create Account'}
@@ -115,7 +152,7 @@ export default function SignupPage() {
           <div className="flex-1 h-px bg-gray-800" />
         </div>
 
-        {/* 👇 Google Sign-In Button */}
+        {/* Google Sign-In */}
         <button
           type="button"
           onClick={handleGoogleLogin}
