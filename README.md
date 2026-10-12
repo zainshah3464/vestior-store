@@ -103,14 +103,22 @@
 </details>
 
 ---
+
+
 ## 📚 Documentation
 
 Deep dives for engineers and evaluators:
 
+### Core
 - **[Architecture](./docs/architecture.md)** — Design philosophy, dual-database rationale, atomic operation patterns, scalability path
 - **[Security](./docs/security.md)** — Threat model, defense layers, RLS patterns, incident response
 - **[Deployment](./docs/deployment.md)** — Vercel/Docker/VPS setup, env vars, monitoring, rollback
-- **[Features](./docs/features.md)** — Every feature with use cases, technical implementation, edge cases
+
+### Developer Reference
+- **[API Reference](./docs/api-reference.md)** — Server Actions, RPCs, REST endpoints with full signatures
+- **[Database Design](./docs/database.md)** — ER diagram, all tables, migrations, indexes
+- **[Features](./docs/features.md)** — Every feature with use cases and technical implementation
+- **[Testing](./docs/testing.md)** — Unit + E2E strategy, CI integration, testing patterns
 
 ---
 
