@@ -19,6 +19,8 @@
 [![Vercel](https://img.shields.io/badge/Deployed_on-Vercel-000000?style=for-the-badge&logo=vercel&logoColor=white)](https://vercel.com)
 [![License](https://img.shields.io/badge/License-MIT-blue?style=for-the-badge)](./LICENSE.txt)
 
+[![Documentation](https://img.shields.io/badge/docs-12_files_·_7000_lines-blue?style=flat-square)](./docs/)
+
 <br />
 
 **Lighthouse Scores**
