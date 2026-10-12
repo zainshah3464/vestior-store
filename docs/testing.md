@@ -264,6 +264,21 @@ describe('withIdempotency', () => {
 
 **Why these tests matter:** Idempotency bugs cause duplicate charges and duplicate emails. Extremely user-visible.
 
+#### 5. AI Chatbot Tests (planned)
+
+**Unit tests:**
+- `checkPasswordStrength` — validation rules
+- Tool input schemas — Zod validation
+- System prompt not user-controllable
+
+**Integration tests (via E2E):**
+- Chat opens on click
+- Suggested prompt sends message
+- Response streams back
+- Rate limit returns 429
+- Widget hidden on /admin
+
+
 ### Running Tests
 
 ```bash

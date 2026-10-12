@@ -119,6 +119,25 @@ Every variable with: purpose, where to get it, format, dev vs prod difference.
 
 **Migration path:** Switch to Resend later by changing `mailer.ts`.
 
+### 7b. AI Setup (Groq)
+
+1. Sign up at [console.groq.com](https://console.groq.com) (free tier)
+2. Go to **API Keys** → **Create Key**
+3. Name it `VESTIOR`
+4. Copy → `.env.local`:
+   - `GROQ_API_KEY=gsk_...`
+
+**Free tier limits:**
+- 1,000 requests/day (any model)
+- 8,000 tokens/minute
+- 200,000 tokens/day
+
+**Model selection:**
+- Default: `openai/gpt-oss-120b` (500 tok/s, tool-calling)
+- Faster: `openai/gpt-oss-20b` (1000 tok/s)
+
+**Available regions:** Model availability varies. If `llama-*` returns 404, use `openai/gpt-oss-*`.
+
 ### Stripe
 
 | Variable | Where | Notes |

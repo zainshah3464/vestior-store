@@ -714,6 +714,46 @@ get_products_review_stats(p_product_ids UUID[]) RETURNS jsonb
     }
   ]
 }
+### POST /api/chat
+
+**Purpose:** Streaming AI chatbot with tool calling.
+
+**Auth:** None (public, rate-limited)
+
+**Rate limit:** 20 messages/minute per IP
+
+**Body:**
+```json
+{
+  "messages": [
+    { "role": "user", "content": "Do you have navy suits under 25000?" },
+    { "role": "assistant", "content": "..." },
+    { "role": "user", "content": "Show me the cheapest" }
+  ]
+}
+```
+
+**Constraints:**
+- Max 20 messages per request
+- Max 2,000 chars per message
+- Only `user` and `assistant` roles allowed (no `system`)
+
+**Response:** Server-Sent Events (text/plain stream)
+
+**Tools available:**
+- `searchProducts({ query?, category?, minPrice?, maxPrice? })`
+- `getProductById({ id })`
+- `getCategories({})`
+- `getMyOrders({ limit? })` — requires auth
+
+**Errors:**
+
+| Status | Cause |
+|--------|-------|
+| 400 | Invalid JSON or payload shape |
+| 429 | Rate limit exceeded |
+| 503 | `GROQ_API_KEY` not configured |
+| 500 | Groq API error |
 ```
 
 **Constraints:**

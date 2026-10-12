@@ -223,6 +223,30 @@ if (profile?.role !== 'admin') throw new Error('Forbidden')
 
 ---
 
+## AI Chatbot Security
+
+### Threat Model
+
+| Threat | Mitigation |
+|--------|-----------|
+| Prompt injection | Client cannot send `system` role (Zod rejects) |
+| Jailbreak attempts | System prompt explicitly says "decline" |
+| Rate abuse | 20 messages/min/IP |
+| Cost attack | Groq free tier caps at 1,000 req/day |
+| PII leak via tools | Tools only query caller's own data (RLS) |
+| Hallucinated prices | System prompt: "Never invent prices. Always call a tool." |
+| Data manipulation | Tools are read-only — no INSERT/UPDATE/DELETE |
+
+### Implementation
+
+1. **Client sends only user/assistant messages.** Zod schema rejects any `system` role.
+2. **Server-side system prompt.** Client has no control over instructions.
+3. **Read-only tools.** `getMyOrders` uses RLS — can only see caller's own orders.
+4. **No DB writes.** Tools never modify state.
+5. **Fail-closed.** If `GROQ_API_KEY` missing, endpoint returns 503.
+
+---
+
 ## Row-Level Security (RLS)
 
 RLS is the **cornerstone** of Supabase security. Every table has policies that run *inside* Postgres, at the query engine level.

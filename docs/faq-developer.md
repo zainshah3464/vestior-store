@@ -848,6 +848,74 @@ PayPal isn't available in Pakistan for merchants. If you're in a supported regio
 
 **Estimated effort:** ~1 week (Option B).
 
+### How do I add a new AI tool?
+
+1. Add tool function to `src/lib/ai/tools.ts`:
+
+```typescript
+export const myTool = tool({
+  description: 'What this tool does (LLM reads this)',
+  inputSchema: z.object({
+    param: z.string().describe('What this param means'),
+  }),
+  execute: async ({ param }) => {
+    // Return JSON-serializable result
+    return { success: true, data: '...' }
+  },
+})
+```
+
+2. Register in `vestiorTools`:
+```typescript
+export const vestiorTools = {
+  searchProducts: searchProductsTool,
+  // ... existing
+  myTool: myTool,
+}
+```
+
+3. Update system prompt in `src/lib/ai/system-prompt.ts` to mention the tool.
+
+**Guidelines:**
+- **Read-only.** Never modify DB state.
+- **Descriptive.** LLM decides when to call based on `description`.
+- **Validated.** `inputSchema` catches LLM hallucinations.
+- **Server-only.** Never expose secrets or service-role key.
+
+### Why not use RAG for product search?
+
+**Tools > RAG** for this use case:
+- **Fresh data** — Tools query live DB
+- **No embeddings** — No vector store needed
+- **Simpler** — One function call vs vector search
+- **Authoritative** — Never hallucinates prices
+
+RAG makes sense when:
+- Catalog > 10,000 products (embedding search faster)
+- Semantic search needed ("formal wear" → all suits)
+- Cross-document reasoning required
+
+For VESTIOR's ~500 products, tools are the right choice.
+
+### How do I change the AI model?
+
+`src/lib/ai/groq.ts`:
+
+```typescript
+export const AI_MODELS = {
+  QUALITY: 'openai/gpt-oss-120b',  // ← change here
+  FAST: 'openai/gpt-oss-20b',
+} as const
+```
+
+Available models (Oct 2026):
+- `openai/gpt-oss-120b` — best quality, 500 tok/s
+- `openai/gpt-oss-20b` — faster, 1000 tok/s
+- `llama-3.1-8b-instant` — may not be available in all regions
+- `llama-3.3-70b-versatile` — may not be available in all regions
+
+**Check your key's access:** `curl https://api.groq.com/openai/v1/models -H "Authorization: Bearer $GROQ_API_KEY"`
+
 ---
 
 ## Still stuck?

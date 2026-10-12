@@ -418,6 +418,41 @@ Aggregation pipelines (on-demand for dashboard):
 
 **Why SHA-256 + salt?** GDPR-safe. We never store raw IPs. The hash is stable for the same IP so we can detect duplicate sessions, but irreversible.
 
+### Walkthrough 5: AI Chatbot
+
+```
+User types in chat widget
+    │
+    ▼
+POST /api/chat
+    │
+    ▼
+1. Rate limit (20 msg/min/IP)
+2. Zod validate { messages: [...] }
+3. Strip any `system` role from client (prompt injection guard)
+4. streamText({ model, tools, stopWhen: stepCountIs(3) })
+    │
+    ▼
+Groq API (LPU inference — sub-second)
+    │
+    ▼
+Model may call tools:
+    ├─ searchProducts({ query, category, maxPrice })
+    ├─ getCategories({})
+    ├─ getProductById({ id })
+    └─ getMyOrders({ limit })  ← RLS-enforced, only own orders
+    │
+    ▼
+Stream response back via SSE
+    │
+    ▼
+Client renders word-by-word
+```
+
+**Why tool-calling over RAG?** Tools fetch fresh, authoritative data. RAG would require vector embeddings + stale snapshots. Tools are simpler and always correct.
+
+**Why Groq?** LPU chips deliver ~500 tokens/sec — a full response arrives in under a second. Free tier handles ~1,000 requests/day.
+
 ---
 
 ## Atomic Operation Patterns

@@ -16,6 +16,77 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v3.1.0] — AI + PWA + Auth Polish (2026-10-13)
+
+### 🎉 Added — AI
+
+- **AI Shopping Assistant** powered by Groq
+  - Model: `openai/gpt-oss-120b` (500 tok/s)
+  - Tools: `searchProducts`, `getProductById`, `getCategories`, `getMyOrders`
+  - Streaming responses via SSE
+  - Rate-limited at 20 messages/min/IP
+  - Session-scoped history
+  - Custom toast integration
+  - Zero-cost (free tier)
+
+### 🎉 Added — Auth Polish
+
+- **Password Reset Flow**
+  - `/auth/forgot-password` — email entry
+  - `/auth/reset-password` — new password form with code exchange
+  - Show/hide password toggle
+  - Password strength meter (Very Weak → Very Strong)
+  - Real-time validation (length, case, number)
+- **Login Improvements**
+  - Clearer error messages ("Please verify your email first")
+  - "Forgot password?" link
+  - Show/hide password toggle
+- **Signup Improvements**
+  - Existing-email detection (was silently creating)
+  - Strong password enforcement
+  - Real-time strength meter
+
+### 🎉 Added — PWA
+
+- **Service Worker** (`public/sw.js`)
+  - Cache-first for static assets
+  - Stale-while-revalidate for images
+  - Network-first for HTML with offline fallback
+  - Skips `/admin`, `/api`, `/auth` routes
+- **Offline Page** (`public/offline.html`)
+  - Branded design matching site
+  - Try Again button
+- **Install Prompt**
+  - Auto-shows after 20s
+  - 30-day dismissal cooldown
+  - Hidden on `standalone` mode
+- **Enhanced Manifest**
+  - Shortcuts (Products, Orders, New Arrivals)
+  - Categories (shopping, fashion)
+  - `display_override` for modern browsers
+
+### 🎉 Added — Legal
+
+- `/privacy` — Privacy Policy (Pakistan-compliant)
+- `/terms` — Terms of Service
+- `/refund` — Refund & Return Policy (14-day window)
+- Footer links to all three
+- Sitemap entries
+
+### 🐛 Fixed
+
+- Signup detects existing accounts (was showing "created" silently)
+- Login surfaces "Email not confirmed" properly
+- Reset flow correctly redirects to reset form
+- PWA install prompt no longer repeats after dismiss
+- Groq model changed to `openai/gpt-oss-120b`
+- Image quality warnings resolved
+
+### 📦 Dependencies
+
+- **Added:** `ai`, `@ai-sdk/groq`
+- **Removed:** `next-pwa` (replaced with manual SW)
+
 ## [Unreleased]
 
 ### Planned for v3.1.0

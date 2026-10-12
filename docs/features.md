@@ -67,6 +67,38 @@
 
 ---
 
+### AI Shopping Assistant
+
+**Use case:** Customers ask natural-language questions about products, categories, or orders.
+
+**Features:**
+- Floating chat widget (bottom-right)
+- Streaming responses (word-by-word)
+- Suggested prompts on empty state
+- Simple markdown (bold, lists, code)
+- Session-scoped history (sessionStorage)
+- Clear conversation button
+- Hidden on `/admin/*` pages
+
+**Capabilities:**
+- Search products by name, category, price range
+- Get product details
+- List categories
+- Retrieve user's own orders (auth required)
+
+**Technical:**
+- Groq LPU inference (`openai/gpt-oss-120b`)
+- Vercel AI SDK v5 with tool calling
+- `stopWhen: stepCountIs(3)` — max 3 tool calls per turn
+- Rate limit: 20 messages/min/IP
+- Session ID in cookie
+
+**Edge cases:**
+- No products found → suggests alternatives
+- Not logged in for order query → asks to sign in
+- Groq down → 503 with friendly error
+- Rate limit hit → 429 with retry hint
+
 ### Product Discovery
 
 **Use case:** Customer wants to find specific products quickly.

@@ -27,8 +27,8 @@
 
 | Platform | Performance | Accessibility | Best Practices | SEO |
 |:--------:|:-----------:|:-------------:|:--------------:|:---:|
-| **Desktop** | 🟢 **98** | 💯 **100** | 💯 **100** | 💯 **100** |
-| **Mobile** | 🟢 **84** | 💯 **100** | 💯 **100** | 💯 **100** |
+| **Desktop** | 🟢 **97** | 💯 **100** | 💯 **100** | 💯 **100** |
+| **Mobile** | 🟢 **91** | 💯 **100** | 💯 **100** | 💯 **100** |
 
 **Quality Gates**
 
@@ -209,7 +209,7 @@ Audited with **Google Lighthouse 13.5.0** on a **production build** with **mobil
 
 | Metric | Score | Status |
 |:-------|:-----:|:------:|
-| **Performance** | 98 | 🟢 Excellent |
+| **Performance** | 97 | 🟢 Excellent |
 | **Accessibility** | 100 | 💯 Perfect |
 | **Best Practices** | 100 | 💯 Perfect |
 | **SEO** | 100 | 💯 Perfect |
@@ -224,7 +224,7 @@ Audited with **Google Lighthouse 13.5.0** on a **production build** with **mobil
 
 | Metric | Score | Status |
 |:-------|:-----:|:------:|
-| **Performance** | 84 | 🟢 Good |
+| **Performance** | 91 | 🟢 Good |
 | **Accessibility** | 100 | 💯 Perfect |
 | **Best Practices** | 100 | 💯 Perfect |
 | **SEO** | 100 | 💯 Perfect |
@@ -247,12 +247,55 @@ Audited with **Google Lighthouse 13.5.0** on a **production build** with **mobil
 - ✅ Long-cache headers for static assets
 - ✅ Sub-15KB CSS payload
 - ✅ Zero layout shift (CLS 0)
+- ✅ PWA — installable, offline mode, service worker
+- ✅ Groq-powered AI chatbot
+- ✅ Password reset flow with strength meter
+- ✅ Privacy Policy, Terms, Refund pages
 
 ---
 
 ## ✨ Key Features
 
 ### 🛍️ Customer Experience
+
+<details>
+<summary><strong>AI-Powered Features</strong></summary>
+
+- **AI Shopping Assistant** — Groq-powered chatbot (llama-3.3-70b / gpt-oss-120b)
+  - Real-time product search, category browsing, order tracking
+  - Tool-calling (fetches actual DB data — never hallucinates prices)
+  - Streaming responses with typing indicator
+  - Session-scoped conversation history
+  - Rate-limited (20 messages/min/IP)
+
+</details>
+
+<details>
+<summary><strong>Authentication & Security</strong></summary>
+
+- **Email + Password** with strong password validation (8+ chars, mixed case, number)
+- **Password strength meter** (visual feedback: Very Weak → Very Strong)
+- **Forgot / Reset password flow** (email link → secure reset form)
+- **Google OAuth** with PKCE
+- **Show / hide password** toggle
+- **Verify email** required before login
+- **Session-aware redirects** with cookie preservation
+
+</details>
+
+<details>
+<summary><strong>PWA — Progressive Web App</strong></summary>
+
+- **Installable** — Add to Home Screen on mobile/desktop
+- **Offline mode** — Service worker caches pages + static assets
+- **Offline fallback page** with reconnect button
+- **App shortcuts** — Browse Products, My Orders, New Arrivals
+- **Smart install prompt** (30-day dismissal cooldown)
+- **Stale-while-revalidate** for images
+- **Cache-first** for immutable assets
+- **Network-first** for HTML with offline fallback
+
+</details>
 
 <details open>
 <summary><strong>Storefront & Discovery</strong></summary>
@@ -346,6 +389,16 @@ Audited with **Google Lighthouse 13.5.0** on a **production build** with **mobil
 | **`/admin/audit`** | Every admin action, timestamped |
 | **`/admin/exports`** | CSV export center (orders, payments, emails, users, audit) |
 | **`/admin/users`** | User table with search, role filter, detail modal |
+
+**Additional admin capabilities:**
+- **Real-time notifications** — Web Audio chime + toast + browser notification on new orders
+- **Audit logging** — Every privileged action timestamped with actor, target, before/after state
+- **Payment refunds** — Stripe refund API + order status update
+- **CSV exports** — Orders, payments, emails, users, audit logs (with date filters)
+- **Printable invoices** — Customer + admin access, A4-optimized
+- **Coupon management** — CRUD + atomic redemption + usage tracking
+- **Review moderation** — Approve / reject / delete
+- **Abandoned cart recovery** — View + track recovery emails
 
 **Real-time admin notifications:**
 - Web Audio API chime (no file needed)
@@ -502,12 +555,14 @@ Audited with **Google Lighthouse 13.5.0** on a **production build** with **mobil
 - **Resend** — backup
 - **Google Analytics 4**
 - **Vercel** — hosting + cron
+- **Groq** — AI chatbot (LPU inference)
 
 ### Testing & CI
 - **Vitest** + RTL
 - **Playwright**
 - **GitHub Actions**
 - **Codecov** ready
+- **AI SDK v5** — Vercel AI SDK
 
 </td>
 </tr>
@@ -923,6 +978,10 @@ ADMIN_EMAIL=your-admin-email@example.com
 # GOOGLE ANALYTICS (optional)
 # ═══════════════════════════════════════════════════════════════
 NEXT_PUBLIC_GA_MEASUREMENT_ID=G-XXXXXXXXXX
+
+# ─── AI (Groq) ───────────────────────────────────────────────
+GROQ_API_KEY=gsk_xxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+
 ```
 
 > ⚠️ **Never commit `.env.local`.** It's already in `.gitignore`.
@@ -1206,24 +1265,24 @@ VALUES ('WELCOME10', '10% off for new customers', 'percent', 10, 0, 1, true);
 
 ## 📁 Project Structure
 
-```
-vestior-store/
+```vestior-store/
 ├── .github/
 │   └── workflows/
-│       └── ci.yml                     # GitHub Actions (4 jobs)
-├── e2e/                               # Playwright E2E tests
+│       └── ci.yml                              # GitHub Actions (4 jobs)
+├── e2e/                                        # Playwright E2E tests
 │   ├── auth-guards.spec.ts
 │   ├── cart-flow.spec.ts
 │   ├── navigation.spec.ts
 │   └── public-pages.spec.ts
 ├── public/
-│   ├── suits/                         # Hero images
-│   ├── images/categories/             # Category tiles
+│   ├── suits/                                  # Hero images
+│   ├── images/categories/                      # Category tiles
 │   ├── og-image.png
 │   ├── manifest.json
+│   ├── sw.js                                   # 🆕 Service Worker
 │   └── ...
 ├── src/
-│   ├── actions/                       # Server Actions
+│   ├── actions/                                # Server Actions
 │   │   ├── confirmPayment.ts
 │   │   ├── coupons.ts
 │   │   ├── placeOrder.ts
@@ -1233,8 +1292,17 @@ vestior-store/
 │   │   ├── updateOrderStatus.ts
 │   │   └── wishlist.ts
 │   ├── app/
-│   │   ├── (main)/                    # Customer-facing
+│   │   ├── (main)/                             # Customer-facing
 │   │   │   ├── auth/
+│   │   │   │   ├── login/page.tsx
+│   │   │   │   ├── signup/page.tsx
+│   │   │   │   ├── verify-email/page.tsx
+│   │   │   │   ├── forgot-password/            # 🆕
+│   │   │   │   │   └── page.tsx
+│   │   │   │   ├── reset-password/             # 🆕
+│   │   │   │   │   ├── page.tsx
+│   │   │   │   │   └── ResetPasswordForm.tsx
+│   │   │   │   └── callback/route.ts
 │   │   │   ├── cart/
 │   │   │   ├── category/[slug]/
 │   │   │   ├── checkout/
@@ -1249,9 +1317,15 @@ vestior-store/
 │   │   │   ├── products/
 │   │   │   ├── profile/
 │   │   │   ├── wishlist/
+│   │   │   ├── privacy/                        # 🆕
+│   │   │   │   └── page.tsx
+│   │   │   ├── terms/                          # 🆕
+│   │   │   │   └── page.tsx
+│   │   │   ├── refund/                         # 🆕
+│   │   │   │   └── page.tsx
 │   │   │   ├── layout.tsx
 │   │   │   └── page.tsx
-│   │   ├── admin/                     # Admin panel
+│   │   ├── admin/                              # Admin panel
 │   │   │   ├── abandoned-carts/
 │   │   │   ├── analytics/
 │   │   │   ├── audit/
@@ -1273,19 +1347,26 @@ vestior-store/
 │   │   │   ├── admin/
 │   │   │   │   ├── export/route.ts
 │   │   │   │   └── payment-detail/route.ts
-│   │   │   ├── auth/welcome/route.ts
+│   │   │   ├── auth/
+│   │   │   │   └── welcome/route.ts
 │   │   │   ├── cart/
 │   │   │   │   ├── recover/route.ts
 │   │   │   │   └── sync/route.ts
+│   │   │   ├── chat/                           # 🆕 — AI chatbot endpoint
+│   │   │   │   └── route.ts
 │   │   │   ├── cron/
 │   │   │   │   ├── abandoned-carts/route.ts
 │   │   │   │   ├── daily/route.ts
 │   │   │   │   └── low-stock-alert/route.ts
-│   │   │   ├── jobs/send-email/route.ts
-│   │   │   ├── recommendations/recently-viewed/route.ts
+│   │   │   ├── jobs/
+│   │   │   │   └── send-email/route.ts
+│   │   │   ├── recommendations/
+│   │   │   │   └── recently-viewed/route.ts
 │   │   │   ├── track/route.ts
-│   │   │   ├── webhooks/stripe/route.ts
-│   │   │   └── wishlist/ids/route.ts
+│   │   │   ├── webhooks/
+│   │   │   │   └── stripe/route.ts
+│   │   │   └── wishlist/
+│   │   │       └── ids/route.ts
 │   │   ├── globals.css
 │   │   ├── layout.tsx
 │   │   ├── error.tsx
@@ -1294,9 +1375,19 @@ vestior-store/
 │   │   ├── robots.ts
 │   │   └── sitemap.ts
 │   ├── components/
-│   │   ├── admin/                     # 20+ admin components
+│   │   ├── admin/                              # 20+ admin components
+│   │   ├── ai/                                 # 🆕 — AI chatbot helpers
+│   │   │   └── (chat widget sub-components)
+│   │   ├── auth/                               # 🆕
+│   │   │   ├── PasswordInput.tsx
+│   │   │   └── PasswordStrengthMeter.tsx
+│   │   ├── chat/                               # 🆕
+│   │   │   └── ChatWidget.tsx
 │   │   ├── invoice/
 │   │   │   └── InvoiceView.tsx
+│   │   ├── pwa/                                # 🆕
+│   │   │   ├── InstallPrompt.tsx
+│   │   │   └── ServiceWorkerRegister.tsx
 │   │   ├── recommendations/
 │   │   │   ├── RecentlyViewed.tsx
 │   │   │   └── RecommendedRow.tsx
@@ -1322,6 +1413,10 @@ vestior-store/
 │   │   ├── TrackingProvider.tsx
 │   │   └── WishlistProvider.tsx
 │   ├── lib/
+│   │   ├── ai/                                 # 🆕
+│   │   │   ├── groq.ts
+│   │   │   ├── system-prompt.ts
+│   │   │   └── tools.ts
 │   │   ├── carts/
 │   │   │   ├── queries.ts
 │   │   │   └── types.ts
@@ -1334,7 +1429,7 @@ vestior-store/
 │   │   │   ├── queries.ts
 │   │   │   ├── render.tsx
 │   │   │   ├── types.ts
-│   │   │   └── templates/             # 9 email templates
+│   │   │   └── templates/                      # 9+ email templates
 │   │   ├── exports/
 │   │   │   ├── csv.ts
 │   │   │   ├── queries.ts
@@ -1344,7 +1439,7 @@ vestior-store/
 │   │   ├── orders/
 │   │   │   └── queries.ts
 │   │   ├── payments/
-│   │   │   ├── index.ts               # Factory
+│   │   │   ├── index.ts                        # Factory
 │   │   │   ├── queries.ts
 │   │   │   ├── types.ts
 │   │   │   └── providers/
@@ -1375,14 +1470,15 @@ vestior-store/
 │   │   ├── env.ts
 │   │   ├── idempotency.ts
 │   │   ├── mongodb.ts
+│   │   ├── password.ts                         # 🆕 — password strength utils
 │   │   ├── ratelimit.ts
 │   │   ├── redis.ts
 │   │   └── utils.ts
 │   ├── providers/
 │   │   └── AuthProvider.tsx
-│   └── proxy.ts                       # Next.js 16 middleware
+│   └── proxy.ts                                # Next.js 16 middleware
 ├── supabase/
-│   └── migrations/                    # 7 SQL migrations
+│   └── migrations/                             # 7+ SQL migrations
 ├── test/
 │   ├── components/
 │   │   ├── PaymentOption.test.tsx
@@ -1397,7 +1493,7 @@ vestior-store/
 │   │   └── utils.test.ts
 │   └── setup.ts
 ├── .env.example
-├── Dockerfile.vercel                  # Vercel-native container
+├── Dockerfile.vercel                           # Vercel-native container
 ├── eslint.config.mjs
 ├── next.config.ts
 ├── package.json
@@ -1493,6 +1589,7 @@ All privileged operations go through Next.js Server Actions with strict authoriz
 | `toggleCouponActive(id, bool)` | `actions/coupons.ts` | Admin | Enable/disable |
 | `toggleWishlist(productId)` | `actions/wishlist.ts` | User | Add/remove from wishlist |
 | `mergeWishlist(productIds[])` | `actions/wishlist.ts` | User | Merge guest wishlist on login |
+| `POST /api/chat` | `app/api/chat/route.ts` | Public (rate-limited) | Streaming AI chatbot with tool calling |
 
 ### Guarantees
 
@@ -2063,6 +2160,15 @@ A: Analytics + email logs + abandoned carts temporarily fail. **Core commerce un
 **Q: Can I deploy to a VPS instead of Vercel?**
 A: Yes. The `Dockerfile.vercel` is compatible with any Docker host. See `next.config.ts` for `output: 'standalone'`.
 
+**Q: How does the AI chatbot work?**
+A: VESTIOR uses Groq (LPU inference) with the `openai/gpt-oss-120b` model. It has access to read-only tools (`searchProducts`, `getCategories`, `getMyOrders`, etc.) but can never modify data. Rate-limited at 20 messages/min per IP. Free tier handles ~1,000 requests/day.
+
+**Q: Can I install VESTIOR as an app?**
+A: Yes. On Chrome/Edge (Android or desktop), you'll see an install prompt. On iOS Safari, tap Share → "Add to Home Screen". The app works offline for cached pages.
+
+**Q: Do I need to verify my email?**
+A: Yes. After signup, check your inbox for the verification link. Until verified, login will show "Please verify your email first".
+
 ---
 
 ## 🗺️ Roadmap
@@ -2095,6 +2201,11 @@ A: Yes. The `Dockerfile.vercel` is compatible with any Docker host. See `next.co
 - [x] **53 unit tests + 21 E2E tests**
 - [x] **GitHub Actions CI (4 jobs)**
 - [x] **Docker support**
+- [x] **AI shopping assistant (Groq)**
+- [x] **Password reset flow + strength meter**
+- [x] **PWA (installable + offline)**
+- [x] **Privacy Policy + Terms + Refund pages**
+- [x] **Custom SMTP (Gmail)** for auth emails
 
 ### 🚧 Planned (v3.1+)
 
@@ -2107,11 +2218,54 @@ A: Yes. The `Dockerfile.vercel` is compatible with any Docker host. See `next.co
 - [ ] Advanced analytics dashboard (cohorts, retention)
 - [ ] Sentry error tracking
 - [ ] Automated Codecov integration
-- [ ] PWA enhancements (offline mode)
 
 ---
 
 ## 📅 Changelog
+### v3.1.0 — AI + PWA + Auth Polish (Current)
+
+**🎉 New Features**
+- **AI Shopping Assistant** (Groq-powered)
+  - Real-time product search with tool-calling
+  - Order tracking via chat
+  - Category browsing
+  - Streaming responses + typing indicator
+  - Rate-limited + session-scoped history
+- **Password Reset Flow**
+  - Forgot password page
+  - Reset password page with strength validation
+  - Show/hide password toggle
+  - Strong password requirements (8+ chars, mixed case, number)
+- **PWA (Progressive Web App)**
+  - Service worker (cache-first for assets, network-first for pages)
+  - Offline fallback page
+  - Install prompt with 30-day cooldown
+  - App shortcuts (Products, Orders, New Arrivals)
+- **Legal Pages**
+  - Privacy Policy (`/privacy`)
+  - Terms of Service (`/terms`)
+  - Refund Policy (`/refund`)
+- **Custom Gmail SMTP** for Supabase Auth emails
+
+**⚡ Performance**
+- Lighthouse Desktop: 98 → **97** (Performance)
+- Lighthouse Mobile: 84 → **91** (Performance)
+- Accessibility: 100 / 100 (Desktop + Mobile)
+- Best Practices: 100 / 100
+- SEO: 100 / 100
+
+**🐛 Fixed**
+- Signup now detects existing accounts (was showing "created" silently)
+- Login shows clearer errors ("Please verify your email first")
+- Password reset flow now correctly redirects to reset page
+- PWA install prompt no longer repeats after dismiss
+- Groq model switched to `openai/gpt-oss-120b` (free tier compatible)
+- Image quality warnings resolved (`qualities` array added)
+
+**📦 Dependencies**
+- Added: `ai`, `@ai-sdk/groq`
+- Removed: `next-pwa` (replaced with manual service worker)
+
 
 ### v3.0.0 — Enterprise Feature Set (Current)
 
