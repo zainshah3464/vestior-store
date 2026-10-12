@@ -6,6 +6,8 @@ import WishlistProvider from "@/components/WishlistProvider"
 import TrackingProvider from "@/components/TrackingProvider"
 import CartTracker from "@/components/CartTracker"
 import ChatWidget from '@/components/chat/ChatWidget'
+import ServiceWorkerRegister from '@/components/pwa/ServiceWorkerRegister'
+import InstallPrompt from '@/components/pwa/InstallPrompt'
 import GoogleAnalytics from "@/components/GoogleAnalytics"
 import { OrganizationSchema, WebsiteSchema } from "@/components/StructuredData"
 import { Suspense } from "react"
@@ -221,6 +223,10 @@ export default function RootLayout({
         <Suspense fallback={null}>
           <GoogleAnalytics />
         </Suspense>
+
+        {/* PWA — service worker + install prompt */}
+        <ServiceWorkerRegister />
+        <InstallPrompt />
       </body>
     </html>
   )
