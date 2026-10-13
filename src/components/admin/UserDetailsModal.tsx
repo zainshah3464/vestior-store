@@ -9,6 +9,7 @@ interface Profile {
   email: string
   phone: string | null
   role: string
+  is_super_admin?: boolean
   created_at: string
   address_line1?: string | null
   address_line2?: string | null
@@ -58,11 +59,23 @@ export default function UserDetailsModal({ user, onClose }: { user: Profile | nu
             </div>
             <h3 className="text-lg font-medium text-white">{user.full_name || 'No Name'}</h3>
             <span className="text-sm text-gray-400">{user.email}</span>
-            <span className={`mt-2 px-3 py-0.5 text-xs rounded-full ${
-              user.role === 'admin' ? 'bg-indigo-500/20 text-indigo-400' : 'bg-gray-500/20 text-gray-400'
-            }`}>
-              {user.role}
-            </span>
+
+            {/* Role badge — super admin overrides role */}
+            {user.is_super_admin ? (
+              <span className="mt-2 inline-flex items-center gap-1 px-3 py-0.5 text-xs rounded-full bg-amber-500/20 text-amber-400 font-medium">
+                👑 Super Admin
+              </span>
+            ) : (
+              <span
+                className={`mt-2 px-3 py-0.5 text-xs rounded-full ${
+                  user.role === 'admin'
+                    ? 'bg-indigo-500/20 text-indigo-400'
+                    : 'bg-gray-500/20 text-gray-400'
+                }`}
+              >
+                {user.role}
+              </span>
+            )}
           </div>
 
           {/* Details grid */}

@@ -1,9 +1,23 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Search, Users, UserCheck, UserCog, UserPlus, Eye } from 'lucide-react'
+import {
+  Search,
+  Users,
+  UserCheck,
+  UserCog,
+  UserPlus,
+  Eye,
+  Crown,
+  ChevronDown,
+  Shield,
+  Loader2,
+} from 'lucide-react'
+import toast from 'react-hot-toast'
 import UserDetailsModal from './UserDetailsModal'
+import { changeUserRole } from '@/actions/admin-management'
 
 interface Profile {
   id: string
@@ -11,6 +25,7 @@ interface Profile {
   email: string
   phone: string | null
   role: string
+  is_super_admin?: boolean
   created_at: string
   address_line1?: string | null
   address_line2?: string | null
@@ -20,15 +35,31 @@ interface Profile {
   updated_at?: string | null
 }
 
-export default function UsersTable({ profiles }: { profiles: Profile[] }) {
+interface Props {
+  profiles: Profile[]
+  viewerIsSuperAdmin: boolean
+  viewerId: string | null
+}
+
+export default function UsersTable({
+  profiles,
+  viewerIsSuperAdmin,
+  viewerId,
+}: Props) {
+  const router = useRouter()
   const [search, setSearch] = useState('')
   const [roleFilter, setRoleFilter] = useState('all')
   const [currentPage, setCurrentPage] = useState(1)
   const [selectedUser, setSelectedUser] = useState<Profile | null>(null)
+  const [roleMenuFor, setRoleMenuFor] = useState<string | null>(null)
+  const [changingRoleFor, setChangingRoleFor] = useState<string | null>(null)
   const perPage = 10
 
-  // ---- Animated background shapes ----
-  const [shapes, setShapes] = useState<{ x: number; y: number; size: number; duration: number; delay: number }[]>([])
+  // Background animated shapes
+  const [shapes, setShapes] = useState<
+    { x: number; y: number; size: number; duration: number; delay: number }[]
+  >([])
+
   useEffect(() => {
     setShapes(
       Array.from({ length: 5 }).map(() => ({
@@ -41,8 +72,16 @@ export default function UsersTable({ profiles }: { profiles: Profile[] }) {
     )
   }, [])
 
-  // Filtering
-  const filtered = profiles.filter(p => {
+  // Close role menu on outside click
+  useEffect(() => {
+    if (!roleMenuFor) return
+    const handler = () => setRoleMenuFor(null)
+    document.addEventListener('click', handler)
+    return () => document.removeEventListener('click', handler)
+  }, [roleMenuFor])
+
+  // Filter
+  const filtered = profiles.filter((p) => {
     const matchesSearch =
       p.full_name?.toLowerCase().includes(search.toLowerCase()) ||
       p.email.toLowerCase().includes(search.toLowerCase()) ||
@@ -52,22 +91,86 @@ export default function UsersTable({ profiles }: { profiles: Profile[] }) {
   })
 
   const totalPages = Math.ceil(filtered.length / perPage)
-  const paginated = filtered.slice((currentPage - 1) * perPage, currentPage * perPage)
+  const paginated = filtered.slice(
+    (currentPage - 1) * perPage,
+    currentPage * perPage
+  )
 
   // Stats
   const totalUsers = profiles.length
-  const adminCount = profiles.filter(p => p.role === 'admin').length
-  const customerCount = profiles.filter(p => p.role !== 'admin').length
+  const adminCount = profiles.filter((p) => p.role === 'admin').length
+  const customerCount = profiles.filter((p) => p.role !== 'admin').length
   const last7Days = new Date()
   last7Days.setDate(last7Days.getDate() - 7)
-  const newThisWeek = profiles.filter(p => new Date(p.created_at) >= last7Days).length
+  const newThisWeek = profiles.filter(
+    (p) => new Date(p.created_at) >= last7Days
+  ).length
 
   const stats = [
-    { label: 'Total Users', value: totalUsers, icon: Users, color: 'border-l-indigo-500' },
-    { label: 'Admins', value: adminCount, icon: UserCog, color: 'border-l-purple-500' },
-    { label: 'Customers', value: customerCount, icon: UserCheck, color: 'border-l-emerald-500' },
-    { label: 'New This Week', value: newThisWeek, icon: UserPlus, color: 'border-l-amber-500' },
+    {
+      label: 'Total Users',
+      value: totalUsers,
+      icon: Users,
+      color: 'border-l-indigo-500',
+    },
+    {
+      label: 'Admins',
+      value: adminCount,
+      icon: UserCog,
+      color: 'border-l-purple-500',
+    },
+    {
+      label: 'Customers',
+      value: customerCount,
+      icon: UserCheck,
+      color: 'border-l-emerald-500',
+    },
+    {
+      label: 'New This Week',
+      value: newThisWeek,
+      icon: UserPlus,
+      color: 'border-l-amber-500',
+    },
   ]
+
+  // ─────────────────────────────────────────────
+  // Role change handler
+  // ─────────────────────────────────────────────
+  const handleRoleChange = async (
+    target: Profile,
+    newRole: 'admin' | 'customer'
+  ) => {
+    if (newRole === target.role) return
+
+    const label = newRole === 'admin' ? 'Admin' : 'Customer'
+    if (
+      !confirm(
+        `Change ${target.email}'s role to ${label}?\n\nThis will grant or remove access to the admin panel.`
+      )
+    ) {
+      return
+    }
+
+    setChangingRoleFor(target.id)
+    setRoleMenuFor(null)
+
+    try {
+      await changeUserRole(target.id, newRole)
+      toast.success(`${target.email} is now a ${label.toLowerCase()}`)
+      router.refresh()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to change role')
+    } finally {
+      setChangingRoleFor(null)
+    }
+  }
+
+  // A row is actionable if:
+  //   • viewer is super admin
+  //   • target is NOT the viewer
+  //   • target is NOT another super admin
+  const canChangeRole = (p: Profile) =>
+    viewerIsSuperAdmin && p.id !== viewerId && !p.is_super_admin
 
   return (
     <div className="relative overflow-hidden">
@@ -77,36 +180,67 @@ export default function UsersTable({ profiles }: { profiles: Profile[] }) {
           <motion.div
             key={i}
             className="absolute rounded-full bg-gradient-to-br from-indigo-500/5 to-purple-500/5 backdrop-blur-xl border border-white/5"
-            style={{ left: `${shape.x}%`, top: `${shape.y}%`, width: shape.size, height: shape.size }}
-            animate={{ x: [0, 20, -15, 0], y: [0, -30, 15, 0], scale: [1, 1.08, 0.95, 1], opacity: [0.3, 0.5, 0.3] }}
-            transition={{ repeat: Infinity, duration: shape.duration, delay: shape.delay, ease: 'easeInOut' }}
+            style={{
+              left: `${shape.x}%`,
+              top: `${shape.y}%`,
+              width: shape.size,
+              height: shape.size,
+            }}
+            animate={{
+              x: [0, 20, -15, 0],
+              y: [0, -30, 15, 0],
+              scale: [1, 1.08, 0.95, 1],
+              opacity: [0.3, 0.5, 0.3],
+            }}
+            transition={{
+              repeat: Infinity,
+              duration: shape.duration,
+              delay: shape.delay,
+              ease: 'easeInOut',
+            }}
           />
         ))}
       </div>
 
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="relative z-10">
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="relative z-10"
+      >
         {/* Header & Search */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <h1 className="text-2xl font-bold text-white">Users</h1>
           <div className="flex gap-3 w-full sm:w-auto">
             <div className="relative flex-1 sm:w-72">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
               <input
                 type="text"
                 placeholder="Search name, email or phone..."
                 value={search}
-                onChange={(e) => { setSearch(e.target.value); setCurrentPage(1) }}
+                onChange={(e) => {
+                  setSearch(e.target.value)
+                  setCurrentPage(1)
+                }}
                 className="w-full bg-white/5 border border-white/10 rounded-xl py-2.5 pl-10 pr-4 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-indigo-500/50 focus:bg-white/10 transition-all"
               />
             </div>
             <select
               value={roleFilter}
-              onChange={(e) => { setRoleFilter(e.target.value); setCurrentPage(1) }}
+              onChange={(e) => {
+                setRoleFilter(e.target.value)
+                setCurrentPage(1)
+              }}
               className="bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500/50 transition-all"
             >
-              <option value="all" className="bg-[#1a1a1a]">All Roles</option>
-              <option value="admin" className="bg-[#1a1a1a]">Admin</option>
-              <option value="customer" className="bg-[#1a1a1a]">Customer</option>
+              <option value="all" className="bg-[#1a1a1a]">
+                All Roles
+              </option>
+              <option value="admin" className="bg-[#1a1a1a]">
+                Admin
+              </option>
+              <option value="customer" className="bg-[#1a1a1a]">
+                Customer
+              </option>
             </select>
           </div>
         </div>
@@ -122,7 +256,9 @@ export default function UsersTable({ profiles }: { profiles: Profile[] }) {
               whileHover={{ scale: 1.02, y: -2 }}
               className="relative bg-[#0f0f0f]/60 backdrop-blur-md p-4 rounded-xl border border-white/10 overflow-hidden shadow-xl"
             >
-              <div className={`absolute left-0 top-1/2 -translate-y-1/2 w-1 h-10 rounded-r-full ${stat.color}`} />
+              <div
+                className={`absolute left-0 top-1/2 -translate-y-1/2 w-1 h-10 rounded-r-full ${stat.color}`}
+              />
               <div className="relative z-10 pl-3">
                 <div className="flex items-center justify-between mb-1">
                   <stat.icon className="w-5 h-5 text-white/60" />
@@ -136,19 +272,33 @@ export default function UsersTable({ profiles }: { profiles: Profile[] }) {
 
         {/* Table */}
         {paginated.length === 0 ? (
-          <div className="text-center py-16 text-gray-400">No users found.</div>
+          <div className="text-center py-16 text-gray-500">
+            No users found.
+          </div>
         ) : (
           <div className="bg-[#0f0f0f]/60 backdrop-blur-md border border-white/10 rounded-2xl overflow-hidden shadow-xl">
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead className="bg-white/5">
                   <tr>
-                    <th className="p-4 text-left text-sm text-gray-400">User</th>
-                    <th className="p-4 text-left text-sm text-gray-400">Email</th>
-                    <th className="p-4 text-left text-sm text-gray-400 hidden md:table-cell">Phone</th>
-                    <th className="p-4 text-left text-sm text-gray-400">Role</th>
-                    <th className="p-4 text-left text-sm text-gray-400 hidden sm:table-cell">Joined</th>
-                    <th className="p-4 text-left text-sm text-gray-400">Actions</th>
+                    <th className="p-4 text-left text-sm text-gray-400">
+                      User
+                    </th>
+                    <th className="p-4 text-left text-sm text-gray-400">
+                      Email
+                    </th>
+                    <th className="p-4 text-left text-sm text-gray-400 hidden md:table-cell">
+                      Phone
+                    </th>
+                    <th className="p-4 text-left text-sm text-gray-400">
+                      Role
+                    </th>
+                    <th className="p-4 text-left text-sm text-gray-400 hidden sm:table-cell">
+                      Joined
+                    </th>
+                    <th className="p-4 text-left text-sm text-gray-400">
+                      Actions
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -163,33 +313,129 @@ export default function UsersTable({ profiles }: { profiles: Profile[] }) {
                       <td className="p-4">
                         <div className="flex items-center gap-3">
                           <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-sm font-semibold">
-                            {profile.full_name?.charAt(0)?.toUpperCase() || profile.email?.charAt(0)?.toUpperCase() || '?'}
+                            {profile.full_name?.charAt(0)?.toUpperCase() ||
+                              profile.email?.charAt(0)?.toUpperCase() ||
+                              '?'}
                           </div>
-                          <span className="text-white text-sm font-medium">{profile.full_name || 'N/A'}</span>
+                          <span className="text-white text-sm font-medium">
+                            {profile.full_name || 'N/A'}
+                          </span>
                         </div>
                       </td>
-                      <td className="p-4 text-sm text-gray-400">{profile.email}</td>
-                      <td className="p-4 text-sm text-gray-400 hidden md:table-cell">{profile.phone || '—'}</td>
+                      <td className="p-4 text-sm text-gray-400">
+                        {profile.email}
+                      </td>
+                      <td className="p-4 text-sm text-gray-400 hidden md:table-cell">
+                        {profile.phone || '—'}
+                      </td>
                       <td className="p-4">
-                        <span className={`px-2.5 py-1 text-xs rounded-full ${
-                          profile.role === 'admin'
-                            ? 'bg-indigo-500/20 text-indigo-400'
-                            : 'bg-gray-500/20 text-gray-400'
-                        }`}>
-                          {profile.role}
-                        </span>
+                        {profile.is_super_admin ? (
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-full bg-amber-500/20 text-amber-400 font-medium">
+                            <Crown size={11} />
+                            Super Admin
+                          </span>
+                        ) : (
+                          <span
+                            className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-full ${
+                              profile.role === 'admin'
+                                ? 'bg-indigo-500/20 text-indigo-400'
+                                : 'bg-gray-500/20 text-gray-400'
+                            }`}
+                          >
+                            {profile.role === 'admin' && <Shield size={11} />}
+                            {profile.role}
+                          </span>
+                        )}
                       </td>
                       <td className="p-4 text-sm text-gray-400 hidden sm:table-cell">
-                        {new Date(profile.created_at).toLocaleDateString('en-GB')}
+                        {new Date(profile.created_at).toLocaleDateString(
+                          'en-GB'
+                        )}
                       </td>
                       <td className="p-4">
-                        <button
-                          onClick={() => setSelectedUser(profile)}
-                          className="flex items-center gap-1.5 text-indigo-400 hover:text-indigo-300 text-sm font-medium transition"
-                        >
-                          <Eye size={15} />
-                          View
-                        </button>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => setSelectedUser(profile)}
+                            className="flex items-center gap-1.5 text-indigo-400 hover:text-indigo-300 text-sm font-medium transition"
+                          >
+                            <Eye size={15} />
+                            View
+                          </button>
+
+                          {canChangeRole(profile) && (
+                            <div
+                              className="relative"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <button
+                                onClick={() =>
+                                  setRoleMenuFor(
+                                    roleMenuFor === profile.id
+                                      ? null
+                                      : profile.id
+                                  )
+                                }
+                                disabled={changingRoleFor === profile.id}
+                                className="flex items-center gap-1 text-amber-400 hover:text-amber-300 text-sm font-medium transition disabled:opacity-50"
+                              >
+                                {changingRoleFor === profile.id ? (
+                                  <Loader2 size={14} className="animate-spin" />
+                                ) : (
+                                  <Crown size={14} />
+                                )}
+                                Role
+                                <ChevronDown size={12} />
+                              </button>
+
+                              <AnimatePresence>
+                                {roleMenuFor === profile.id && (
+                                  <motion.div
+                                    initial={{
+                                      opacity: 0,
+                                      y: -5,
+                                      scale: 0.95,
+                                    }}
+                                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                                    exit={{
+                                      opacity: 0,
+                                      y: -5,
+                                      scale: 0.95,
+                                    }}
+                                    transition={{ duration: 0.15 }}
+                                    className="absolute right-0 mt-2 w-44 bg-[#121212] border border-white/10 rounded-xl shadow-2xl overflow-hidden z-30"
+                                  >
+                                    <button
+                                      onClick={() =>
+                                        handleRoleChange(profile, 'admin')
+                                      }
+                                      disabled={profile.role === 'admin'}
+                                      className="w-full text-left px-4 py-2.5 text-sm text-gray-300 hover:bg-white/5 transition disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2"
+                                    >
+                                      <Shield
+                                        size={14}
+                                        className="text-indigo-400"
+                                      />
+                                      Make Admin
+                                    </button>
+                                    <button
+                                      onClick={() =>
+                                        handleRoleChange(profile, 'customer')
+                                      }
+                                      disabled={profile.role === 'customer'}
+                                      className="w-full text-left px-4 py-2.5 text-sm text-gray-300 hover:bg-white/5 transition disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2"
+                                    >
+                                      <UserCheck
+                                        size={14}
+                                        className="text-emerald-400"
+                                      />
+                                      Make Customer
+                                    </button>
+                                  </motion.div>
+                                )}
+                              </AnimatePresence>
+                            </div>
+                          )}
+                        </div>
                       </td>
                     </motion.tr>
                   ))}
@@ -205,14 +451,20 @@ export default function UsersTable({ profiles }: { profiles: Profile[] }) {
                 </span>
                 <div className="flex gap-2">
                   <button
-                    onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                    onClick={() =>
+                      setCurrentPage((prev) => Math.max(prev - 1, 1))
+                    }
                     disabled={currentPage === 1}
                     className="px-3 py-1 text-sm rounded-lg bg-white/5 text-gray-300 hover:bg-white/10 disabled:opacity-40 transition"
                   >
                     Previous
                   </button>
                   <button
-                    onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                    onClick={() =>
+                      setCurrentPage((prev) =>
+                        Math.min(prev + 1, totalPages)
+                      )
+                    }
                     disabled={currentPage === totalPages}
                     className="px-3 py-1 text-sm rounded-lg bg-white/5 text-gray-300 hover:bg-white/10 disabled:opacity-40 transition"
                   >
