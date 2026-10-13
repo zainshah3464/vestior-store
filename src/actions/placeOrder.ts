@@ -127,9 +127,17 @@ export async function placeOrder(
   }
 
   // ────────────────────────────────────────────
-  // 4. Atomic order creation
-  //    (stock lock + order + items in one transaction)
-  //    Order is created with payment_status='pending'
+  // 4. ATOMIC order creation
+  //
+  //    Everything happens inside ONE Postgres transaction:
+  //      • Stock lock + decrement
+  //      • Coupon validate + redeem (FOR UPDATE lock)
+  //      • Order insert (with provider + coupon fields)
+  //      • Order items insert
+  //      • Coupon redemption record insert
+  //
+  //    If ANY step fails → the entire transaction rolls back.
+  //    No inconsistent state is possible.
   // ────────────────────────────────────────────
   const { data, error } = await supabaseAdmin.rpc('place_order_atomic', {
     p_user_id: user.id,
@@ -144,6 +152,8 @@ export async function placeOrder(
       state: address.state.trim(),
       pincode: address.pincode.trim(),
     },
+    p_coupon_code: couponCode?.trim() || null,
+    p_payment_method: paymentMethod,
   })
 
   if (error) {
@@ -159,74 +169,23 @@ export async function placeOrder(
     order_id: string
     subtotal: number
     shipping: number
+    discount_amount: number
+    coupon_code: string | null
     total: number
   }
 
-  // ────────────────────────────────────────────
-  // 5. Redeem coupon (atomic, with locking)
-  // ────────────────────────────────────────────
-  let discountAmount = 0
-  let appliedCouponCode: string | null = null
-
-  if (couponCode && couponCode.trim().length > 0) {
-    const { data: couponResult, error: couponErr } = await supabaseAdmin.rpc(
-      'redeem_coupon_atomic',
-      {
-        p_code: couponCode.trim().toUpperCase(),
-        p_user_id: user.id,
-        p_order_id: result.order_id,
-        p_subtotal: result.subtotal,
-      }
-    )
-
-    if (couponErr) {
-      console.error('[placeOrder] coupon redeem failed:', couponErr)
-    } else {
-      const cr = couponResult as {
-        valid: boolean
-        code?: string
-        discount_amount?: number
-        error?: string
-      }
-
-      if (cr.valid) {
-        discountAmount = Number(cr.discount_amount ?? 0)
-        appliedCouponCode = cr.code ?? null
-      } else {
-        // Coupon became invalid between checkout and order placement.
-        // Order still goes through, but without the discount. Optionally
-        // we could reject here, but that's user-hostile if inventory is
-        // already locked. Log and continue.
-        console.warn('[placeOrder] coupon invalid on redemption:', cr.error)
-      }
-    }
-
-    // Persist coupon fields on the order
-    if (appliedCouponCode && discountAmount > 0) {
-      const finalTotal = result.subtotal + result.shipping - discountAmount
-      await supabaseAdmin
-        .from('orders')
-        .update({
-          coupon_code: appliedCouponCode,
-          discount_amount: discountAmount,
-          total: finalTotal,
-        })
-        .eq('id', result.order_id)
-
-      result.total = finalTotal
-    }
-  }
+  const discountAmount = Number(result.discount_amount ?? 0)
+  const appliedCouponCode = result.coupon_code ?? null
 
   // ────────────────────────────────────────────
-  // 6. Tag order with payment provider
-  // ────────────────────────────────────────────
-  await supabaseAdmin
-    .from('orders')
-    .update({ payment_provider: paymentMethod })
-    .eq('id', result.order_id)
-
-  // ────────────────────────────────────────────
-  // 7. For non-COD: create PaymentIntent
+  // 5. For non-COD: create Stripe PaymentIntent
+  //
+  //    This step is inherently non-atomic (external API).
+  //    If it fails, the order still exists — customer can
+  //    retry from /orders. If the intent succeeds but our
+  //    update of payment_intent_id fails, the Stripe webhook
+  //    and the `confirmPayment` action both still have enough
+  //    information (metadata.orderId) to reconcile.
   // ────────────────────────────────────────────
   let clientSecret: string | undefined
   let paymentIntentId: string | undefined
@@ -247,20 +206,25 @@ export async function placeOrder(
     clientSecret = intent.clientSecret
     paymentIntentId = intent.id
 
-    // Persist intent ID on the order
-    await supabaseAdmin
+    // Best-effort persist (webhook will also reconcile)
+    const { error: intentUpdateErr } = await supabaseAdmin
       .from('orders')
       .update({
         payment_intent_id: intent.id,
         payment_metadata: intent.raw as object,
       })
       .eq('id', result.order_id)
+
+    if (intentUpdateErr) {
+      console.error(
+        '[placeOrder] failed to persist payment_intent_id — webhook will reconcile:',
+        intentUpdateErr.message
+      )
+    }
   }
 
   // ────────────────────────────────────────────
-  // 8. Track order_placed (fire-and-forget, non-blocking)
-  //    Uses dynamic imports so MongoDB/env code
-  //    never enters the client bundle.
+  // 6. Track order_placed (fire-and-forget, non-blocking)
   // ────────────────────────────────────────────
   try {
     const { getDb, COLLECTIONS } = await import('@/lib/mongodb')
@@ -268,7 +232,7 @@ export async function placeOrder(
     const db = await getDb()
     await db.collection(COLLECTIONS.EVENTS).insertOne({
       user_id: user.id,
-      session_id: 'server', // server-side has no session
+      session_id: 'server',
       event_type: 'order_placed',
       properties: {
         orderId: result.order_id,
@@ -291,13 +255,11 @@ export async function placeOrder(
   }
 
   // ────────────────────────────────────────────
-  // 9. Queue "order-placed" email (non-blocking)
-  //    Email failure must NOT break order placement.
+  // 7. Queue "order-placed" email (non-blocking)
   // ────────────────────────────────────────────
   try {
     const { queueEmail } = await import('@/lib/email/queue')
 
-    // Get items for the email (product names + quantity + price)
     const { data: orderItems } = await supabaseAdmin
       .from('order_items')
       .select('product_name, quantity, price')
@@ -320,14 +282,11 @@ export async function placeOrder(
       },
     })
   } catch (err) {
-    // Email failure must not break order placement
     console.error('[placeOrder] email queue failed:', err)
   }
 
   // ────────────────────────────────────────────
-  // 10. Mark cart as recovered (for abandoned-cart tracking)
-  //     Prevents the daily cron from sending a reminder
-  //     for a cart that has already been converted.
+  // 8. Mark cart as recovered
   // ────────────────────────────────────────────
   try {
     const { markCartRecovered } = await import('@/lib/carts/queries')
@@ -337,7 +296,7 @@ export async function placeOrder(
   }
 
   // ────────────────────────────────────────────
-  // 11. Revalidate
+  // 9. Revalidate
   // ────────────────────────────────────────────
   revalidatePath('/orders')
   revalidatePath('/admin/orders')

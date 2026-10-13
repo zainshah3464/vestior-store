@@ -1,16 +1,31 @@
 /**
  * Idempotency helper — prevents duplicate processing of the same operation.
  *
- * Used in Phase 2 for:
+ * Used for:
  *   • Stripe webhooks (payment_intent.succeeded)
  *   • PayPal webhooks
  *   • Order placement retries
  *
- * Pattern: Redis SETNX + result cache, with owner-checked release.
+ * Pattern: Redis SETNX + result cache, with owner-checked release
+ * via atomic Lua script (compare-and-delete).
+ *
+ * ─── Why Lua, not GET-then-DEL? ──────────────────────────────
+ * The naive release:
+ *
+ *     const current = await redis.get(lockKey)
+ *     if (current === lockValue) await redis.del(lockKey)
+ *
+ * is a check-then-act race. Between the GET and the DEL, the lock
+ * may expire and another process may acquire a NEW lock. We would
+ * then delete the OTHER process's lock, breaking mutual exclusion
+ * and allowing duplicate processing (e.g., a Stripe webhook firing
+ * twice).
+ *
+ * The Lua script below performs GET and DEL atomically inside Redis,
+ * so no other command can interleave between them.
  */
 
-import { redis } from '@/lib/redis'
-import { redisKeys } from '@/lib/redis'
+import { redis, redisKeys } from '@/lib/redis'
 import { randomUUID } from 'crypto'
 
 export interface IdempotencyOptions {
@@ -21,6 +36,26 @@ export interface IdempotencyOptions {
   /** TTL in seconds (default 24 hours) */
   ttlSeconds?: number
 }
+
+// ─────────────────────────────────────────────────────────────
+// Atomic compare-and-delete
+//
+//   KEYS[1] = lock key
+//   ARGV[1] = expected lock value (our random UUID)
+//
+// Returns 1 if we deleted our own lock, 0 if the lock is gone or
+// owned by someone else (i.e., we no longer own it — safe to skip).
+//
+// This script executes as a single atomic unit in Redis, so no
+// other command can run between the GET and the DEL.
+// ─────────────────────────────────────────────────────────────
+const RELEASE_LOCK_LUA = `
+if redis.call("get", KEYS[1]) == ARGV[1] then
+  return redis.call("del", KEYS[1])
+else
+  return 0
+end
+`
 
 /**
  * Execute `fn` at most once per (scope, key) within the TTL window.
@@ -41,7 +76,9 @@ export async function withIdempotency<T>(
   const resultKey = redisKeys.idempotencyResult(scope, key)
   const lockValue = randomUUID()
 
-  // Try to acquire the lock
+  // ─────────────────────────────────────────────
+  // 1. Try to acquire the lock atomically (SET NX EX)
+  // ─────────────────────────────────────────────
   const acquired = await redis.set(lockKey, lockValue, {
     nx: true,
     ex: ttlSeconds,
@@ -58,16 +95,31 @@ export async function withIdempotency<T>(
     )
   }
 
+  // ─────────────────────────────────────────────
+  // 2. Run the operation, cache result
+  // ─────────────────────────────────────────────
   try {
     const result = await fn()
-    // Cache the result for future duplicate calls
+
+    // Cache the result for future duplicate calls.
+    // Uses the same TTL as the lock so cached results expire together.
     await redis.set(resultKey, result, { ex: ttlSeconds })
+
     return result
   } finally {
-    // Release lock only if we still own it (avoid race with TTL expiry)
-    const current = await redis.get<string>(lockKey)
-    if (current === lockValue) {
-      await redis.del(lockKey)
+    // ─────────────────────────────────────────────
+    // 3. Atomic compare-and-delete via Lua
+    //
+    //    Only deletes the lock if WE still own it.
+    //    If our TTL already expired and another process holds the
+    //    lock, the script returns 0 and does nothing.
+    // ─────────────────────────────────────────────
+    try {
+      await redis.eval(RELEASE_LOCK_LUA, [lockKey], [lockValue])
+    } catch (err) {
+      // Non-fatal: the lock will expire on its own via TTL.
+      // Logging so we don't hide a systematic Redis problem.
+      console.error('[idempotency] failed to release lock:', err)
     }
   }
 }

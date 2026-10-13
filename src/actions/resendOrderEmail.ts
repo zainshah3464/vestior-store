@@ -27,10 +27,12 @@ export async function resendOrderEmail(orderId: string, template: EmailTemplate)
     throw new Error(`Template not allowed: ${template}`)
   }
 
-  // 2. Fetch order
+  // 2. Fetch order — FIX: use payment_provider instead of payment_method
   const { data: order } = await supabaseAdmin
     .from('orders')
-    .select('user_email, user_id, subtotal, shipping, total, payment_method')
+    .select(
+      'user_email, user_id, subtotal, shipping, total, discount_amount, coupon_code, payment_provider'
+    )
     .eq('id', orderId)
     .single()
 
@@ -52,7 +54,11 @@ export async function resendOrderEmail(orderId: string, template: EmailTemplate)
     data.subtotal = order.subtotal
     data.shipping = order.shipping
     data.total = order.total
-    data.paymentMethod = order.payment_method
+    // FIX: Pass discount + coupon (Bug #3)
+    data.discount = order.discount_amount ?? 0
+    data.couponCode = order.coupon_code ?? null
+    // FIX: Use payment_provider (Bug #2)
+    data.paymentMethod = order.payment_provider ?? 'cod'
   }
 
   // 4. Queue

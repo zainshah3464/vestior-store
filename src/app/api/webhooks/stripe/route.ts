@@ -86,6 +86,19 @@ async function handleEvent(type: string, data: Record<string, unknown>) {
       const orderId = intent.metadata?.orderId
       if (!orderId) return
 
+      // ────────────────────────────────────────────
+      // FIX (Bug #1): Check if order is already completed.
+      // Prevents duplicate "payment-confirmed" email when
+      // client-side confirmPayment already ran first.
+      // ────────────────────────────────────────────
+      const { data: existingOrder } = await supabaseAdmin
+        .from('orders')
+        .select('payment_status')
+        .eq('id', orderId)
+        .single()
+
+      const alreadyCompleted = existingOrder?.payment_status === 'completed'
+
       await supabaseAdmin
         .from('orders')
         .update({
@@ -110,24 +123,27 @@ async function handleEvent(type: string, data: Record<string, unknown>) {
       })
 
       // ────────────────────────────────────────────
-      // Queue payment-confirmed email (non-blocking)
+      // Queue payment-confirmed email — ONLY if order
+      // was not already completed by client-side confirm.
       // ────────────────────────────────────────────
-      try {
-        const { queueEmail } = await import('@/lib/email/queue')
-        const email = (data as { receipt_email?: string }).receipt_email
-        if (email) {
-          await queueEmail({
-            template: 'payment-confirmed',
-            to: email,
-            data: {
-              orderId,
-              total: Math.round(intent.amount / 100),
-              siteUrl: process.env.NEXT_PUBLIC_SITE_URL,
-            },
-          })
+      if (!alreadyCompleted) {
+        try {
+          const { queueEmail } = await import('@/lib/email/queue')
+          const email = (data as { receipt_email?: string }).receipt_email
+          if (email) {
+            await queueEmail({
+              template: 'payment-confirmed',
+              to: email,
+              data: {
+                orderId,
+                total: Math.round(intent.amount / 100),
+                siteUrl: process.env.NEXT_PUBLIC_SITE_URL,
+              },
+            })
+          }
+        } catch (err) {
+          console.error('[stripe-webhook] email queue failed:', err)
         }
-      } catch (err) {
-        console.error('[stripe-webhook] email queue failed:', err)
       }
 
       revalidatePath('/orders')
@@ -165,9 +181,6 @@ async function handleEvent(type: string, data: Record<string, unknown>) {
         updated_at: new Date(),
       })
 
-      // ────────────────────────────────────────────
-      // Queue payment-failed email (non-blocking)
-      // ────────────────────────────────────────────
       try {
         const { queueEmail } = await import('@/lib/email/queue')
         const email = (data as { receipt_email?: string }).receipt_email

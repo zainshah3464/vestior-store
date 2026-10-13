@@ -9,6 +9,7 @@ export const runtime = 'nodejs'
 const schema = z.object({
   email: z.string().email(),
   fullName: z.string().min(1).max(100),
+  userId: z.string().uuid().optional(), // FIX (Bug #6): accept userId
 })
 
 export async function POST(req: NextRequest) {
@@ -39,6 +40,7 @@ export async function POST(req: NextRequest) {
   await queueEmail({
     template: 'welcome',
     to: parsed.data.email,
+    userId: parsed.data.userId, // FIX (Bug #6): pass userId
     data: {
       fullName: parsed.data.fullName,
       siteUrl: process.env.NEXT_PUBLIC_SITE_URL,

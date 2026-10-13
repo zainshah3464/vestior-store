@@ -34,6 +34,9 @@ function isLocalDevelopment(): boolean {
 export async function queueEmail(
   params: QueueEmailParams
 ): Promise<string | null> {
+  // FIX (Bug #4): Declare logId outside try block so catch can access it
+  let logId: string | null = null
+
   try {
     const db = await getDb()
 
@@ -48,7 +51,7 @@ export async function queueEmail(
       updated_at: new Date(),
     })
 
-    const logId = log.insertedId.toString()
+    logId = log.insertedId.toString()
 
     // 2. Development → send directly
     if (isLocalDevelopment()) {
@@ -67,7 +70,17 @@ export async function queueEmail(
 
     return logId
   } catch (err) {
+    const errorMessage = err instanceof Error ? err.message : 'Unknown error'
     console.error('[queueEmail] failed:', err)
+
+    // FIX (Bug #4): Mark the log as failed so it doesn't stay "queued" forever
+    if (logId) {
+      await updateEmailLog(logId, {
+        status: 'failed',
+        error: errorMessage,
+      })
+    }
+
     return null
   }
 }

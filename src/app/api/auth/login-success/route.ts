@@ -87,7 +87,8 @@ export async function POST(req: NextRequest) {
           .limit(1)
           .maybeSingle()
 
-        await queueEmail({
+        // FIX (Bug #5): Check queueEmail return value
+        const logId = await queueEmail({
           template: 'welcome-back',
           to: user.email!,
           userId: user.id,
@@ -99,7 +100,7 @@ export async function POST(req: NextRequest) {
           },
         })
 
-        emailSent = true
+        emailSent = !!logId
       } catch (err) {
         console.error('[login-success] welcome-back queue failed:', err)
         // Non-fatal — continue to update login timestamp
