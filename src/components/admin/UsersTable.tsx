@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Search,
@@ -14,6 +15,7 @@ import {
   ChevronDown,
   Shield,
   Loader2,
+  Activity,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import UserDetailsModal from './UserDetailsModal'
@@ -361,6 +363,14 @@ export default function UsersTable({
                             <Eye size={15} />
                             View
                           </button>
+
+                          <Link
+                            href={`/admin/users/${profile.id}/activity`}
+                            className="flex items-center gap-1 text-rose-400 hover:text-rose-300 text-sm font-medium transition"
+                          >
+                            <Activity size={14} />
+                            Activity
+                          </Link>
 
                           {canChangeRole(profile) && (
                             <div

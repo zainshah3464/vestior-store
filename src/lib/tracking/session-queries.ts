@@ -15,13 +15,30 @@ export async function ensureSessionIndexes() {
     const db = await getDb()
     const coll = db.collection(SESSIONS_COLLECTION)
 
-    await coll.createIndex({ session_id: 1 }, { unique: true })
-    await coll.createIndex({ user_id: 1, last_seen_at: -1 }, { sparse: true })
-    await coll.createIndex({ ip_hash: 1, last_seen_at: -1 })
-    await coll.createIndex({ last_seen_at: -1 })
-    await coll.createIndex({ visitor_type: 1, last_seen_at: -1 })
-    await coll.createIndex(
-      { last_seen_at: -1 },
+    // Each index wrapped individually — one conflict doesn't block others
+    const tryIndex = async (
+      keys: Record<string, number>,
+      opts: Record<string, unknown> = {}
+    ) => {
+      try {
+        await coll.createIndex(keys, opts)
+      } catch (err) {
+        const code = (err as { code?: number }).code
+        if (code !== 85) {
+          // 85 = IndexOptionsConflict — already exists with different options
+          console.warn('[ensureSessionIndexes] index warn:', err)
+        }
+      }
+    }
+
+    await tryIndex({ session_id: 1 }, { unique: true, name: 'session_id_unique' })
+    await tryIndex({ user_id: 1, last_seen_at: -1 }, { sparse: true, name: 'user_recent' })
+    await tryIndex({ ip_hash: 1, last_seen_at: -1 }, { name: 'ip_recent' })
+    await tryIndex({ visitor_type: 1, last_seen_at: -1 }, { name: 'type_recent' })
+
+    // TTL index — use a distinct keyset name to avoid conflict with plain index
+    await tryIndex(
+      { last_seen_at: 1 },
       { expireAfterSeconds: 90 * 86400, name: 'session_ttl_90d' }
     )
 
