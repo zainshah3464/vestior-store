@@ -1,12 +1,14 @@
-// src/app/admin/page.tsx
 import { supabaseAdmin } from '@/lib/supabase/admin'
+import {
+  getDashboardSummary,
+  getRecentActivity,
+} from '@/lib/dashboard/queries'
 import DashboardClient from '@/components/admin/DashboardClient'
 
-export default async function AdminDashboard() {
-  // ────────────────────────────────────────────
-  // Parallel execution — everything fires at once
-  // ────────────────────────────────────────────
+export const dynamic = 'force-dynamic'
 
+export default async function AdminDashboard() {
+  // Compute time windows
   const today = new Date()
   const last7Days = new Date(today)
   last7Days.setDate(last7Days.getDate() - 6)
@@ -14,39 +16,47 @@ export default async function AdminDashboard() {
   const previous7Start = new Date(last7Days)
   previous7Start.setDate(previous7Start.getDate() - 7)
 
+  // ────────────────────────────────────────────
+  // Parallel fetch everything
+  // ────────────────────────────────────────────
   const [
     statsResult,
     recentRevenueOrdersResult,
     prevOrdersResult,
     recentOrdersResult,
+    summary,
+    recentActivity,
   ] = await Promise.all([
-    // 1. Aggregated stats — single RPC call
+    // Existing RPC (unchanged)
     supabaseAdmin.rpc('get_dashboard_stats'),
 
-    // 2. Last 7 days revenue (for area chart)
     supabaseAdmin
       .from('orders')
       .select('created_at, total')
       .gte('created_at', last7Days.toISOString())
       .order('created_at', { ascending: true }),
 
-    // 3. Previous 7 days (for trend calculation)
     supabaseAdmin
       .from('orders')
       .select('total')
       .gte('created_at', previous7Start.toISOString())
       .lt('created_at', last7Days.toISOString()),
 
-    // 4. Recent 5 orders
     supabaseAdmin
       .from('orders')
       .select('id, user_email, total, status, created_at')
       .order('created_at', { ascending: false })
       .limit(5),
+
+    // New: comprehensive summary across all admin pages
+    getDashboardSummary(),
+
+    // New: recent admin activity timeline
+    getRecentActivity(8),
   ])
 
   // ────────────────────────────────────────────
-  // Extract stats from RPC result
+  // Extract base stats from RPC
   // ────────────────────────────────────────────
   const stats = (statsResult.data as {
     product_count: number
@@ -69,7 +79,7 @@ export default async function AdminDashboard() {
   const avgOrderValue = orderCount > 0 ? totalRevenue / orderCount : 0
 
   // ────────────────────────────────────────────
-  // Sales chart — group by day
+  // Sales chart data
   // ────────────────────────────────────────────
   const salesByDay: Record<string, number> = {}
   recentRevenueOrdersResult.data?.forEach((order) => {
@@ -82,7 +92,7 @@ export default async function AdminDashboard() {
   }))
 
   // ────────────────────────────────────────────
-  // Trend calculation
+  // Trend calc
   // ────────────────────────────────────────────
   const prevOrders = prevOrdersResult.data ?? []
   const prevRevenue = prevOrders.reduce((sum, o) => sum + (o.total || 0), 0)
@@ -98,9 +108,6 @@ export default async function AdminDashboard() {
     orderTrend = ((orderCount - prevOrderCount) / prevOrderCount) * 100
   }
 
-  // ────────────────────────────────────────────
-  // Status distribution — already computed by RPC
-  // ────────────────────────────────────────────
   const ALL_STATUSES = [
     'pending',
     'processing',
@@ -114,9 +121,6 @@ export default async function AdminDashboard() {
     value: stats.status_counts[name] || 0,
   }))
 
-  // ────────────────────────────────────────────
-  // Render
-  // ────────────────────────────────────────────
   return (
     <DashboardClient
       productCount={productCount}
@@ -129,6 +133,8 @@ export default async function AdminDashboard() {
       recentOrders={recentOrdersResult.data || []}
       revenueTrend={revenueTrend}
       orderTrend={orderTrend}
+      summary={summary}
+      recentActivity={recentActivity}
     />
   )
 }
