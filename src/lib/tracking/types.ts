@@ -25,9 +25,12 @@ export interface TrackEvent {
   properties: Record<string, unknown>
 }
 
+import type { SessionUpdate } from './session-types'
+
 export interface TrackPayload {
   sessionId: string
   events: TrackEvent[]
+  sessionUpdate?: SessionUpdate
 }
 
 /**

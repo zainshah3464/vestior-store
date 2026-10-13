@@ -1,29 +1,39 @@
 'use client'
 
 /**
- * Client-side tracking SDK.
+ * Client-side tracking SDK with session aggregation.
  *
  * Features:
  *   • Batches events every 10s (fewer network calls)
- *   • sendBeacon on unload so nothing is lost
- *   • Session ID stored in 24h cookie
+ *   • sendBeacon on unload
+ *   • Session ID in 24h cookie
+ *   • In-memory session summary (counts + arrays)
  *   • Silent failure — never breaks the app
+ *
+ * Session summary is sent with every batch. The server merges it
+ * into a MongoDB `sessions` document (upsert by session_id).
  */
 
 import type { TrackEvent, TrackEventName, TrackPayload } from './types'
+import type { SessionUpdate } from './session-types'
 
 const SESSION_COOKIE = 'vst_sid'
 const SESSION_TTL_DAYS = 1
 const BATCH_SIZE = 10
 const FLUSH_INTERVAL_MS = 10_000
 const ENDPOINT = '/api/track'
+const MAX_PATHS = 50
+const MAX_PRODUCTS = 50
+const MAX_ORDERS = 20
 
+// ─────────────────────────────────────────────────────────────
+// Cookie helpers
+// ─────────────────────────────────────────────────────────────
 function getOrCreateSessionId(): string {
   if (typeof document === 'undefined') return 'ssr'
   const existing = readCookie(SESSION_COOKIE)
   if (existing) return existing
 
-  // crypto.randomUUID is supported in all modern browsers
   const sid =
     typeof crypto !== 'undefined' && 'randomUUID' in crypto
       ? crypto.randomUUID()
@@ -45,9 +55,48 @@ function readCookie(name: string): string | null {
   return match ? decodeURIComponent(match[1]) : null
 }
 
+// ─────────────────────────────────────────────────────────────
+// Session summary accumulator
+// ─────────────────────────────────────────────────────────────
+interface SessionSummary {
+  pageViewCount: number
+  productViewCount: number
+  cartAddCount: number
+  orderCount: number
+  revenue: number
+  pathsVisited: Set<string>
+  productsViewed: Set<string>
+  ordersPlaced: Set<string>
+  durationMs: number
+  // Last time the tab was visible
+  lastVisibleAt: number
+}
+
+function createEmptySummary(): SessionSummary {
+  return {
+    pageViewCount: 0,
+    productViewCount: 0,
+    cartAddCount: 0,
+    orderCount: 0,
+    revenue: 0,
+    pathsVisited: new Set(),
+    productsViewed: new Set(),
+    ordersPlaced: new Set(),
+    durationMs: 0,
+    lastVisibleAt:
+      typeof document !== 'undefined' && document.visibilityState === 'visible'
+        ? Date.now()
+        : 0,
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
+// Tracker
+// ─────────────────────────────────────────────────────────────
 class Tracker {
   private sessionId: string
   private queue: TrackEvent[] = []
+  private summary: SessionSummary = createEmptySummary()
   private timer: ReturnType<typeof setInterval> | null = null
 
   constructor() {
@@ -56,10 +105,63 @@ class Tracker {
 
     if (typeof window !== 'undefined') {
       window.addEventListener('beforeunload', () => this.flush(true))
-      // Also flush when tab is hidden (mobile background)
+
       document.addEventListener('visibilitychange', () => {
-        if (document.visibilityState === 'hidden') this.flush(true)
+        if (document.visibilityState === 'hidden') {
+          // Accrue time up to now
+          if (this.summary.lastVisibleAt > 0) {
+            this.summary.durationMs += Date.now() - this.summary.lastVisibleAt
+            this.summary.lastVisibleAt = 0
+          }
+          this.flush(true)
+        } else {
+          // Tab became visible again
+          this.summary.lastVisibleAt = Date.now()
+        }
       })
+    }
+  }
+
+  private accumulate(event: TrackEventName, props: Record<string, unknown>) {
+    const s = this.summary
+
+    switch (event) {
+      case 'page_view': {
+        s.pageViewCount++
+        const path = props.path as string | undefined
+        if (path) {
+          if (s.pathsVisited.size < MAX_PATHS) s.pathsVisited.add(path)
+        }
+        break
+      }
+      case 'product_view': {
+        s.productViewCount++
+        const pid = props.productId as string | undefined
+        if (pid) {
+          if (s.productsViewed.size < MAX_PRODUCTS) s.productsViewed.add(pid)
+        }
+        break
+      }
+      case 'add_to_cart': {
+        s.cartAddCount++
+        const pid = props.productId as string | undefined
+        if (pid) {
+          if (s.productsViewed.size < MAX_PRODUCTS) s.productsViewed.add(pid)
+        }
+        break
+      }
+      case 'order_placed': {
+        s.orderCount++
+        const orderId = props.orderId as string | undefined
+        const total = Number(props.total ?? 0)
+        if (orderId && s.ordersPlaced.size < MAX_ORDERS) {
+          s.ordersPlaced.add(orderId)
+        }
+        if (Number.isFinite(total) && total > 0) {
+          s.revenue += total
+        }
+        break
+      }
     }
   }
 
@@ -76,7 +178,32 @@ class Tracker {
       },
     })
 
+    this.accumulate(event, properties)
+
     if (this.queue.length >= BATCH_SIZE) this.flush()
+  }
+
+  private buildSessionUpdate(): SessionUpdate {
+    const s = this.summary
+
+    // Include current visible slice
+    let durationMs = s.durationMs
+    if (s.lastVisibleAt > 0) {
+      durationMs += Date.now() - s.lastVisibleAt
+    }
+
+    return {
+      sessionId: this.sessionId,
+      pageViewCount: s.pageViewCount,
+      productViewCount: s.productViewCount,
+      cartAddCount: s.cartAddCount,
+      orderCount: s.orderCount,
+      revenue: s.revenue,
+      pathsVisited: Array.from(s.pathsVisited),
+      productsViewed: Array.from(s.productsViewed),
+      ordersPlaced: Array.from(s.ordersPlaced),
+      durationMs,
+    }
   }
 
   async flush(sync = false) {
@@ -85,11 +212,11 @@ class Tracker {
     const payload: TrackPayload = {
       sessionId: this.sessionId,
       events: this.queue.splice(0),
+      sessionUpdate: this.buildSessionUpdate(),
     }
 
     const body = JSON.stringify(payload)
 
-    // On page unload: use sendBeacon (survives navigation)
     if (sync && typeof navigator !== 'undefined' && 'sendBeacon' in navigator) {
       try {
         navigator.sendBeacon(ENDPOINT, body)
@@ -107,7 +234,7 @@ class Tracker {
         keepalive: true,
       })
     } catch {
-      // Never break the app because tracking failed
+      // never break the app
     }
   }
 

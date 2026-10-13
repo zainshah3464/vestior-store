@@ -1,20 +1,28 @@
 /**
  * Event ingestion endpoint.
  *
+ * Accepts a batch of events + an optional session summary.
+ * - Events → MongoDB `events` collection
+ * - Session summary → MongoDB `sessions` collection (upsert)
+ *
  * Security:
- *   • Zod-validated payload
  *   • Rate-limited (100 events/min per IP)
- *   • IP hashed (SHA-256 + salt) — never store raw IP
- *   • User-Agent parsed server-side
+ *   • Zod-validated payload
+ *   • IP hashed (SHA-256 + salt)
  */
 
 import { NextRequest, NextResponse } from 'next/server'
 import { getDb, COLLECTIONS } from '@/lib/mongodb'
-import { getDb as _getDbCheck } from '@/lib/mongodb' // keep import tidy
 import { env } from '@/lib/env'
-import { limiters } from '@/lib/ratelimit'
-import { getClientKey } from '@/lib/ratelimit'
+import { limiters, getClientKey } from '@/lib/ratelimit'
 import { getCurrentUser } from '@/lib/tracking/server-user'
+import { supabaseAdmin } from '@/lib/supabase/admin'
+import {
+  classifyVisitor,
+  upsertSession,
+  ensureSessionIndexes,
+} from '@/lib/tracking/session-queries'
+import { classifyReferrer } from '@/lib/tracking/referrer'
 import { createHash } from 'crypto'
 import { z } from 'zod'
 
@@ -29,13 +37,27 @@ const trackEventSchema = z.object({
   properties: z.record(z.string(), z.unknown()),
 })
 
+const sessionUpdateSchema = z.object({
+  sessionId: z.string().min(1).max(100),
+  pageViewCount: z.number().int().min(0).max(10_000),
+  productViewCount: z.number().int().min(0).max(10_000),
+  cartAddCount: z.number().int().min(0).max(10_000),
+  orderCount: z.number().int().min(0).max(1_000),
+  revenue: z.number().min(0),
+  pathsVisited: z.array(z.string()).max(100),
+  productsViewed: z.array(z.string()).max(100),
+  ordersPlaced: z.array(z.string()).max(50),
+  durationMs: z.number().int().min(0),
+})
+
 const payloadSchema = z.object({
   sessionId: z.string().min(1).max(100),
   events: z.array(trackEventSchema).min(1).max(20),
+  sessionUpdate: sessionUpdateSchema.optional(),
 })
 
 // ─────────────────────────────────────────────────────────────
-// User-Agent parsing (no external dep)
+// User-Agent parsing
 // ─────────────────────────────────────────────────────────────
 function parseUserAgent(ua: string): {
   type: string
@@ -43,7 +65,6 @@ function parseUserAgent(ua: string): {
   browser: string
 } {
   const lower = ua.toLowerCase()
-
   let type = 'desktop'
   if (/mobile|iphone|android.*mobile/.test(lower)) type = 'mobile'
   else if (/ipad|tablet/.test(lower)) type = 'tablet'
@@ -78,16 +99,13 @@ export async function POST(req: NextRequest) {
   try {
     const { success } = await limiters.track.limit(getClientKey(ip))
     if (!success) {
-      return NextResponse.json(
-        { error: 'Rate limited' },
-        { status: 429 }
-      )
+      return NextResponse.json({ error: 'Rate limited' }, { status: 429 })
     }
   } catch {
-    // Fail-open — tracker must never block UX
+    // fail-open
   }
 
-  // 2. Parse + validate
+  // 2. Parse
   let body: unknown
   try {
     body = await req.json()
@@ -114,10 +132,38 @@ export async function POST(req: NextRequest) {
   const country = req.headers.get('x-vercel-ip-country') || null
   const city = req.headers.get('x-vercel-ip-city') || null
 
-  // 4. Look up user (best-effort)
+  // 4. Auth (best-effort)
   const userId = await getCurrentUser()
 
-  // 5. Persist
+  let userEmail: string | null = null
+  let userName: string | null = null
+  let isAdmin = false
+
+  if (userId) {
+    try {
+      const { data: profile } = await supabaseAdmin
+        .from('profiles')
+        .select('email, full_name, role')
+        .eq('id', userId)
+        .single()
+
+      if (profile) {
+        userEmail = profile.email ?? null
+        userName = profile.full_name ?? null
+        isAdmin = profile.role === 'admin'
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  // 5. Extract referrer from first event
+  const firstEvent = parsed.data.events[0]
+  const referrer =
+    (firstEvent.properties.referrer as string | null | undefined) ?? null
+  const referrerSource = classifyReferrer(referrer, env.NEXT_PUBLIC_SITE_URL)
+
+  // 6. Persist events
   try {
     const db = await getDb()
     const docs = parsed.data.events.map((e) => ({
@@ -134,13 +180,50 @@ export async function POST(req: NextRequest) {
       timestamp: new Date(),
     }))
 
-    await db.collection(COLLECTIONS.EVENTS).insertMany(docs, {
-      ordered: false,
-    })
-
-    return NextResponse.json({ received: docs.length })
+    await db
+      .collection(COLLECTIONS.EVENTS)
+      .insertMany(docs, { ordered: false })
   } catch (err) {
-    console.error('[track] mongo insert failed:', err)
-    return NextResponse.json({ error: 'Storage failed' }, { status: 500 })
+    console.error('[track] events insert failed:', err)
   }
+
+  // 7. Upsert session (if provided)
+  if (parsed.data.sessionUpdate) {
+    try {
+      await ensureSessionIndexes()
+
+      const visitorType = await classifyVisitor({
+        userId,
+        isAdmin,
+        ipHash,
+      })
+
+      await upsertSession({
+        sessionId: parsed.data.sessionId,
+        userId,
+        userEmail,
+        userName,
+        visitorType,
+        ipHash,
+        country,
+        city,
+        device,
+        referrer,
+        referrerSource,
+        pageViewCount: parsed.data.sessionUpdate.pageViewCount,
+        productViewCount: parsed.data.sessionUpdate.productViewCount,
+        cartAddCount: parsed.data.sessionUpdate.cartAddCount,
+        orderCount: parsed.data.sessionUpdate.orderCount,
+        revenue: parsed.data.sessionUpdate.revenue,
+        pathsVisited: parsed.data.sessionUpdate.pathsVisited,
+        productsViewed: parsed.data.sessionUpdate.productsViewed,
+        ordersPlaced: parsed.data.sessionUpdate.ordersPlaced,
+        durationMs: parsed.data.sessionUpdate.durationMs,
+      })
+    } catch (err) {
+      console.error('[track] session upsert failed:', err)
+    }
+  }
+
+  return NextResponse.json({ received: parsed.data.events.length })
 }
