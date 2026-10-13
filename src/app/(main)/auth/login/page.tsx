@@ -47,6 +47,19 @@ export default function LoginPage() {
     }
 
     toast.success('Welcome back!')
+
+    // ─────────────────────────────────────────────
+    // Fire-and-forget: record login + send welcome-back
+    // (if returning user, throttled to once per week)
+    // Non-blocking: user is redirected regardless.
+    // ─────────────────────────────────────────────
+    fetch('/api/auth/login-success', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+    }).catch(() => {
+      // Silent — this is best-effort tracking
+    })
+
     router.push('/')
     router.refresh()
     setLoading(false)

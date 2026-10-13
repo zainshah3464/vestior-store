@@ -1,0 +1,65 @@
+name: Keep-Alive
+
+on:
+  schedule:
+    # Runs at 00:00 and 12:00 UTC every day
+    # (05:00 and 17:00 PKT — a nice daytime schedule for Pakistan)
+    - cron: '0 0,12 * * *'
+  workflow_dispatch: # Manual trigger from GitHub UI
+
+jobs:
+  ping:
+    name: Ping databases
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Ping keep-alive endpoint
+        id: ping
+        run: |
+          set -e
+
+          URL="${{ secrets.SITE_URL }}/api/cron/keep-alive"
+          SECRET="${{ secrets.CRON_SECRET }}"
+
+          echo "Pinging: $URL"
+
+          # -sS: silent + show errors
+          # -w: append HTTP code on new line
+          # --max-time: 30s timeout
+          response=$(curl -sS --max-time 30 -w "\n%{http_code}" \
+            -H "Authorization: Bearer $SECRET" \
+            "$URL" || echo -e "\n000")
+
+          http_code=$(echo "$response" | tail -n1)
+          body=$(echo "$response" | sed '$d')
+
+          echo "HTTP Status: $http_code"
+          echo "Response body:"
+          echo "$body"
+
+          if [ "$http_code" != "200" ]; then
+            echo "::error::Keep-alive endpoint returned HTTP $http_code"
+            exit 1
+          fi
+
+          # Parse JSON — check both services reported ok
+          if ! echo "$body" | grep -q '"supabase":{"ok":true'; then
+            echo "::error::Supabase ping failed"
+            exit 1
+          fi
+
+          if ! echo "$body" | grep -q '"mongodb":{"ok":true'; then
+            echo "::error::MongoDB ping failed"
+            exit 1
+          fi
+
+          echo "✅ Both databases are warm"
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "### Keep-Alive Result" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Timestamp:** $(date -u +'%Y-%m-%d %H:%M UTC')" >> $GITHUB_STEP_SUMMARY
+          echo "- **Status:** ${{ steps.ping.outcome }}" >> $GITHUB_STEP_SUMMARY

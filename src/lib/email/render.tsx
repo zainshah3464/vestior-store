@@ -10,9 +10,11 @@ import OrderDeliveredEmail from './templates/order-delivered'
 import OrderCancelledEmail from './templates/order-cancelled'
 import LowStockAlertEmail from './templates/low-stock-alert'
 import AbandonedCartEmail from './templates/abandoned-cart'
+import WelcomeBackEmail from './templates/welcome-back'
 
 const SUBJECTS: Record<EmailTemplate, string> = {
   welcome: 'Welcome to VESTIOR',
+  'welcome-back': 'Welcome back to VESTIOR — we missed you!',
   'order-placed': 'Your VESTIOR order is confirmed',
   'payment-confirmed': 'Payment received — thank you!',
   'payment-failed': 'Payment failed for your VESTIOR order',
@@ -33,6 +35,9 @@ export async function renderEmail(
   switch (template) {
     case 'welcome':
       html = await render(WelcomeEmail(data as never))
+      break
+    case 'welcome-back':
+      html = await render(WelcomeBackEmail(data as never))
       break
     case 'order-placed':
       html = await render(OrderPlacedEmail(data as never))

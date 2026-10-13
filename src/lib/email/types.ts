@@ -4,6 +4,7 @@
 
 export type EmailTemplate =
   | 'welcome'
+  | 'welcome-back'
   | 'order-placed'
   | 'payment-confirmed'
   | 'payment-failed'
