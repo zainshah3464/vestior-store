@@ -96,26 +96,23 @@ export const metadata: Metadata = {
   },
 
   icons: {
-    icon: "/images/favicon.ico",
-    shortcut: "/images/favicon.ico",
-    apple: "/apple-touch-icon.png",
+    // Modern SVG — preferred by all modern browsers
+    icon: [
+      { url: "/favicon.svg", type: "image/svg+xml" },
+      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
+    ],
+    // Legacy fallback for older browsers
+    shortcut: "/favicon.svg",
+    // iOS Safari
+    apple: [
+      { url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" },
+    ],
     other: [
       {
-        rel: "icon",
-        type: "image/png",
-        sizes: "192x192",
-        url: "/icon-192.png",
-      },
-      {
-        rel: "icon",
-        type: "image/png",
-        sizes: "512x512",
-        url: "/icon-512.png",
-      },
-      {
         rel: "mask-icon",
-        url: "/safari-pinned-tab.svg",
-        color: "#0A0A0A",
+        url: "/icon.svg",
+        color: "#3B82F6",
       },
     ],
   },
