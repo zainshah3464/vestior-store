@@ -33,6 +33,15 @@ export default defineConfig({
         'src/app/**/error.tsx',
         'src/app/**/layout.tsx',
         'src/app/**/page.tsx',
+        // ─────────────────────────────────────────────
+        // Integration-only modules — covered by E2E tests,
+        // not by unit tests. Excluding them keeps the unit
+        // coverage signal meaningful.
+        // ─────────────────────────────────────────────
+        'src/lib/supabase/**',      // DB clients (integration)
+        'src/providers/**',          // React Contexts (integration)
+        'src/actions/**',            // Server Actions (E2E-covered)
+        'src/components/WishlistProvider.tsx',
       ],
       thresholds: {
         lines: 55,
