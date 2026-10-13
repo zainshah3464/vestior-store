@@ -69,6 +69,24 @@ export const RANGE_PRESETS: Array<{ value: DateRangePreset; label: string }> = [
 ]
 
 // ─────────────────────────────────────────────────────────────
+// Product Analytics — narrower range options (no "all time")
+//
+// Used by product-level dashboards (e.g., per-product views,
+// add-to-cart rates). Excludes 'all' and 'custom' because
+// product analytics are always bounded to recent windows.
+// The `days` field lets callers avoid re-computing the window.
+// ─────────────────────────────────────────────────────────────
+export const PRODUCT_RANGE_PRESETS: Array<{
+  value: DateRangePreset
+  label: string
+  days: number
+}> = [
+  { value: '7d', label: 'Last 7 days', days: 7 },
+  { value: '30d', label: 'Last 30 days', days: 30 },
+  { value: '90d', label: 'Last 90 days', days: 90 },
+]
+
+// ─────────────────────────────────────────────────────────────
 // Compute from/to dates for a preset
 // ─────────────────────────────────────────────────────────────
 export function computeRange(preset: DateRangePreset): {
