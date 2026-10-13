@@ -276,3 +276,71 @@ export async function getTrafficSources(days = 7): Promise<ReferrerRow[]> {
     count: r.count || 0,
   }))
 }
+
+// ─────────────────────────────────────────────────────────────
+// New vs Returning visitors (last N days)
+// Queries the `sessions` collection.
+// ─────────────────────────────────────────────────────────────
+export interface NewVsReturningPoint {
+  day: string
+  newVisitors: number
+  returning: number
+}
+
+export async function getNewVsReturning(days = 30): Promise<NewVsReturningPoint[]> {
+  try {
+    const db = await getDb()
+    const since = new Date(Date.now() - days * 86400000)
+
+    const pipeline = [
+      { $match: { first_seen_at: { $gte: since } } },
+      {
+        $group: {
+          _id: {
+            day: {
+              $dateToString: {
+                format: '%Y-%m-%d',
+                date: '$first_seen_at',
+              },
+            },
+            visitor_type: '$visitor_type',
+          },
+          count: { $sum: 1 },
+        },
+      },
+    ]
+
+    const rows = await db
+      .collection(COLLECTIONS.SESSIONS)
+      .aggregate(pipeline)
+      .toArray()
+
+    // Build day map
+    const dayMap = new Map<string, { newVisitors: number; returning: number }>()
+
+    // Pre-populate all days with zeros
+    for (let i = days - 1; i >= 0; i--) {
+      const d = new Date(Date.now() - i * 86400000)
+      const key = d.toISOString().slice(0, 10)
+      dayMap.set(key, { newVisitors: 0, returning: 0 })
+    }
+
+    for (const r of rows) {
+      const day = r._id.day as string
+      const type = r._id.visitor_type as string
+      const count = Number(r.count ?? 0)
+      const entry = dayMap.get(day)
+      if (!entry) continue
+      if (type === 'new') entry.newVisitors += count
+      if (type === 'returning') entry.returning += count
+    }
+
+    return Array.from(dayMap.entries()).map(([day, data]) => ({
+      day,
+      ...data,
+    }))
+  } catch (err) {
+    console.error('[getNewVsReturning] failed:', err)
+    return []
+  }
+}
