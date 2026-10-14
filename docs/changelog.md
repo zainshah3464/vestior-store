@@ -10,96 +10,245 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Table of Contents
 
 - [Unreleased](#unreleased)
+- [v3.1.0 — AI + PWA + Auth Polish](#v310--ai--pwa--auth-polish-2026-10-14)
 - [v3.0.0 — Enterprise Feature Set](#v300--enterprise-feature-set-2026-10-12)
 - [v2.0.0 — Production Hardening](#v200--production-hardening-2026-10-05)
 - [v1.0.0 — Initial Release](#v100--initial-release-2026-10-01)
 
 ---
 
-## [v3.1.0] — AI + PWA + Auth Polish (2026-10-13)
+## [Unreleased]
 
-### 🎉 Added — AI
+### Planned for v3.2.0
 
-- **AI Shopping Assistant** powered by Groq
-  - Model: `openai/gpt-oss-120b` (500 tok/s)
-  - Tools: `searchProducts`, `getProductById`, `getCategories`, `getMyOrders`
-  - Streaming responses via SSE
-  - Rate-limited at 20 messages/min/IP
-  - Session-scoped history
-  - Custom toast integration
-  - Zero-cost (free tier)
+- Multi-currency support (USD, EUR, GBP, AED)
+- Sentry error tracking
+- Codecov integration
+- Order tracking via courier APIs (TCS, Leopards)
 
-### 🎉 Added — Auth Polish
+### Planned for v3.3.0
+
+- Multi-language (i18n — English + Urdu)
+- Guest order tracking via magic link
+- Advanced analytics (cohorts, retention, CLV)
+
+### Planned for v4.0.0
+
+- Loyalty program with points
+- Gift cards
+- PayPal integration (once available in Pakistan)
+- Semantic search for AI chatbot
+
+---
+
+## [v3.1.0] — AI + PWA + Auth Polish (2026-10-14)
+
+This release introduces **AI-powered shopping assistance**, **PWA capabilities**, **comprehensive auth improvements**, and **email system hardening** across 5+ critical bug fixes.
+
+### 🎉 Added — AI Shopping Assistant
+
+- **Groq-powered chatbot** with `openai/gpt-oss-120b` (500 tok/s)
+- **Tools:** `searchProducts`, `getProductById`, `getCategories`, `getMyOrders`
+- **Streaming responses** via Server-Sent Events
+- **Session-scoped history** (sessionStorage — cleared when tab closes)
+- **Suggested prompts** on empty state
+- **Typing indicator** (three bouncing dots)
+- **Clear conversation** button
+- **Hidden on `/admin/*`** pages
+- **Floating action button** with pulse indicator
+- **Rate-limited** at 20 messages/min/IP
+- **Zero-cost** (Groq free tier)
+
+### 🔐 Added — Auth Polish
 
 - **Password Reset Flow**
   - `/auth/forgot-password` — email entry
-  - `/auth/reset-password` — new password form with code exchange
+  - `/auth/reset-password` — new password form with server-side code exchange
   - Show/hide password toggle
   - Password strength meter (Very Weak → Very Strong)
   - Real-time validation (length, case, number)
+  - Password match indicator
 - **Login Improvements**
   - Clearer error messages ("Please verify your email first")
   - "Forgot password?" link
   - Show/hide password toggle
 - **Signup Improvements**
-  - Existing-email detection (was silently creating)
+  - **Existing-email detection** (was silently creating "duplicate")
   - Strong password enforcement
   - Real-time strength meter
 
-### 🎉 Added — PWA
+### 📱 Added — PWA (Progressive Web App)
 
-- **Service Worker** (`public/sw.js`)
-  - Cache-first for static assets
+- **Service Worker** (`public/sw.js`) — hand-written, no `next-pwa`
+  - Cache-first for static assets (JS/CSS/fonts)
   - Stale-while-revalidate for images
   - Network-first for HTML with offline fallback
   - Skips `/admin`, `/api`, `/auth` routes
-- **Offline Page** (`public/offline.html`)
-  - Branded design matching site
-  - Try Again button
+  - Hourly update check
+- **Offline Page** (`public/offline.html`) — branded design with "Try Again" button
 - **Install Prompt**
   - Auto-shows after 20s
   - 30-day dismissal cooldown
   - Hidden on `standalone` mode
 - **Enhanced Manifest**
-  - Shortcuts (Products, Orders, New Arrivals)
+  - App shortcuts (Products, Orders, New Arrivals)
   - Categories (shopping, fashion)
   - `display_override` for modern browsers
+  - Maskable icons (192, 512)
 
-### 🎉 Added — Legal
+### 📊 Added — Admin Dashboard 2.0
 
-- `/privacy` — Privacy Policy (Pakistan-compliant)
-- `/terms` — Terms of Service
-- `/refund` — Refund & Return Policy (14-day window)
-- Footer links to all three
-- Sitemap entries
+- **Command-Center Dashboard**
+  - 6 top cards (products, orders, users, revenue, AOV, live users)
+  - 4 business health cards (reviews, coupons, cart recovery, emails)
+  - Recent activity timeline (last 8 admin actions)
+- **Action Center** — pending items grid
+  - Pending reviews, orders, payments, abandoned carts, low stock, failed emails
+  - "All caught up" state when no items pending
+- **Live Users Widget** — auto-refreshes every 30s
+- **Product Analytics** — per-product views, cart adds, orders, conversion rate, abandoned flag
+- **New vs Returning chart** — 30-day visitor breakdown
+- **Payment method breakdown** — COD vs Stripe revenue bars
 
-### 🐛 Fixed
+### 📈 Added — Session Tracking
+
+- **MongoDB `sessions` collection** — one document per browser tab session
+- **Visitor classification** — `guest`, `new`, `returning`, `admin`
+- **Tracked per session:**
+  - Device, OS, browser
+  - Country, city (from Vercel headers)
+  - Referrer (raw + classified source)
+  - Page views, product views, cart adds, order count, revenue
+  - Unique paths, products, orders
+  - Duration (ms)
+  - `ended_with` heuristic — `order` / `abandon` / `bounce`
+- **90-day TTL** (auto-purge)
+- **Upsert pattern** — every track batch creates/updates the session
+
+### 📊 Added — Analytics Pages
+
+- **`/admin/visitors`** — full session list with filters
+- **`/admin/sessions?id=X`** — deep-dive into one session
+- **`/admin/users/[id]/activity`** — user activity timeline
+- **`/admin/reports`** — sales analytics with trends
+  - 7d / 30d / 90d / All time presets
+  - Revenue over time (area chart)
+  - Revenue by category (bar chart)
+  - Revenue by payment method (progress bars)
+  - Top selling products table
+
+### 🤖 Added — AI Features
+
+- AI Shopping Assistant (see above)
+- **AI Setup section** in README + Deployment docs
+- **AI tools** — read-only, RLS-enforced
+- **AI system prompt** — server-side only, injection-resistant
+
+### 🐛 Fixed — Email System (5 critical bugs)
+
+- **Duplicate payment-confirmed emails**
+  - Stripe webhook now checks `orders.payment_status` before queueing
+  - If client-side `confirmPayment` already ran, webhook skips the email
+  - Whichever path fires first wins
+- **Resend order email — wrong payment method**
+  - Was using legacy `payment_method`
+  - Now uses `payment_provider` (canonical)
+- **Resend order email — missing discount + coupon**
+  - Now passes `discount_amount` and `coupon_code` to template
+  - Email shows discount line correctly
+- **Stuck `queued` emails on QStash failure**
+  - If `qstash.publishJSON` throws, log is now marked `failed` with error
+  - Previously stayed `queued` forever
+- **Welcome-back email throttle bug**
+  - Throttle marker (`welcome_back_sent_at`) only set if email actually queued
+  - Previously set even on QStash failure — user got no email for 7 days
+
+### 🐛 Fixed — Order Placement (Atomic v2)
+
+- **No more partial state**
+  - v1 split order + coupon + provider into 3 separate operations
+  - v2 combines them into **one Postgres transaction**
+  - If any step fails, entire transaction rolls back
+  - No compensating RPC, no retry logic needed
+- **Atomic coupon redemption**
+  - Coupon lock + validation + increment + redemption record all inside the same transaction as the order
+- **`payment_method` also set on INSERT**
+  - Previously only `payment_provider` was set post-insert
+  - `payment_method` column was stuck on default
+
+### 🐛 Fixed — Other
 
 - Signup detects existing accounts (was showing "created" silently)
 - Login surfaces "Email not confirmed" properly
 - Reset flow correctly redirects to reset form
 - PWA install prompt no longer repeats after dismiss
-- Groq model changed to `openai/gpt-oss-120b`
+- Groq model changed to `openai/gpt-oss-120b` (region-compatible)
 - Image quality warnings resolved
+
+### 🔒 Security — Hardened
+
+- **Role normalization migration** — whitelist-based, backup table, atomic DO block
+  - Previously `NOT IN ('customer', 'admin')` was destructive to future roles
+  - Now only touches known-legacy values: `user`, `member`, `guest`, `''`
+  - Backup preserved in `_role_normalization_backup`
+  - Fails loudly if unknown roles exist after normalization
+- **Immutability guards** — Postgres trigger on `orders`
+  - Blocks any UPDATE to `items` or `address` after INSERT
+  - Uses `WHEN` clause — zero overhead on normal updates
+  - Prevents accidental history rewrite
+- **Super admin tier** — `is_super_admin` on profiles
+  - Role changes require super-admin (checked inside Postgres via `admin_change_user_role` RPC)
+  - Regular admin compromised ≠ role escalation
+- **Idempotency — Lua atomic release** (v2)
+  - Previous: `GET` then `DEL` — race condition on TTL expiry
+  - Now: Lua script runs atomically inside Redis
+  - No more possibility of deleting another process's lock
+- **AI prompt injection guard**
+  - Zod schema rejects `system` role from client
+  - Only `user` and `assistant` accepted
+- **Session privacy**
+  - IP hashed (SHA-256 + salt), never raw
+  - Session ID is not a credential (identifies a tab, not a person)
+  - 24h cookie TTL
+- **QStash signature verification** with key rotation support (`CURRENT` + `NEXT` keys)
+
+### ⚡ Performance
+
+- **Lighthouse Desktop:** 98 → **97** (Performance), 100 → **100** (A11y/Best/SEO)
+- **Lighthouse Mobile:** 84 → **91** (Performance), 100 → **100** (A11y/Best/SEO)
+- **Mobile LCP:** 3.5s → **3.5s** (unchanged)
+- **Desktop LCP:** 0.5s → **0.5s** (unchanged)
+- **CLS:** 0 (still perfect)
+- **AI streaming** — perceived instant response
+- **PWA service worker** — static assets from cache on second visit
+- **Chat widget** — lazy-loaded (after page load) to avoid LCP impact
 
 ### 📦 Dependencies
 
 - **Added:** `ai`, `@ai-sdk/groq`
-- **Removed:** `next-pwa` (replaced with manual SW)
+- **Removed:** `next-pwa` (replaced with manual service worker)
 
-## [Unreleased]
+### 📚 Documentation
 
-### Planned for v3.1.0
-- Multi-currency support (USD, EUR, GBP, AED)
-- PayPal integration (once available in Pakistan)
-- Order tracking via courier APIs (TCS, Leopards)
-- Multi-language (i18n — English + Urdu)
-- Loyalty program with points
-- Gift cards
-- Sentry error tracking
-- Codecov integration
-- PWA offline mode
-- Advanced analytics dashboard (cohorts, retention)
+- **11 deep-dive docs** (was 7)
+  - Added: `faq-developer.md`, `roadmap.md`
+  - Updated: all existing docs to reflect v3.1 features
+- **README rewritten** with AI + PWA sections (~8000 lines total)
+
+### 🏗️ Architecture — New
+
+- **AI layer** — Groq + Vercel AI SDK v5
+- **Session tracking layer** — MongoDB `sessions` collection
+- **Product analytics engine** — MongoDB events + Supabase order_items merge
+- **PWA layer** — Service worker + manifest + offline page
+- **Migration #13** — `place_order_atomic_v2` (atomic coupon + provider)
+
+### 🧪 Testing — Planned
+
+- Unit tests for AI tool schemas (documented)
+- Unit tests for password strength (documented)
+- Manual SQL test for immutability guards (documented)
+- Concurrency test script for atomic operations (documented)
 
 ---
 
@@ -169,7 +318,6 @@ This is the largest release since v1.0. VESTIOR went from a functional storefron
   - Top products (views, adds, orders)
   - Device breakdown
   - Traffic sources (referrers)
-- **Daily aggregation cron** (planned for v3.1)
 - **90-day TTL** on events (auto-cleanup)
 
 ### 🎉 Added — Growth Features
@@ -319,7 +467,7 @@ This is the largest release since v1.0. VESTIOR went from a functional storefron
 - **Redis** for idempotency + rate limiting + cache
 - **Docker support** via `Dockerfile.vercel` (Vercel-native container)
 - **Vercel cron** configuration
-- **9 new API routes**:
+- **11 new API routes**:
   - `/api/admin/export`
   - `/api/admin/payment-detail`
   - `/api/auth/welcome`
@@ -327,6 +475,7 @@ This is the largest release since v1.0. VESTIOR went from a functional storefron
   - `/api/cart/sync`
   - `/api/cron/abandoned-carts`
   - `/api/cron/daily`
+  - `/api/cron/keep-alive`
   - `/api/jobs/send-email`
   - `/api/recommendations/recently-viewed`
   - `/api/webhooks/stripe`
@@ -466,6 +615,7 @@ First public release.
 
 | Version | Date | Focus | Lighthouse (Desktop) |
 |---------|------|-------|---------------------|
+| v3.1.0 | 2026-10-14 | AI + PWA + Auth polish | 97/100/100/100 |
 | v3.0.0 | 2026-10-12 | Enterprise features | 98/100/100/100 |
 | v2.0.0 | 2026-10-05 | Security + perf | 87/85/100/100 |
 | v1.0.0 | 2026-10-01 | Initial release | — |
@@ -474,7 +624,60 @@ First public release.
 
 ## Upgrade Guide
 
+### From v3.0 to v3.1
+
+**Database:**
+
+1. Run new migrations (in order):
+   - `20261014_add_last_login.sql` — Adds `last_login_at`, `welcome_back_sent_at` columns
+   - `20261015_add_super_admin.sql` — Adds `is_super_admin` column + `admin_change_user_role` RPC
+   - `20261016_normalize_user_roles.sql` — Whitelist-based role normalization + backup table
+   - `20261017_sales_report_rpc.sql` — Adds `get_sales_report` RPC
+   - `20261018_product_analytics_rpc.sql` — Adds `get_product_sales_stats` RPC
+   - `20261019_place_order_atomic_v2.sql` — **⚠️ Critical** — Replaces order RPC with atomic v2
+
+2. Add `sessions` collection indexes in MongoDB:
+   ```javascript
+   db.sessions.createIndex({ session_id: 1 }, { unique: true })
+   db.sessions.createIndex({ user_id: 1, last_seen_at: -1 })
+   db.sessions.createIndex({ ip_hash: 1, last_seen_at: -1 })
+   db.sessions.createIndex({ visitor_type: 1, last_seen_at: -1 })
+   db.sessions.createIndex({ last_seen_at: 1 }, { expireAfterSeconds: 7776000 })
+   ```
+
+3. Verify all RPCs exist:
+   ```sql
+   SELECT proname FROM pg_proc WHERE proname IN (
+     'place_order_atomic',
+     'admin_change_user_role',
+     'get_sales_report',
+     'get_product_sales_stats'
+   );
+   ```
+
+**Environment:**
+
+Add new var to `.env.local` and Vercel:
+```
+GROQ_API_KEY=gsk_...
+```
+
+**Code:**
+
+- No breaking changes for existing features.
+- New components (ChatWidget, PWA register, Action Center) mount automatically.
+
+**Deploy:**
+
+1. Update Vercel env vars (add `GROQ_API_KEY`)
+2. Redeploy
+3. Verify AI chatbot works ("Show me suits under ₹25,000")
+4. Verify PWA install prompt appears (mobile or Chrome desktop)
+5. Check email logs no longer show stuck `queued` entries
+
 ### From v2 to v3
+
+See [v3.0.0 section](#v300--enterprise-feature-set-2026-10-12) for the full feature list.
 
 **Database:**
 1. Run new migrations:
@@ -509,15 +712,6 @@ STRIPE_SECRET_KEY
 STRIPE_WEBHOOK_SECRET
 NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
 ```
-
-**Code:**
-No breaking changes for existing features. New components mount automatically.
-
-**Deploy:**
-1. Update Vercel env vars
-2. Update Supabase redirect URLs
-3. Add Stripe webhook endpoint
-4. Redeploy
 
 ### From v1 to v2
 
@@ -567,6 +761,6 @@ Categories follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conve
 ---
 
 <p align="center">
-  <em>Last updated: 2026-10-12 · Maintained by <a href="https://github.com/zainshah3464">@zainshah3464</a></em>
+  <em>Last updated: 2026-10-14 · Maintained by <a href="https://github.com/zainshah3464">@zainshah3464</a></em>
 </p>
 ```

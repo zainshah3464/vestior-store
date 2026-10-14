@@ -20,22 +20,25 @@
 
 ## Current State
 
-VESTIOR is at **v3.0.0** — production-ready with enterprise features.
+VESTIOR is at **v3.1.0** — production-ready with AI-powered features and PWA capabilities.
 
 ### What's shipped
 
 | Category | Status |
 |----------|--------|
 | **Core commerce** | Browse → cart → checkout → orders — complete |
-| **Payments** | COD + Stripe live, refunds, webhooks, idempotency |
-| **Admin panel** | 12 pages covering products, orders, payments, users, analytics, reviews, coupons, carts, audit, exports |
-| **Email** | Gmail SMTP + QStash queue, 9 templates, delivery tracking |
-| **Analytics** | Self-hosted event tracking with MongoDB, funnel, live users, top products |
-| **Growth** | Coupons, reviews, wishlist, abandoned cart recovery, recommendations |
-| **Security** | RLS, atomic operations, idempotency, rate limiting, audit logs |
+| **Payments** | COD + Stripe live, refunds, webhooks, idempotency, atomic order placement |
+| **Admin panel** | 16+ pages covering products, orders, payments, users, analytics, reviews, coupons, carts, audit, exports, visitors, sessions, reports, activity |
+| **Email** | Gmail SMTP + QStash queue, 10 templates, delivery tracking, welcome-back throttling |
+| **Analytics** | Self-hosted event tracking + session tracking + product analytics + funnel + live users + new vs returning |
+| **AI** | Groq-powered shopping assistant with tool-calling, streaming, session-scoped history |
+| **PWA** | Installable, offline mode, service worker, app shortcuts, 30-day dismissal cooldown |
+| **Growth** | Coupons (atomic), reviews, wishlist, abandoned cart recovery, recommendations, welcome-back emails |
+| **Auth** | Email/password, Google OAuth, password reset flow, strength meter, existing-email detection |
+| **Security** | RLS, atomic operations, idempotency (Lua), rate limiting, audit logs, immutability guards |
 | **Testing** | 53 unit + 21 E2E tests, GitHub Actions CI (4 jobs) |
-| **Performance** | 98/100 Lighthouse desktop, 84/100 mobile |
-| **Docs** | 8 deep-dive files + README |
+| **Performance** | 97/100 Lighthouse desktop, 91/100 mobile |
+| **Docs** | 11 deep-dive files + README |
 
 ### What's next
 
@@ -141,20 +144,19 @@ No feature ships without a security review. RLS, input validation, rate limiting
 
 ---
 
-#### 🎯 PWA offline mode
+#### 🎯 Groq paid tier evaluation
 
-**Why:** Mobile users lose data when network drops. Offline support improves UX.
+**Why:** Free tier caps at 1,000 requests/day. If AI usage grows, we hit the cap.
 
 **What:**
-- Service worker via `next-pwa`
-- Cache static assets
-- Cache product pages (stale-while-revalidate)
-- Offline fallback page
-- Install prompt on mobile
+- Monitor Groq usage dashboard
+- Evaluate pricing (~$0.05-0.10 per 1K requests)
+- Set up alerts at 800 requests/day
+- Upgrade if consistently hitting 1K/day
 
-**Effort:** ~4 days
+**Effort:** ~1 day (setup) + ongoing monitoring
 
-**Blockers:** `next-pwa` compat with Next.js 16 Turbopack needs verification.
+**Blockers:** None. Cost decision when usage justifies.
 
 ---
 
@@ -173,6 +175,7 @@ No feature ships without a security review. RLS, input validation, rate limiting
 - All UI strings externalized
 - Emails in recipient's language
 - DB stores language preference on profile
+- **AI chatbot** responds in the user's language
 
 **Effort:** ~4 weeks
 
@@ -236,7 +239,7 @@ No feature ships without a security review. RLS, input validation, rate limiting
 
 #### 🎯 Advanced analytics
 
-**Why:** Current analytics shows funnel + top products. Missing cohort/retention analysis.
+**Why:** Current analytics shows funnel + top products + sessions. Missing cohort/retention analysis.
 
 **What:**
 - Cohort retention (D1, D7, D30)
@@ -248,6 +251,23 @@ No feature ships without a security review. RLS, input validation, rate limiting
 **Effort:** ~3 weeks
 
 **Blockers:** Requires pre-aggregation cron to keep dashboards fast.
+
+---
+
+#### 🎯 Advanced AI features
+
+**Why:** Current AI is read-only, tool-based. Next step: semantic search + personalization.
+
+**What:**
+- **Semantic search** — "fancy suit for wedding" → matches suits
+- **"Recommended for you"** — based on browsing history
+- **Auto-generated product descriptions** — for new products
+- **Customer support chatbot** — with FAQs + order lookup
+- **Multi-turn context** — "show me that in blue" after seeing a suit
+
+**Effort:** ~4 weeks
+
+**Blockers:** Needs vector embeddings (Voyage, OpenAI, or self-hosted) + cost analysis. Trade-off: semantic search requires an embedding store.
 
 ---
 
@@ -265,6 +285,7 @@ No feature ships without a security review. RLS, input validation, rate limiting
 - Native camera for AR try-on (future)
 - Push notifications
 - Deep linking
+- **AI chatbot** integrated natively
 
 **Effort:** ~3 months
 
@@ -292,16 +313,16 @@ No feature ships without a security review. RLS, input validation, rate limiting
 
 ---
 
-#### 🎯 AI-powered recommendations
+#### 🎯 ML-powered recommendations
 
 **Why:** Current recommendations are rule-based. ML would personalize.
 
 **What:**
 - Train model on purchase history
 - "Recommended for you" personalization
-- Semantic search (find "fancy suit" → all suits)
-- Auto-generated product descriptions
-- Chatbot for customer support
+- Product affinity (customers who bought X also bought Y)
+- Cohort retention analysis
+- **AI-generated product descriptions** based on attributes
 
 **Effort:** ~2 months
 
@@ -322,6 +343,22 @@ No feature ships without a security review. RLS, input validation, rate limiting
 **Effort:** ~4 months
 
 **Blockers:** Requires physical store presence. Not applicable if purely online.
+
+---
+
+#### 🎯 Self-hosted AI inference
+
+**Why:** Groq free tier caps at 1K/day. Paid tier adds per-request cost.
+
+**What:**
+- Deploy Llama or Mistral on dedicated GPU (vLLM, Ollama)
+- Or use serverless inference (Replicate, Together AI)
+- Swap `getGroq()` in `src/lib/ai/groq.ts` for a custom endpoint
+- Cost: ~$20-50/month for low-traffic, vs per-request pricing
+
+**Effort:** ~1 week (integration)
+
+**Blockers:** Cost analysis. Only worth it at high volume (>50K AI requests/month).
 
 ---
 
@@ -381,6 +418,28 @@ Some things we've deliberately not built. Reasons below.
 
 **Why not:** We use standard OG tags for share previews. Facebook Shop integration is complex and platform-specific. If demand emerges, we'd add via a service, not build.
 
+### ❌ RAG for the AI chatbot
+
+**Why not:** Vector embeddings + separate vector store + weekly re-indexing. For ~500 products, tool-calling is simpler and always correct. See [Developer FAQ → AI & Chatbot](./faq-developer.md#ai--chatbot).
+
+**When we'd revisit:** If catalog grows beyond 10,000 products and semantic search becomes a hard requirement.
+
+### ❌ Third-party analytics (Mixpanel, Amplitude)
+
+**Why not:** We already use MongoDB for events + sessions. A `$group` aggregation over 100K events is fast and free. Third-party adds a script (page weight), a vendor, and monthly cost.
+
+**When we'd revisit:** If we needed funnel visualization, cohorts, or user-level segmentation. Then we'd add PostHog (open-source, self-hostable).
+
+### ❌ Session recording (Hotjar, FullStory)
+
+**Why not:** Privacy-invasive, expensive, and heavy. Our session tracking captures the *what* (paths, products, orders), not the *how* (mouse movements, scroll patterns). Sufficient for e-commerce decisions.
+
+### ❌ A/B testing framework
+
+**Why not:** Low traffic volume makes A/B testing statistically meaningless. At 10K visitors/month, we'd need months for significance. Better to use qualitative feedback (customer emails, chat transcripts).
+
+**When we'd revisit:** At 100K+ monthly visitors, we'd add PostHog Experiments or GrowthBook.
+
 ---
 
 ## How to Influence the Roadmap
@@ -434,8 +493,9 @@ VESTIOR is free, open-source, and run by a solo maintainer. If you'd like to spo
 | v1.0.0 | Core commerce | ✅ Shipped |
 | v2.0.0 | Security + performance | ✅ Shipped |
 | v3.0.0 | Enterprise features | ✅ Shipped |
-| v3.1.0 | Multi-currency + PWA | 🚧 Planned |
-| v3.2.0 | Order tracking + i18n | 📅 Planned |
+| v3.1.0 | AI chatbot + PWA + auth polish | ✅ Shipped |
+| v3.2.0 | Multi-currency + Sentry | 🚧 Planned |
+| v3.3.0 | Order tracking + i18n | 📅 Planned |
 | v4.0.0 | Loyalty + gift cards | 🔮 Future |
 
 ---
@@ -453,6 +513,6 @@ I genuinely read every response. Your feedback shapes this project.
 ---
 
 <p align="center">
-  <em>Last updated: 2026-10-12 · Review quarterly · Maintained by <a href="https://github.com/zainshah3464">@zainshah3464</a></em>
+  <em>Last updated: 2026-10-14 · Review quarterly · Maintained by <a href="https://github.com/zainshah3464">@zainshah3464</a></em>
 </p>
 ```

@@ -62,8 +62,10 @@ Violations can be reported to **zainshahzs110@gmail.com**. All reports are revie
 - **Git**
 - **Supabase account** (free)
 - **MongoDB Atlas account** (free)
-- **Upstash account** (free)
+- **Upstash account** (free — Redis + QStash)
 - **Stripe account** (test mode)
+- **Gmail account** (App password for SMTP)
+- **Groq account** (free tier, for AI chatbot — optional if you're not working on AI)
 
 ### Setup (5 minutes)
 
@@ -93,10 +95,29 @@ For **quick local testing**, you can use test credentials (don't use these in pr
 - Upstash Redis + QStash: Free tier is enough
 - Stripe: Test mode keys
 - Gmail: App password from your personal account
+- Groq: Free tier (1,000 requests/day)
 
 **4. Run migrations:**
 
-Open Supabase SQL Editor and run all files in `supabase/migrations/` (in order).
+Open Supabase SQL Editor and run all **13 files** in `supabase/migrations/` **in order**:
+
+```
+20261003_fix_rls_policies.sql
+20261004_add_indexes.sql
+20261004_dashboard_stats.sql
+20261005_add_payment_fields.sql
+20261011_add_product_reviews.sql
+20261012_add_wishlists.sql
+20261013_add_coupons.sql
+20261014_add_last_login.sql
+20261015_add_super_admin.sql
+20261016_normalize_user_roles.sql
+20261017_sales_report_rpc.sql
+20261018_product_analytics_rpc.sql
+20261019_place_order_atomic_v2.sql
+```
+
+**⚠️ Migration #13 is critical** — it replaces `place_order_atomic` with v2 (atomic coupon + provider).
 
 **5. Start dev server:**
 
@@ -109,7 +130,7 @@ npm run dev
 ```bash
 npm run typecheck   # Clean
 npm run lint        # Clean
-npm run test        # 53 tests pass
+npm run test        # 53 unit tests pass
 ```
 
 ---
@@ -158,6 +179,7 @@ feat(checkout): add express checkout button
 fix(cart): prevent duplicate items after tab close
 perf(images): switch to AVIF format
 docs(readme): update lighthouse scores
+feat(ai): add semantic search tool
 ```
 
 ### Pushing
@@ -263,9 +285,45 @@ export async function myAction(input: unknown) {
 
 - **All new tables require RLS.**
 - **Every policy must be explicit** — no "authenticated all".
-- **RPCs use `SET search_path = public, pg_temp`.**
-- **`SECURITY DEFINER` only when necessary.**
+- **RPCs use `SET search_path = public, pg_temp`.** Always.
+- **`SECURITY DEFINER` only when necessary.** Document why.
 - **Migrations are idempotent** — use `IF NOT EXISTS`, `DROP POLICY IF EXISTS`.
+- **Multi-step mutations** wrap in a `DO $$ ... $$` block (atomic).
+- **Reversible migrations** — create a backup table before mutating. Example: `_role_normalization_backup`.
+- **Never edit an existing migration.** Always add a new one.
+
+### Server-Only Modules
+
+Anything that touches secrets must import `server-only`:
+
+```typescript
+import 'server-only'
+// Next.js will fail the build if this is imported from a client component.
+```
+
+**Modules that must be server-only:**
+- `lib/supabase/admin.ts`
+- `lib/mongodb.ts`, `lib/redis.ts`
+- `lib/payments/providers/stripe.ts`
+- `lib/email/mailer.ts`, `queue.ts`, `render.tsx`
+- `lib/audit.ts`
+- `lib/ai/groq.ts`, `system-prompt.ts`, `tools.ts`
+- `lib/qstash/verify.ts`
+- All `queries.ts` files
+- All Server Actions
+
+### AI-Specific Standards
+
+If you're contributing to the AI chatbot:
+
+- **Tools are read-only.** Never `INSERT`/`UPDATE`/`DELETE`.
+- **Tools use the user session client** (RLS-enforced), not `supabaseAdmin`.
+- **`inputSchema` is required** for every tool — validates LLM output.
+- **`description` is descriptive** — the LLM reads it to decide when to call.
+- **System prompt is server-only.** Never expose to client.
+- **Never accept `system` role from client.** Zod enum: `['user', 'assistant']`.
+
+See [Developer FAQ → AI & Chatbot](./faq-developer.md#ai--chatbot) for detailed rationale.
 
 ### CSS
 
@@ -299,6 +357,9 @@ src/
 | New pure function | Unit test |
 | New React component with logic | Component test |
 | New RPC | E2E test |
+| New AI tool | Unit test (Zod schema validation) |
+| New Zod schema | Unit test |
+| New DB trigger / policy | Manual SQL test (documented) |
 | Bug fix | Regression test (proves the bug) |
 | Docs only | No test |
 
@@ -331,6 +392,39 @@ New code should not lower coverage below these thresholds.
 | Unit | `test/unit/` | `feature.test.ts` |
 | Component | `test/components/` | `Component.test.tsx` |
 | E2E | `e2e/` | `flow.spec.ts` |
+
+### Testing non-deterministic code (AI)
+
+The AI chatbot is non-deterministic — the same input produces different outputs.
+
+**Test boundaries, not content:**
+
+```typescript
+// GOOD — test schema validation
+it('rejects system role', () => {
+  const result = chatRequestSchema.safeParse({
+    messages: [{ role: 'system', content: 'Hi' }],
+  })
+  expect(result.success).toBe(false)
+})
+
+// BAD — test LLM response content (flaky!)
+it('responds with "I can help with that"', async () => {
+  const response = await callChat('Show me suits')
+  expect(response).toContain('I can help with that')
+})
+```
+
+**What to test:**
+- Zod schemas (input validation, role whitelist, message caps)
+- Tool `inputSchema` (accepts valid, rejects invalid)
+- System prompt content (contains security instructions)
+- Rate limit behavior (429 after N requests)
+
+**What not to test:**
+- Specific LLM wording
+- Tool call order
+- Chat content
 
 ---
 
@@ -380,6 +474,10 @@ We use **Conventional Commits** with scopes matching our top-level directories.
 | `wishlist` | Wishlist |
 | `coupons` | Coupon system |
 | `invoices` | Invoice generation |
+| `ai` | AI chatbot, tools, system prompt |
+| `pwa` | Service worker, manifest, offline |
+| `sessions` | Session tracking |
+| `audit` | Audit logs |
 
 ### Examples
 
@@ -395,12 +493,24 @@ Closes #42
 
 **Bug fix:**
 ```
-fix(cart): prevent duplicate items after tab close
+fix(email): prevent duplicate payment-confirmed emails
 
-Before: closing a tab and reopening caused cart items to duplicate.
-After: cart is read-only on mount, deduplicated on every update.
+The Stripe webhook now checks `orders.payment_status` before
+queueing the email. If client-side `confirmPayment` already
+ran, the webhook skips the email.
 
 Closes #58
+```
+
+**AI feature:**
+```
+feat(ai): add semantic product search tool
+
+Adds a new tool that converts natural language queries into
+product filters. Uses the existing `searchProducts` tool under
+the hood with query rewriting.
+
+Note: read-only tool. Does not modify DB state.
 ```
 
 **Refactor:**
@@ -424,6 +534,9 @@ No behavioral changes.
 - [ ] No `console.log` left in code (use `console.error`/`console.warn`)
 - [ ] No `.env` files committed
 - [ ] No changes to `package-lock.json` unless adding/updating deps
+- [ ] New migrations are idempotent and tested in dev
+- [ ] New RPCs use `SET search_path` and `REVOKE ALL FROM PUBLIC`
+- [ ] New AI tools are read-only and use user-session client
 
 ### PR Title
 
@@ -453,6 +566,8 @@ For UI changes only.
 - [ ] Docs updated (if user-facing)
 - [ ] Migrations added (if DB change)
 - [ ] Env vars documented (if new config)
+- [ ] Server-only modules marked with `import 'server-only'`
+- [ ] AI tools (if applicable) are read-only + use user session client
 ```
 
 ### Review Process
@@ -481,11 +596,13 @@ For UI changes only.
 
 ### High-priority contributions
 
-- **Bug fixes** — especially in cart, checkout, payments
+- **Bug fixes** — especially in cart, checkout, payments, email
 - **Performance improvements** — with Lighthouse benchmarks
 - **Security hardening** — with CVE-style reasoning
 - **Accessibility improvements** — WCAG AA compliance
 - **Test coverage** — new tests, edge cases
+- **AI improvements** — better tool descriptions, prompt refinements, new tools
+- **PWA improvements** — offline UX, cache strategy, install flow
 - **Documentation** — clearer explanations, better examples
 
 ### Feature requests
@@ -520,7 +637,7 @@ Every dependency is a liability. If you want to add one:
 - Show its maintenance status (stars, last commit, size).
 - Consider bundle size impact.
 
-We've avoided: Redux, Zustand, Prisma, tRPC, GraphQL. Don't add them without a strong case.
+We've avoided: Redux, Zustand, Prisma, tRPC, GraphQL, next-pwa. Don't add them without a strong case.
 
 ### Breaking changes
 
@@ -529,6 +646,10 @@ Avoid breaking changes in minor versions. If a breaking change is necessary, it 
 ### Tests that just test mocks
 
 A test that only verifies "we called the mock" is not a test — it's a mirror. Test the behavior.
+
+### LLM output tests
+
+Don't test the LLM's actual response text. It's non-deterministic and will make CI flaky. Test the boundaries (schemas, rate limits, tool contracts) instead.
 
 ### Changes without tests
 
@@ -593,6 +714,6 @@ If you're new to open source, welcome. If you're experienced, welcome back. Let'
 ---
 
 <p align="center">
-  <em>Last updated: 2026-10-12 · Maintained by <a href="https://github.com/zainshah3464">@zainshah3464</a></em>
+  <em>Last updated: 2026-10-14 · Maintained by <a href="https://github.com/zainshah3464">@zainshah3464</a></em>
 </p>
 ```

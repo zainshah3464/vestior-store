@@ -16,6 +16,7 @@
 - [Stripe Production Setup](#stripe-production-setup)
 - [MongoDB Production Setup](#mongodb-production-setup)
 - [Upstash Production Setup](#upstash-production-setup)
+- [AI Setup (Groq)](#ai-setup-groq)
 - [Cron Jobs](#cron-jobs)
 - [Docker Deployment](#docker-deployment)
 - [VPS Deployment](#vps-deployment)
@@ -38,7 +39,7 @@ Before you push to production, verify these are done:
 - [ ] `npm run build` — succeeds locally
 
 ### Database
-- [ ] All 7 migrations run in production Supabase
+- [ ] All 13 migrations run in production Supabase (see [Supabase Production Setup](#supabase-production-setup))
 - [ ] RLS verified on every table
 - [ ] Storage bucket `product-images` created and public
 - [ ] Realtime enabled on `orders` table
@@ -50,6 +51,7 @@ Before you push to production, verify these are done:
 - [ ] Upstash Redis + QStash created
 - [ ] Stripe account in live mode (not test)
 - [ ] Gmail App Password generated
+- [ ] Groq API key generated (for AI chatbot)
 
 ### Configuration
 - [ ] All env vars documented in `.env.example`
@@ -57,12 +59,14 @@ Before you push to production, verify these are done:
 - [ ] `NEXT_PUBLIC_SITE_URL` set to production domain
 - [ ] Supabase redirect URLs updated with production domain
 - [ ] Stripe webhook endpoint points to production
+- [ ] Groq API key added to Vercel env vars
 
 ### Security
 - [ ] Different `IP_HASH_SALT` than dev (production isolation)
 - [ ] Different `CRON_SECRET` than dev
 - [ ] Service-role key never committed
 - [ ] `.env.local` in `.gitignore`
+- [ ] Groq key is server-only (never exposed to client)
 
 ---
 
@@ -119,24 +123,20 @@ Every variable with: purpose, where to get it, format, dev vs prod difference.
 
 **Migration path:** Switch to Resend later by changing `mailer.ts`.
 
-### 7b. AI Setup (Groq)
+### AI (Groq)
 
-1. Sign up at [console.groq.com](https://console.groq.com) (free tier)
-2. Go to **API Keys** → **Create Key**
-3. Name it `VESTIOR`
-4. Copy → `.env.local`:
-   - `GROQ_API_KEY=gsk_...`
+| Variable | Format | Notes |
+|----------|--------|-------|
+| `GROQ_API_KEY` | `gsk_...` | Server-only. Powers `/api/chat`. |
+
+**Where to get:** [console.groq.com](https://console.groq.com) → API Keys → Create Key.
 
 **Free tier limits:**
 - 1,000 requests/day (any model)
 - 8,000 tokens/minute
 - 200,000 tokens/day
 
-**Model selection:**
-- Default: `openai/gpt-oss-120b` (500 tok/s, tool-calling)
-- Faster: `openai/gpt-oss-20b` (1000 tok/s)
-
-**Available regions:** Model availability varies. If `llama-*` returns 404, use `openai/gpt-oss-*`.
+**Dev vs Prod:** Same key is fine for both — chat requests are rate-limited per-IP, and the free tier cap is global. If you hit the cap, upgrade to paid.
 
 ### Stripe
 
@@ -196,6 +196,7 @@ Every variable with: purpose, where to get it, format, dev vs prod difference.
 | All Redis | ✅ | ✅ | ✅ |
 | All QStash | ✅ | ✅ | ✅ |
 | All Gmail | ✅ | ✅ | ✅ |
+| `GROQ_API_KEY` | ✅ | ✅ | ✅ |
 | `STRIPE_SECRET_KEY` | `sk_live_...` | `sk_test_...` | `sk_test_...` |
 | `STRIPE_WEBHOOK_SECRET` | prod secret | test secret | — |
 | `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | `pk_live_...` | `pk_test_...` | `pk_test_...` |
@@ -246,7 +247,10 @@ The `/api/cron/daily` route calls both low-stock + abandoned-cart logic sequenti
 
 - Open `https://your-domain.com` — homepage loads
 - Test signup + login
+- Test password reset flow
 - Place a test order
+- Test AI chatbot ("Show me suits under ₹25,000")
+- Test PWA install prompt (mobile browser)
 - Check Vercel → Functions tab for real-time logs
 
 ---
@@ -307,6 +311,12 @@ Authorized redirect URIs:
 
 **Note:** The callback goes through Supabase first, then bounces back. So Supabase must also whitelist these URLs (Step above).
 
+### PWA considerations
+
+- **HTTPS required.** PWA install prompt only works over HTTPS. Vercel provides this automatically.
+- **Domain change = service worker invalidation.** When you switch domains, users' old service workers reference the old origin. They'll auto-update after the new SW is registered.
+- **Manifest `start_url` is relative.** No changes needed when the domain changes.
+
 ---
 
 ## Supabase Production Setup
@@ -318,22 +328,34 @@ Authorized redirect URIs:
 
 ### 2. Run migrations
 
-Copy each file from `supabase/migrations/` into SQL Editor and run:
+Copy each file from `supabase/migrations/` into SQL Editor and run **in this exact order**:
 
-```
-20261003_fix_rls_policies.sql
-20261004_add_indexes.sql
-20261004_dashboard_stats.sql
-20261005_add_payment_fields.sql
-20261011_add_product_reviews.sql
-20261012_add_wishlists.sql
-20261013_add_coupons.sql
-```
+| # | File | Purpose |
+|---|------|---------|
+| 1 | `20261003_fix_rls_policies.sql` | RLS + `is_admin()` helper |
+| 2 | `20261004_add_indexes.sql` | Performance indexes |
+| 3 | `20261004_dashboard_stats.sql` | `get_dashboard_stats()` RPC |
+| 4 | `20261005_add_payment_fields.sql` | Payment columns on `orders` |
+| 5 | `20261011_add_product_reviews.sql` | Reviews table + RPC |
+| 6 | `20261012_add_wishlists.sql` | Wishlist table + RLS |
+| 7 | `20261013_add_coupons.sql` | Coupons + redemptions + RPCs |
+| 8 | `20261014_add_last_login.sql` | Login tracking columns |
+| 9 | `20261015_add_super_admin.sql` | `is_super_admin` + role-change RPC |
+| 10 | `20261016_normalize_user_roles.sql` | Role whitelist + backup table |
+| 11 | `20261017_sales_report_rpc.sql` | Sales analytics RPC |
+| 12 | `20261018_product_analytics_rpc.sql` | Product analytics RPC |
+| 13 | `20261019_place_order_atomic_v2.sql` | **Enhanced atomic order RPC** |
 
-**Verify after each:**
+⚠️ **Migration #13 is critical** — it replaces the original `place_order_atomic` with a v2 that combines stock, coupon, and payment provider in one transaction. If you're upgrading from an earlier deployment, you **must** run this.
+
+**Verify after all migrations:**
 ```sql
 SELECT tablename, rowsecurity FROM pg_tables WHERE schemaname = 'public';
 -- All should show rowsecurity = true
+
+SELECT proname FROM pg_proc
+WHERE proname IN ('place_order_atomic', 'admin_change_user_role', 'get_sales_report', 'get_product_sales_stats');
+-- All four should be present
 ```
 
 ### 3. Create storage bucket
@@ -365,7 +387,10 @@ ALTER PUBLICATION supabase_realtime ADD TABLE public.orders;
 
 **Authentication → URL Configuration:**
 - Site URL: `https://vestior.com`
-- Redirect URLs: as above
+- Redirect URLs:
+  - `https://vestior.com/auth/callback`
+  - `https://www.vestior.com/auth/callback`
+  - `https://vestior.com/auth/reset-password` (for password reset flow)
 
 **Authentication → Email Templates:**
 - Customize confirmation, recovery, magic link templates with VESTIOR branding (optional)
@@ -376,6 +401,13 @@ After first signup in production:
 ```sql
 UPDATE public.profiles
 SET role = 'admin'
+WHERE email = 'your-email@example.com';
+```
+
+To create a **super admin** (can change other users' roles):
+```sql
+UPDATE public.profiles
+SET role = 'admin', is_super_admin = true
 WHERE email = 'your-email@example.com';
 ```
 
@@ -429,6 +461,7 @@ Copy the signing secret → `STRIPE_WEBHOOK_SECRET` in Vercel.
 - Verify webhook hits our endpoint
 - Verify order status = `completed`
 - Verify MongoDB has `payment_transactions` entry
+- Verify **only one** `payment-confirmed` email is sent (v3.1 fix)
 - Issue a test refund
 - Verify refund webhook + order status update
 
@@ -466,7 +499,9 @@ Run in MongoDB Atlas → Data Explorer → mongosh:
 ```javascript
 use vestior
 
+// ─────────────────────────────────────────────
 // Events: TTL index (auto-delete after 90 days)
+// ─────────────────────────────────────────────
 db.events.createIndex(
   { timestamp: -1 },
   { expireAfterSeconds: 7776000 }
@@ -475,26 +510,66 @@ db.events.createIndex({ session_id: 1 })
 db.events.createIndex({ user_id: 1, timestamp: -1 })
 db.events.createIndex({ event_type: 1, timestamp: -1 })
 
+// ─────────────────────────────────────────────
+// Sessions: TTL index (auto-delete after 90 days)
+// ─────────────────────────────────────────────
+db.sessions.createIndex(
+  { session_id: 1 },
+  { unique: true, name: 'session_id_unique' }
+)
+db.sessions.createIndex(
+  { user_id: 1, last_seen_at: -1 },
+  { sparse: true, name: 'user_recent' }
+)
+db.sessions.createIndex(
+  { ip_hash: 1, last_seen_at: -1 },
+  { name: 'ip_recent' }
+)
+db.sessions.createIndex(
+  { visitor_type: 1, last_seen_at: -1 },
+  { name: 'type_recent' }
+)
+db.sessions.createIndex(
+  { last_seen_at: 1 },
+  { expireAfterSeconds: 7776000, name: 'session_ttl_90d' }
+)
+
+// ─────────────────────────────────────────────
 // Email logs
+// ─────────────────────────────────────────────
 db.email_logs.createIndex({ email: 1, created_at: -1 })
 db.email_logs.createIndex({ status: 1, created_at: -1 })
 
+// ─────────────────────────────────────────────
 // Payments
+// ─────────────────────────────────────────────
 db.payment_transactions.createIndex(
   { provider_txn_id: 1 },
   { unique: true }
 )
 db.payment_transactions.createIndex({ order_id: 1 })
 
+// ─────────────────────────────────────────────
 // Audit
+// ─────────────────────────────────────────────
 db.audit_logs.createIndex({ timestamp: -1 })
-db.audit_logs.createIndex({ target_id: 1 })
+db.audit_logs.createIndex({ actor_id: 1, timestamp: -1 })
+db.audit_logs.createIndex({ target_type: 1, target_id: 1 })
+db.audit_logs.createIndex({ action: 1, timestamp: -1 })
 
+// ─────────────────────────────────────────────
 // Carts
+// ─────────────────────────────────────────────
 db.cart_snapshots.createIndex({ user_id: 1 }, { unique: true })
 db.cart_snapshots.createIndex({ recovery_token: 1 }, { unique: true })
 db.cart_snapshots.createIndex({ updated_at: -1 })
+db.cart_snapshots.createIndex(
+  { recovered_at: 1, last_reminder_at: 1 },
+  { sparse: true }
+)
 ```
+
+**Note:** Application code (`ensureSessionIndexes()` and `ensureCartIndexes()`) creates most of these automatically on cold start. Manual creation via mongosh is only needed if you want to guarantee they exist *before* the first request.
 
 ### 4. Enable backups
 
@@ -560,19 +635,91 @@ If you get a success response, QStash is working.
 
 ---
 
+## AI Setup (Groq)
+
+The AI Shopping Assistant is powered by Groq's LPU inference. It requires a `GROQ_API_KEY`.
+
+### 1. Sign up
+
+1. Go to [console.groq.com](https://console.groq.com)
+2. Sign up with email or Google
+3. Free tier activates immediately — no credit card required
+
+### 2. Create API key
+
+1. **API Keys** → **Create Key**
+2. Name it `VESTIOR`
+3. Copy the key (starts with `gsk_`)
+
+### 3. Add to env vars
+
+**Local (`.env.local`):**
+```
+GROQ_API_KEY=gsk_...
+```
+
+**Vercel (Settings → Environment Variables):**
+- Add `GROQ_API_KEY` to **Production + Preview + Development**
+
+### 4. Verify access
+
+```bash
+curl https://api.groq.com/openai/v1/models \
+  -H "Authorization: Bearer $GROQ_API_KEY"
+```
+
+Expected: JSON list of available models. If you see `openai/gpt-oss-120b`, you're good.
+
+### 5. Free tier limits
+
+| Limit | Value |
+|-------|-------|
+| Requests per day | 1,000 |
+| Tokens per minute | 8,000 |
+| Tokens per day | 200,000 |
+
+**What this means:** At ~500 tokens per chat, you get ~400 chats/day safely. Rate limiting (20/min/IP) prevents abuse.
+
+**When to upgrade:** If you consistently hit 1,000 req/day, upgrade to Groq's paid tier (~$0.05–0.10 per 1K requests).
+
+### 6. Model availability
+
+Model names vary by region and account tier. Our default is `openai/gpt-oss-120b`.
+
+If you get a 404 "model does not exist" error:
+
+1. Run the `/models` curl above
+2. Pick an available model from the list
+3. Update `AI_MODELS.QUALITY` in `src/lib/ai/groq.ts`
+
+**As of Oct 2026, DMM-region accounts** have access to `openai/gpt-oss-*` instead of `llama-*`.
+
+### 7. Monitoring AI usage
+
+- **Groq Dashboard** → Usage tab shows request/token counts
+- **Our logs** → Vercel Functions → `/api/chat` — search for `[chat] groq stream failed`
+- **Rate limit hits** → Vercel logs → search for `429` in `/api/chat`
+
+---
+
 ## Cron Jobs
 
 ### How Vercel cron works
 
-`vercel.json` `crons` array defines schedules. Vercel hits each path with a `Bearer` header containing `CRON_SECRET`... actually no, Vercel uses a header called `x-vercel-cron-secret` OR the `Authorization: Bearer ${CRON_SECRET}` if configured. Our routes check `Authorization: Bearer ${CRON_SECRET}` — Vercel auto-injects this.
+Vercel cron hits each configured path with an `Authorization: Bearer ${CRON_SECRET}` header — **only if** `CRON_SECRET` is set in your Vercel environment variables.
 
-Actually to be precise: Vercel's cron sends a request with `user-agent: vercel-cron/1.0`. Our routes verify with `Authorization: Bearer ${CRON_SECRET}` — you must configure Vercel to send this header, OR update our route to check `user-agent` instead. 
+**Setup:**
 
-**Our current implementation:** Routes check `Authorization: Bearer ${CRON_SECRET}`. Vercel cron by default does NOT send this. So we need either:
-1. A Vercel Pro feature: **Cron Secret** (set in Vercel Settings → Environment Variables → `CRON_SECRET` — Vercel auto-injects).
-2. Or update routes to allow `user-agent: vercel-cron`.
+1. Generate a secret: `openssl rand -hex 32`
+2. Add to Vercel → Environment Variables → `CRON_SECRET`
+3. Our routes verify with:
+   ```typescript
+   if (auth !== `Bearer ${env.CRON_SECRET}`) {
+     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+   }
+   ```
 
-**Recommendation:** Set `CRON_SECRET` in Vercel env vars. Vercel cron will then send `Authorization: Bearer <CRON_SECRET>` automatically. Our routes will accept it.
+Vercel cron automatically sends this header once `CRON_SECRET` is set. No extra configuration needed.
 
 ### Cron schedule cheatsheet
 
@@ -581,6 +728,7 @@ Actually to be precise: Vercel's cron sends a request with `user-agent: vercel-c
 0 */6 * * *      Every 6 hours
 */30 * * * *     Every 30 minutes
 0 0 * * 0        Weekly on Sunday at midnight
+0 * * * *        Hourly
 ```
 
 ### Manual trigger for testing
@@ -593,9 +741,27 @@ curl -H "Authorization: Bearer $CRON_SECRET" \
 **Expected response:**
 ```json
 {
-  "lowStock": { "sent": 1, "count": 3 },
+  "success": true,
+  "timestamp": "2026-10-14T09:00:00.000Z",
+  "lowStock": { "sent": true, "count": 3 },
   "abandonedCarts": { "processed": 5, "sent": 5, "failed": 0 }
 }
+```
+
+### Testing individual crons
+
+```bash
+# Low-stock alert only
+curl -H "Authorization: Bearer $CRON_SECRET" \
+  https://vestior.com/api/cron/low-stock-alert
+
+# Abandoned carts only
+curl -H "Authorization: Bearer $CRON_SECRET" \
+  https://vestior.com/api/cron/abandoned-carts
+
+# Keep-alive (pings Supabase + MongoDB)
+curl -H "Authorization: Bearer $CRON_SECRET" \
+  https://vestior.com/api/cron/keep-alive
 ```
 
 ### External cron fallback (Hobby plan)
@@ -608,6 +774,17 @@ If Vercel Hobby's single-cron limit is too restrictive:
    - Schedule: `0 */6 * * *`
    - Header: `Authorization: Bearer <CRON_SECRET>`
 3. Repeat for other cron endpoints
+
+### GitHub Actions for DB keep-alive
+
+Free-tier databases pause after inactivity:
+- Supabase Free: pauses after 7 days
+- MongoDB M0: pauses after 60 days
+
+The repo includes `.github/workflows/keep-alive.yml` which pings `/api/cron/keep-alive` twice daily. Set these GitHub secrets:
+
+- `SITE_URL` = `https://vestior.com`
+- `CRON_SECRET` = (same as Vercel)
 
 ---
 
@@ -734,6 +911,8 @@ sudo certbot --nginx -d vestior.com -d www.vestior.com
 
 Auto-renewal is configured by default.
 
+**PWA note:** Service workers require HTTPS. Certbot enables this automatically.
+
 ### 8. Cron for background jobs
 
 Add to crontab:
@@ -761,6 +940,8 @@ crontab -e
 - Status (Error / Warning)
 - Time range
 
+**AI-specific logs:** Search for `[chat]` in function logs to see AI chatbot activity.
+
 ### Supabase
 
 - **Logs → Auth** — Login attempts, signups, failures
@@ -773,12 +954,18 @@ crontab -e
 - **Metrics** — Operations, connections, network
 - **Performance Advisor** — Index suggestions
 - **Real-Time Performance Panel** — Live queries
+- **Collection Stats** — Document counts per collection (events, sessions, etc.)
 
 ### Upstash
 
 - **Redis → Usage** — Commands, storage
 - **QStash → Logs** — Messages, retries, DLQ
 - **QStash → Analytics** — Delivery rate, latency
+
+### Groq
+
+- **Dashboard → Usage** — Requests/day, tokens/minute
+- **Dashboard → API Keys** — Key status, last used
 
 ### Stripe
 
@@ -793,6 +980,7 @@ crontab -e
 - **MongoDB:** Enable performance alerts
 - **Upstash:** Enable quota alerts (80% usage)
 - **Stripe:** Enable fraud alerts
+- **Groq:** Monitor dashboard daily for the first week (free tier caps quietly)
 
 ---
 
@@ -833,11 +1021,36 @@ ALTER TABLE public.orders DROP COLUMN IF EXISTS discount_amount;
 
 **Never drop tables in production without a backup.**
 
+**Special case: `place_order_atomic_v2` rollback**
+
+If v2 causes problems, you can restore v1 by re-running the original RPC definition. But note: **v1 has known consistency bugs** (coupon + provider in separate transactions). Roll back only to buy time, not as a permanent solution.
+
+**Special case: role normalization**
+
+The `20261016_normalize_user_roles.sql` migration is reversible via:
+
+```sql
+UPDATE public.profiles p
+SET role = b.old_role
+FROM public._role_normalization_backup b
+WHERE p.id = b.id;
+```
+
+This is why the backup table exists.
+
 ### Rollback Stripe
 
 - Disable webhook endpoint
 - Revert to previous API keys
 - Issue refunds for affected transactions
+
+### Rollback AI chatbot
+
+If Groq is causing issues:
+1. Remove `GROQ_API_KEY` from Vercel env vars
+2. Redeploy
+3. `/api/chat` will return 503 ("AI chatbot is not configured")
+4. Rest of the site works normally
 
 ---
 
@@ -861,25 +1074,77 @@ curl -s https://vestior.com/robots.txt | grep -q "User-Agent" && echo "✓ Robot
 # 5. Auth guard
 curl -s -o /dev/null -w "%{http_code}" https://vestior.com/admin
 # Should redirect (3xx) → login
+
+# 6. PWA manifest
+curl -s https://vestior.com/manifest.json | grep -q "VESTIOR" && echo "✓ Manifest"
+
+# 7. Service worker
+curl -s https://vestior.com/sw.js | grep -q "CACHE_VERSION" && echo "✓ Service Worker"
+
+# 8. Offline page
+curl -s https://vestior.com/offline.html | grep -q "offline" && echo "✓ Offline Page"
+
+# 9. Cron (with secret)
+curl -s -H "Authorization: Bearer $CRON_SECRET" https://vestior.com/api/cron/keep-alive | grep -q '"ok":true' && echo "✓ Cron Auth"
 ```
 
 ### Manual tests
 
+**Auth:**
 - [ ] Sign up → receive verification email
 - [ ] Verify email → login works
 - [ ] Google OAuth login
+- [ ] **Forgot password** → receive reset email → reset form works
+- [ ] **Password strength meter** shows correct level
+- [ ] **Existing email detection** shows friendly error
+
+**Storefront:**
 - [ ] Browse products, filter, sort
 - [ ] Add to cart
+- [ ] Wishlist toggle + navbar badge
+- [ ] Product search (navbar)
+- [ ] Product detail page with reviews
+
+**Checkout:**
 - [ ] Checkout with COD
 - [ ] Checkout with Stripe test card
-- [ ] View orders, order detail, invoice
+- [ ] Coupon apply at checkout
+- [ ] Order confirmation email received (only once for Stripe)
+
+**Customer area:**
+- [ ] View orders, order detail
+- [ ] Order status real-time update
+- [ ] Invoice download (Print → Save as PDF)
 - [ ] Write a review (pending moderation)
-- [ ] Add to wishlist
-- [ ] Admin: login, view dashboard
-- [ ] Admin: update order status
-- [ ] Admin: create coupon
-- [ ] Admin: export CSV
-- [ ] Admin: view analytics
+- [ ] Profile update
+
+**AI Chatbot:**
+- [ ] Chat widget appears (bottom-right, hidden on /admin)
+- [ ] Suggested prompts work
+- [ ] "Show me suits under ₹25,000" → returns products
+- [ ] "What categories do you have?" → lists categories
+- [ ] "Where is my order?" (not logged in) → asks to sign in
+- [ ] Rate limit: send 21 messages fast → 429 error
+- [ ] Clear conversation works
+
+**PWA:**
+- [ ] Install prompt appears on Chrome desktop (after 20s)
+- [ ] Manifest loads without errors (DevTools → Application → Manifest)
+- [ ] Service worker registers (DevTools → Application → Service Workers)
+- [ ] Offline mode: DevTools → Network → Offline → page still loads from cache
+
+**Admin:**
+- [ ] Login as admin → dashboard loads
+- [ ] Action Center shows pending items
+- [ ] Live Users widget auto-refreshes
+- [ ] Update order status
+- [ ] Create coupon
+- [ ] Export CSV (orders, payments, emails, users, audit)
+- [ ] Analytics dashboard loads
+- [ ] Product Analytics table sorts by column
+- [ ] Visitors page shows sessions
+- [ ] Session drill-down loads
+- [ ] Audit log shows recent actions
 
 ### Performance verification
 
@@ -890,6 +1155,11 @@ Run Lighthouse on production URL:
 - Best Practices = 100
 - SEO = 100
 
+**PWA-specific checks:**
+- Manifest has `name`, `short_name`, `icons`, `start_url`, `display`
+- All icon files exist (192x192, 512x512, maskable variants)
+- Service worker registers without console errors
+
 ### SEO verification
 
 - `https://vestior.com/robots.txt` loads
@@ -897,6 +1167,7 @@ Run Lighthouse on production URL:
 - [Rich Results Test](https://search.google.com/test/rich-results) on product URL → valid Product + Review + Breadcrumb
 - [Facebook Sharing Debugger](https://developers.facebook.com/tools/debug/) → correct OG image
 - [Twitter Card Validator](https://cards-dev.twitter.com/validator) → correct card
+- [PageSpeed Insights](https://pagespeed.web.dev) → PWA installable badge
 
 ---
 
@@ -906,10 +1177,11 @@ As traffic grows, these are the levers to pull.
 
 ### At 10K orders/month
 
-- [ ] Upgrade Vercel to Pro (for commercial use)
+- [ ] Upgrade Vercel to Pro (for commercial use + multiple crons)
 - [ ] Upgrade Supabase to Pro (backups + no pause)
 - [ ] Review MongoDB performance advisor
 - [ ] Check Upstash quotas
+- [ ] Monitor Groq daily request count
 
 ### At 100K orders/month
 
@@ -919,6 +1191,8 @@ As traffic grows, these are the levers to pull.
 - [ ] Add Sentry error tracking
 - [ ] Add Codecov for coverage trending
 - [ ] Add real-time admin dashboard (WebSocket)
+- [ ] Migrate Groq to paid tier if hitting free limits
+- [ ] Consider adding Resend for transactional email
 
 ### At 1M orders/month
 
@@ -928,6 +1202,7 @@ As traffic grows, these are the levers to pull.
 - [ ] CDN caching for product pages
 - [ ] Split admin panel from storefront (separate deployment)
 - [ ] Background workers on dedicated queue (BullMQ, SQS)
+- [ ] Self-hosted AI inference (vLLM, Ollama)
 
 ### Code changes required (minimal)
 
@@ -935,6 +1210,7 @@ As traffic grows, these are the levers to pull.
 - Swap `mongodb.ts` connection string to sharded
 - Update Redis client if moving from Upstash to self-hosted
 - Add Sentry SDK initialization in `layout.tsx` and error handlers
+- Swap `getGroq()` in `src/lib/ai/groq.ts` for a self-hosted endpoint
 
 **None of the core business logic changes.**
 
@@ -947,10 +1223,12 @@ As traffic grows, these are the levers to pull.
 - [Vercel deployment docs](https://vercel.com/docs/deployments/overview)
 - [Supabase production guide](https://supabase.com/docs/guides/platform/going-into-prod)
 - [Stripe production checklist](https://stripe.com/docs/development/checklist)
+- [Groq API docs](https://console.groq.com/docs)
+- [PWA deployment best practices](https://web.dev/pwa-checklist/)
 
 ---
 
 <p align="center">
-  <em>Last updated: 2026-10-12 · Maintained by <a href="https://github.com/zainshah3464">@zainshah3464</a></em>
+  <em>Last updated: 2026-10-14 · Maintained by <a href="https://github.com/zainshah3464">@zainshah3464</a></em>
 </p>
 ```

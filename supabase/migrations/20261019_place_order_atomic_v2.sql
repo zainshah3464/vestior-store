@@ -320,4 +320,4 @@ GRANT EXECUTE ON FUNCTION public.place_order_atomic(uuid, text, jsonb, jsonb, te
 -- SELECT proname, pronargs
 -- FROM pg_proc
 -- WHERE proname = 'place_order_atomic';
--- Should show: place_order_atomic | 6
+-- Should show: place_order_atomic | 
