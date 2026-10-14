@@ -6,6 +6,7 @@ const { mockRedis } = vi.hoisted(() => ({
     set: vi.fn(),
     get: vi.fn(),
     del: vi.fn(),
+    eval: vi.fn(), // ← v2 code uses Lua via redis.eval
   },
 }))
 
@@ -22,23 +23,25 @@ import { withIdempotency, wasProcessed } from '@/lib/idempotency'
 
 describe('withIdempotency', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
+    // resetAllMocks — clears queue too (unlike clearAllMocks)
+    vi.resetAllMocks()
   })
 
   it('executes fn and returns result when lock is acquired', async () => {
-    mockRedis.set.mockResolvedValueOnce('OK')
-    mockRedis.set.mockResolvedValueOnce('OK')
-    mockRedis.get.mockResolvedValueOnce('some-uuid')
+    mockRedis.set.mockResolvedValueOnce('OK')       // acquire lock
+    mockRedis.set.mockResolvedValueOnce('OK')       // cache result
+    mockRedis.eval.mockResolvedValueOnce(1)         // Lua release
 
     const fn = vi.fn().mockResolvedValue({ data: 'result' })
     const result = await withIdempotency({ scope: 'test', key: 'abc' }, fn)
 
     expect(fn).toHaveBeenCalledOnce()
     expect(result).toEqual({ data: 'result' })
+    expect(mockRedis.eval).toHaveBeenCalledOnce()
   })
 
   it('returns cached result if lock was already taken and result exists', async () => {
-    mockRedis.set.mockResolvedValueOnce(null)
+    mockRedis.set.mockResolvedValueOnce(null)        // lock NOT acquired
     mockRedis.get.mockResolvedValueOnce({ cached: true })
 
     const fn = vi.fn()
@@ -49,8 +52,8 @@ describe('withIdempotency', () => {
   })
 
   it('throws if lock is taken and no cached result exists', async () => {
-    mockRedis.set.mockResolvedValueOnce(null)
-    mockRedis.get.mockResolvedValueOnce(null)
+    mockRedis.set.mockResolvedValueOnce(null)        // lock NOT acquired
+    mockRedis.get.mockResolvedValueOnce(null)        // no cached result
 
     const fn = vi.fn()
 
@@ -62,7 +65,7 @@ describe('withIdempotency', () => {
 
 describe('wasProcessed', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
+    vi.resetAllMocks()
   })
 
   it('returns true when result exists', async () => {

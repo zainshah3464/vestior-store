@@ -57,6 +57,19 @@ export default function VisitorsTable({
   const searchParams = useSearchParams()
   const [search, setSearch] = useState(initialFilters.search)
 
+  // ─────────────────────────────────────────────
+  // Compute "now" once on mount — avoids impure Date.now()
+  // inside render (React purity rule).
+  // Updates every 60s to keep relative times fresh.
+  // ─────────────────────────────────────────────
+  const [now, setNow] = useState<number | null>(null)
+
+  useEffect(() => {
+    setNow(Date.now())
+    const interval = setInterval(() => setNow(Date.now()), 60_000)
+    return () => clearInterval(interval)
+  }, [])
+
   useEffect(() => {
     const timer = setTimeout(() => {
       const params = new URLSearchParams(searchParams.toString())
@@ -90,8 +103,13 @@ export default function VisitorsTable({
     return `${mins}m ${secs}s`
   }
 
+  // ─────────────────────────────────────────────
+  // Uses `now` state instead of Date.now() — pure function.
+  // Returns '—' during SSR / first paint (now === null).
+  // ─────────────────────────────────────────────
   const formatRelative = (date: Date) => {
-    const diff = Date.now() - new Date(date).getTime()
+    if (now === null) return '—'
+    const diff = now - new Date(date).getTime()
     if (diff < 60_000) return 'just now'
     if (diff < 3600_000) return `${Math.floor(diff / 60_000)}m ago`
     if (diff < 86400_000) return `${Math.floor(diff / 3600_000)}h ago`

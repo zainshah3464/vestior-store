@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { motion } from 'framer-motion'
 import {
   Package, CreditCard, Mail, Users, ShieldCheck, Download,
-  Loader2, Calendar, Filter,
+  Loader2, Calendar, Filter, Printer,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { EXPORT_CONFIGS, type ExportType } from '@/lib/exports/types'
@@ -65,6 +65,24 @@ export default function ExportCenter() {
     } finally {
       setDownloading(null)
     }
+  }
+
+  const handlePrint = (type: ExportType) => {
+    const params = new URLSearchParams()
+
+    if (fromDate) params.set('fromDate', new Date(fromDate).toISOString())
+    if (toDate) {
+      const end = new Date(toDate)
+      end.setHours(23, 59, 59, 999)
+      params.set('toDate', end.toISOString())
+    }
+    if (status && status !== 'all') params.set('status', status)
+    if (provider && provider !== 'all') params.set('provider', provider)
+
+    const qs = params.toString()
+    const url = `/admin/exports/print/${type}${qs ? `?${qs}` : ''}`
+
+    window.open(url, '_blank', 'noopener,noreferrer')
   }
 
   const clearFilters = () => {
@@ -190,23 +208,33 @@ export default function ExportCenter() {
                   </div>
                 </div>
 
-                <button
-                  onClick={() => handleDownload(config.type)}
-                  disabled={!!downloading}
-                  className="w-full py-2.5 bg-indigo-600/10 border border-indigo-500/30 text-indigo-300 rounded-lg text-sm font-medium hover:bg-indigo-600/20 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                >
-                  {isLoading ? (
-                    <>
-                      <Loader2 size={14} className="animate-spin" />
-                      Exporting...
-                    </>
-                  ) : (
-                    <>
-                      <Download size={14} />
-                      Download CSV
-                    </>
-                  )}
-                </button>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => handleDownload(config.type)}
+                    disabled={!!downloading}
+                    className="flex-1 py-2.5 bg-indigo-600/10 border border-indigo-500/30 text-indigo-300 rounded-lg text-sm font-medium hover:bg-indigo-600/20 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  >
+                    {isLoading ? (
+                      <>
+                        <Loader2 size={14} className="animate-spin" />
+                        Exporting...
+                      </>
+                    ) : (
+                      <>
+                        <Download size={14} />
+                        CSV
+                      </>
+                    )}
+                  </button>
+
+                  <button
+                    onClick={() => handlePrint(config.type)}
+                    className="flex-1 py-2.5 bg-white/5 border border-white/10 text-gray-300 rounded-lg text-sm font-medium hover:bg-white/10 transition flex items-center justify-center gap-2"
+                  >
+                    <Printer size={14} />
+                    Print
+                  </button>
+                </div>
               </div>
             </motion.div>
           )
