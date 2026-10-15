@@ -256,6 +256,14 @@ export default function CheckoutPage() {
       setOrderId(result.orderId)
 
       if (paymentMethod === 'cod') {
+        track('order_placed', {
+          orderId: result.orderId,
+          total: result.total,
+          itemCount: cart.length,
+          paymentMethod: 'cod',
+          couponCode: result.couponCode,
+          discountAmount: result.discountAmount,
+        })
         toast.success('Order placed successfully!')
         localStorage.removeItem('cart')
         window.dispatchEvent(new Event('cartUpdated'))
@@ -278,6 +286,14 @@ export default function CheckoutPage() {
   }
 
   const handlePaymentSuccess = () => {
+    track('order_placed', {
+      orderId,
+      total,
+      itemCount: cart.length,
+      paymentMethod: 'stripe',
+      couponCode: appliedCoupon?.code ?? null,
+      discountAmount: discount,
+    })
     toast.success('Payment successful!')
     localStorage.removeItem('cart')
     window.dispatchEvent(new Event('cartUpdated'))
