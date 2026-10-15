@@ -1,6 +1,8 @@
 /**
- * Cron: abandoned-cart recovery.
- * Window widened to 2–24h so daily cron actually finds carts.
+ * Cron: abandoned-cart recovery emails.
+ *
+ * Window: cart must be ≥2h idle.
+ * Max 3 reminders per cart (7 days apart).
  */
 
 import { NextRequest, NextResponse } from 'next/server'
@@ -22,7 +24,7 @@ const THROTTLE_KEY = 'throttle:cron:abandoned-carts'
 const THROTTLE_MINUTES = 50
 
 const MIN_AGE_HOURS = 2
-const MAX_AGE_HOURS = 24
+const MAX_REMINDERS = 3
 const BATCH_SIZE = 100
 
 export async function GET(req: NextRequest) {
@@ -42,9 +44,10 @@ export async function GET(req: NextRequest) {
 
   await ensureCartIndexes()
 
+  // ✅ CORRECT ORDER: minAgeHours, maxReminders, limit
   const carts = await findAbandonedCarts(
     MIN_AGE_HOURS,
-    MAX_AGE_HOURS,
+    MAX_REMINDERS,
     BATCH_SIZE
   )
 
