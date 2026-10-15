@@ -2,7 +2,23 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import Link from 'next/link'
-import { Trash2, Plus, Minus, ShoppingBag, ArrowLeft, CreditCard, Shield, Truck, Gift, Sparkles, Clock, ChevronRight } from 'lucide-react'
+import {
+  Trash2,
+  Plus,
+  Minus,
+  ShoppingBag,
+  ArrowLeft,
+  CreditCard,
+  Shield,
+  Truck,
+  Sparkles,
+  Clock,
+  ChevronRight,
+  Heart,
+  Gift,
+  Package,
+  RotateCcw,
+} from 'lucide-react'
 import toast from 'react-hot-toast'
 import { motion, AnimatePresence } from 'framer-motion'
 
@@ -48,12 +64,21 @@ function mergeCartItems(rawItems: CartItem[]): CartItem[] {
   return Array.from(map.values())
 }
 
+// ─────────────────────────────────────────────
+// Rotating empty-state messages — cute, brand-marketing vibe
+// ─────────────────────────────────────────────
+const EMPTY_STATE_MESSAGES = [
+  { emoji: '👋', text: 'Your cart is feeling a little lonely.' },
+  { emoji: '✨', text: 'Every great outfit starts with one click.' },
+  { emoji: '🤔', text: "Isn't it time you treated yourself?" },
+  { emoji: '🎁', text: 'Somewhere in our catalog is your next favorite.' },
+  { emoji: '🧵', text: 'Hand-tailored pieces are waiting to meet you.' },
+] as const
+
 export default function CartPage() {
   const [cart, setCart] = useState<CartItem[]>([])
   const [loading, setLoading] = useState(true)
-  const [couponCode, setCouponCode] = useState('')
-  const [discount, setDiscount] = useState(0)
-  const [appliedCoupon, setAppliedCoupon] = useState('')
+  const [msgIndex, setMsgIndex] = useState(0)
 
   const loadCart = useCallback(() => {
     const savedCart = JSON.parse(localStorage.getItem('cart') || '[]')
@@ -70,14 +95,24 @@ export default function CartPage() {
     return () => window.removeEventListener('cartUpdated', loadCart)
   }, [loadCart])
 
+  // Rotate the empty-state messages every 3.5s
+  useEffect(() => {
+    if (cart.length > 0) return
+    const id = setInterval(
+      () => setMsgIndex((i) => (i + 1) % EMPTY_STATE_MESSAGES.length),
+      3500
+    )
+    return () => clearInterval(id)
+  }, [cart.length])
+
   const updateQuantity = (id: string, newQuantity: number) => {
     if (newQuantity < 1) return
-    const item = cart.find(i => i.id === id)
+    const item = cart.find((i) => i.id === id)
     if (item && newQuantity > item.stock) {
       toast.error(`Only ${item.stock} items available`)
       return
     }
-    const updatedCart = cart.map(item =>
+    const updatedCart = cart.map((item) =>
       item.id === id ? { ...item, quantity: newQuantity } : item
     )
     setCart(updatedCart)
@@ -87,7 +122,7 @@ export default function CartPage() {
   }
 
   const removeItem = (id: string) => {
-    const updatedCart = cart.filter(item => item.id !== id)
+    const updatedCart = cart.filter((item) => item.id !== id)
     setCart(updatedCart)
     localStorage.setItem('cart', JSON.stringify(updatedCart))
     window.dispatchEvent(new Event('cartUpdated'))
@@ -103,372 +138,690 @@ export default function CartPage() {
     }
   }
 
-  const applyCoupon = () => {
-    if (couponCode === 'WELCOME10') {
-      const discountAmount = subtotal * 0.1
-      setDiscount(discountAmount)
-      setAppliedCoupon('WELCOME10')
-      toast.success('🎉 10% discount applied!')
-    } else if (couponCode === 'FREESHIP') {
-      setDiscount(0)
-      setAppliedCoupon('FREESHIP')
-      toast.success('🚚 Free shipping applied!')
-    } else if (couponCode === 'BRAND20') {
-      const discountAmount = subtotal * 0.2
-      setDiscount(discountAmount)
-      setAppliedCoupon('BRAND20')
-      toast.success('✨ 20% discount applied!')
-    } else {
-      toast.error('Invalid coupon code')
-    }
-    setCouponCode('')
-  }
-
-  const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0)
+  const subtotal = cart.reduce(
+    (sum, item) => sum + item.price * item.quantity,
+    0
+  )
   const shipping = subtotal > 5000 ? 0 : 100
-  const total = subtotal + shipping - discount
+  const total = subtotal + shipping
+
   const savings = cart.reduce((sum, item) => {
     if (item.compare_at_price && item.compare_at_price > item.price) {
-      return sum + ((item.compare_at_price - item.price) * item.quantity)
+      return sum + (item.compare_at_price - item.price) * item.quantity
     }
     return sum
   }, 0)
 
-  if (loading) return (
-    <div className="min-h-screen bg-black flex items-center justify-center">
-      <div className="text-center">
-        <div className="w-12 h-12 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-3"></div>
-        <p className="text-gray-400 text-sm">Loading your style...</p>
-      </div>
-    </div>
-  )
+  const freeShippingProgress = Math.min((subtotal / 5000) * 100, 100)
+  const remainingForFreeShipping = Math.max(5000 - subtotal, 0)
 
-  if (cart.length === 0) {
+  // ─────────────────────────────────────────────
+  // Loading
+  // ─────────────────────────────────────────────
+  if (loading) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center pt-20">
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="text-center max-w-md mx-auto px-4"
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-12 h-12 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+          <p className="text-gray-500 text-sm">Loading your style…</p>
+        </div>
+      </div>
+    )
+  }
+
+  // ─────────────────────────────────────────────
+  // EMPTY STATE — cute, animated, marketing-driven
+  // ─────────────────────────────────────────────
+  if (cart.length === 0) {
+    const current = EMPTY_STATE_MESSAGES[msgIndex]
+
+    return (
+      <div className="relative min-h-screen bg-black flex items-center justify-center pt-20 pb-16 overflow-hidden">
+        {/* Ambient glows */}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0"
         >
-          <div className="relative">
-            <div className="absolute inset-0 bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-full blur-3xl"></div>
-            <div className="relative w-24 h-24 bg-gradient-to-br from-gray-900 to-gray-800 rounded-full flex items-center justify-center mx-auto mb-5 border border-gray-700">
-              <ShoppingBag size={36} className="text-gray-600" aria-hidden="true" />
-            </div>
+          <div className="absolute top-1/3 left-1/2 -translate-x-1/2 w-[600px] h-[400px] bg-blue-500/[0.06] blur-[140px]" />
+          <div className="absolute bottom-1/4 right-1/4 w-[380px] h-[380px] bg-violet-500/[0.05] blur-[120px]" />
+        </div>
+
+        {/* Floating mini icons — playful confetti-like */}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0"
+        >
+          {[
+            { Icon: Sparkles, x: '15%', y: '20%', delay: 0, dur: 7 },
+            { Icon: Heart, x: '82%', y: '28%', delay: 0.6, dur: 8 },
+            { Icon: Gift, x: '22%', y: '75%', delay: 1.2, dur: 9 },
+            { Icon: Package, x: '78%', y: '72%', delay: 0.3, dur: 8.5 },
+          ].map(({ Icon, x, y, delay, dur }, i) => (
+            <motion.span
+              key={i}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{
+                opacity: [0, 0.35, 0.35, 0],
+                y: [20, 0, -10, -30],
+                rotate: [0, 8, -6, 0],
+              }}
+              transition={{
+                duration: dur,
+                delay,
+                repeat: Infinity,
+                ease: 'easeInOut',
+              }}
+              className="absolute text-blue-400/40"
+              style={{ left: x, top: y }}
+            >
+              <Icon size={18} />
+            </motion.span>
+          ))}
+        </div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+          className="relative max-w-lg mx-auto px-6 text-center z-10"
+        >
+          {/* Animated shopping bag with personality */}
+          <div className="relative inline-flex items-center justify-center mb-8">
+            {/* Pulsing halo */}
+            <motion.div
+              aria-hidden="true"
+              animate={{ scale: [1, 1.12, 1], opacity: [0.3, 0.15, 0.3] }}
+              transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
+              className="absolute w-32 h-32 rounded-full bg-gradient-to-br from-blue-500/30 to-violet-500/30 blur-2xl"
+            />
+
+            {/* Bag — gentle "breathing" motion */}
+            <motion.div
+              animate={{
+                y: [0, -6, 0],
+                rotate: [-2, 2, -2],
+              }}
+              transition={{
+                duration: 4,
+                repeat: Infinity,
+                ease: 'easeInOut',
+              }}
+              className="relative w-24 h-24 rounded-3xl bg-gradient-to-br from-[#1a1a1a] to-[#0f0f0f] border border-white/[0.08] flex items-center justify-center shadow-2xl shadow-black/60"
+            >
+              <ShoppingBag
+                size={38}
+                className="text-blue-400/70"
+                aria-hidden="true"
+                strokeWidth={1.5}
+              />
+
+              {/* Little "zzz" or sparkle accent */}
+              <motion.span
+                aria-hidden="true"
+                animate={{
+                  opacity: [0, 1, 0],
+                  y: [0, -14, -22],
+                  scale: [0.6, 1, 0.6],
+                }}
+                transition={{
+                  duration: 2.5,
+                  repeat: Infinity,
+                  repeatDelay: 1,
+                }}
+                className="absolute -top-1 right-2 text-amber-400"
+              >
+                <Sparkles size={14} />
+              </motion.span>
+            </motion.div>
           </div>
-          <h2 className="text-2xl font-bold text-white mb-2">Your cart is empty</h2>
-          <p className="text-gray-400 text-sm mb-6">Looks like you haven't found your perfect piece yet</p>
+
+          {/* Headline */}
+          <h2 className="text-2xl sm:text-3xl font-bold text-white tracking-[-0.02em] mb-3">
+            Your cart is empty
+          </h2>
+
+          {/* Rotating cute marketing messages */}
+          <div className="h-8 mb-8 relative">
+            <AnimatePresence mode="wait">
+              <motion.p
+                key={msgIndex}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+                className="absolute inset-x-0 text-[13px] sm:text-[14px] text-gray-400 flex items-center justify-center gap-2"
+              >
+                <span aria-hidden="true">{current.emoji}</span>
+                <span>{current.text}</span>
+              </motion.p>
+            </AnimatePresence>
+          </div>
+
+          {/* Primary CTA */}
           <Link
             href="/products"
-            className="group inline-flex items-center gap-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white px-6 py-2.5 rounded-full hover:from-blue-700 hover:to-blue-800 transition-all shadow-lg shadow-blue-500/25 text-sm"
+            className="group relative inline-flex items-center gap-2.5 px-7 py-3.5 bg-gradient-to-r from-blue-600 to-blue-500 text-white rounded-full text-[13px] sm:text-[14px] font-semibold overflow-hidden shadow-lg shadow-blue-500/25 hover:shadow-xl hover:shadow-blue-500/40 transition-shadow duration-300"
           >
-            Start Shopping
-            <ChevronRight size={16} className="group-hover:translate-x-1 transition-transform" aria-hidden="true" />
+            {/* Shine sweep on hover */}
+            <span
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-y-0 -inset-x-1/2 bg-gradient-to-r from-transparent via-white/25 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-[900ms] ease-out"
+            />
+            <span className="relative z-10">Start Shopping</span>
+            <ChevronRight
+              size={16}
+              className="relative z-10 group-hover:translate-x-1 transition-transform duration-300"
+              aria-hidden="true"
+            />
           </Link>
+
+          {/* Secondary link */}
+          <div className="mt-4">
+            <Link
+              href="/new-arrivals"
+              className="inline-flex items-center gap-1.5 text-[12px] text-gray-500 hover:text-blue-400 transition-colors group"
+            >
+              <Sparkles size={12} aria-hidden="true" />
+              <span>Or explore new arrivals</span>
+            </Link>
+          </div>
+
+          {/* Marketing benefits strip */}
+          <div className="mt-10 pt-6 border-t border-white/[0.06] grid grid-cols-3 gap-3">
+            {[
+              { Icon: Truck, label: 'Free Shipping', sub: 'Orders ₹5,000+' },
+              { Icon: RotateCcw, label: '14-Day Returns', sub: 'No questions asked' },
+              { Icon: Shield, label: 'Secure Payment', sub: 'Fully encrypted' },
+            ].map(({ Icon, label, sub }, i) => (
+              <motion.div
+                key={label}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{
+                  duration: 0.4,
+                  delay: 0.4 + i * 0.08,
+                  ease: [0.22, 1, 0.36, 1],
+                }}
+                className="flex flex-col items-center text-center"
+              >
+                <Icon
+                  size={16}
+                  className="text-blue-400 mb-1.5"
+                  aria-hidden="true"
+                />
+                <p className="text-[10px] font-medium text-white leading-tight">
+                  {label}
+                </p>
+                <p className="text-[9px] text-gray-500 mt-0.5 leading-tight">
+                  {sub}
+                </p>
+              </motion.div>
+            ))}
+          </div>
         </motion.div>
       </div>
     )
   }
 
+  // ─────────────────────────────────────────────
+  // CART — normal state
+  // ─────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-black pt-20 pb-16">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Header */}
-        <div className="mb-6 md:mb-8">
-          <div className="flex items-center justify-between flex-wrap gap-3">
-            <div>
-              <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-gradient-to-r from-blue-500/10 to-purple-500/10 border border-blue-500/20 mb-3">
-                <ShoppingBag size={12} className="text-blue-400" aria-hidden="true" />
-                <span className="text-xs text-blue-400">Shopping Cart</span>
-              </div>
-              <h1 className="text-2xl md:text-3xl font-bold text-white">
-                Your Cart <span className="text-gray-400 text-lg md:text-xl">({cart.length})</span>
-              </h1>
-            </div>
-            {cart.length > 0 && (
-              <button
-                onClick={clearCart}
-                className="text-gray-400 hover:text-red-400 text-xs flex items-center gap-1 transition-colors"
-                aria-label="Clear entire cart"
-              >
-                <Trash2 size={12} aria-hidden="true" />
-                Clear
-              </button>
-            )}
-          </div>
-        </div>
+    <div className="relative min-h-screen bg-black pt-20 pb-16 overflow-hidden">
+      {/* Ambient */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0"
+      >
+        <div className="absolute -top-24 left-1/4 w-[500px] h-[400px] bg-blue-500/[0.04] blur-[120px]" />
+      </div>
 
-        {/* Mobile: Order Summary First */}
-        <div className="lg:hidden mb-6">
-          <div className="bg-gradient-to-br from-gray-900 to-gray-900/50 rounded-xl border border-gray-800 p-4">
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-sm text-gray-400">Total Amount</span>
-              <span className="text-xl font-bold text-white">₹{total.toLocaleString()}</span>
-            </div>
-            <Link
-              href="/checkout"
-              className="w-full py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg flex items-center justify-center gap-2 hover:from-blue-700 hover:to-blue-800 transition-all text-sm font-medium"
-            >
-              <CreditCard size={16} aria-hidden="true" />
-              Proceed to Checkout
-            </Link>
+      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* ─────────────────────────────────────────────
+            Page header
+           ───────────────────────────────────────────── */}
+        <header className="mb-6 md:mb-8">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/[0.04] border border-white/[0.08] mb-3 backdrop-blur-sm">
+            <ShoppingBag
+              size={11}
+              className="text-blue-400"
+              aria-hidden="true"
+            />
+            <span className="text-[10px] tracking-[0.18em] uppercase font-medium text-gray-400">
+              Your Bag
+            </span>
+          </div>
+
+          <div className="flex items-end justify-between gap-3 flex-wrap">
+            <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white tracking-[-0.02em] leading-tight">
+              Shopping Cart
+              <span className="ml-2 text-base sm:text-lg font-medium text-gray-500 tabular-nums">
+                ({cart.length})
+              </span>
+            </h1>
+
             <button
-              onClick={() => {
-                const summary = document.getElementById('order-summary')
-                summary?.scrollIntoView({ behavior: 'smooth' })
-              }}
-              className="w-full mt-2 text-center text-xs text-gray-400"
+              onClick={clearCart}
+              className="group text-[11px] font-medium text-gray-500 hover:text-red-400 transition-colors flex items-center gap-1.5 py-1"
+              aria-label="Clear entire cart"
             >
-              View Details ↓
+              <Trash2
+                size={11}
+                className="transition-transform duration-300 group-hover:rotate-12"
+                aria-hidden="true"
+              />
+              Clear Cart
             </button>
           </div>
+        </header>
+
+        {/* ─────────────────────────────────────────────
+            Mobile compact summary (before items)
+           ───────────────────────────────────────────── */}
+        <div className="lg:hidden mb-5">
+          <div className="relative overflow-hidden bg-gradient-to-b from-[#131313] to-[#0e0e0e] rounded-2xl border border-white/[0.08] p-4">
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute -top-16 right-0 w-[200px] h-[200px] bg-blue-500/[0.06] blur-[80px]"
+            />
+            <div className="relative flex items-center justify-between mb-3">
+              <div>
+                <p className="text-[10px] tracking-[0.15em] uppercase text-gray-500 font-medium">
+                  Total
+                </p>
+                <p className="text-2xl font-bold text-white tracking-tight tabular-nums">
+                  ₹{total.toLocaleString()}
+                </p>
+              </div>
+              {savings > 0 && (
+                <span className="text-[10px] font-semibold text-emerald-300 bg-emerald-500/[0.12] border border-emerald-500/25 px-2 py-1 rounded-full">
+                  Save ₹{savings.toLocaleString()}
+                </span>
+              )}
+            </div>
+
+            <Link
+              href="/checkout"
+              className="relative w-full py-3 bg-gradient-to-r from-blue-600 to-blue-500 text-white rounded-xl flex items-center justify-center gap-2 text-[13px] font-semibold shadow-lg shadow-blue-500/25 hover:shadow-xl hover:shadow-blue-500/40 transition-all duration-300"
+            >
+              <CreditCard size={15} aria-hidden="true" />
+              Checkout
+            </Link>
+          </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          {/* Cart Items */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8">
+          {/* ═════════════════════════════════════════════
+              Cart items
+             ═════════════════════════════════════════════ */}
           <div className="lg:col-span-7 order-2 lg:order-1">
             <div className="space-y-3">
-              <AnimatePresence>
-                {cart.map((item, index) => (
-                  <motion.div
-                    key={item.id}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, x: -20 }}
-                    transition={{ delay: index * 0.05 }}
-                    className="bg-gray-900/50 rounded-xl border border-gray-800 hover:border-gray-700 transition-all duration-300 overflow-hidden"
-                  >
-                    <div className="flex gap-3 p-3">
-                      <Link href={`/products/${item.id}`} className="w-20 h-20 flex-shrink-0">
-                        <div className="relative w-full h-full rounded-lg overflow-hidden bg-gray-800">
+              <AnimatePresence initial={false}>
+                {cart.map((item, index) => {
+                  const hasDiscount =
+                    item.compare_at_price &&
+                    item.compare_at_price > item.price
+                  const itemSavings = hasDiscount
+                    ? (item.compare_at_price! - item.price) * item.quantity
+                    : 0
+
+                  return (
+                    <motion.div
+                      key={item.id}
+                      layout
+                      initial={{ opacity: 0, y: 12 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, x: -30, height: 0, marginTop: 0 }}
+                      transition={{
+                        duration: 0.35,
+                        delay: Math.min(index * 0.04, 0.2),
+                        ease: [0.22, 1, 0.36, 1],
+                      }}
+                      className="group relative bg-gradient-to-b from-[#131313] to-[#0e0e0e] rounded-2xl border border-white/[0.06] hover:border-white/[0.12] transition-colors duration-300 overflow-hidden"
+                    >
+                      <div className="flex gap-3 sm:gap-4 p-3 sm:p-4">
+                        {/* Product image */}
+                        <Link
+                          href={`/products/${item.id}`}
+                          className="relative w-20 h-20 sm:w-24 sm:h-24 flex-shrink-0 rounded-xl overflow-hidden bg-black border border-white/[0.06]"
+                          aria-label={item.name}
+                        >
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img
-                            src={item.images?.[0] || 'https://placehold.co/100x100/1a1a1a/3B82F6?text=No+Image'}
+                            src={
+                              item.images?.[0] ||
+                              'https://placehold.co/100x100/1a1a1a/3B82F6?text=+'
+                            }
                             alt={item.name}
-                            className="w-full h-full object-cover"
+                            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                           />
-                          {item.compare_at_price && item.compare_at_price > item.price && (
-                            <div className="absolute top-1 left-1 bg-green-500 text-white text-[10px] px-1.5 py-0.5 rounded-full">
-                              Save ₹{(item.compare_at_price - item.price)}
+                          {hasDiscount && (
+                            <div className="absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded-full bg-emerald-500/95 text-white text-[9px] font-bold tracking-wide backdrop-blur-sm">
+                              SAVE
+                            </div>
+                          )}
+                        </Link>
+
+                        {/* Details */}
+                        <div className="flex-1 min-w-0 flex flex-col">
+                          <div className="flex justify-between items-start gap-2">
+                            <Link
+                              href={`/products/${item.id}`}
+                              className="text-[13px] sm:text-[14px] font-medium text-white hover:text-blue-400 transition line-clamp-2 flex-1 leading-snug"
+                            >
+                              {item.name}
+                            </Link>
+
+                            <button
+                              onClick={() => removeItem(item.id)}
+                              className="flex-shrink-0 p-1 -mt-1 -mr-1 text-gray-500 hover:text-red-400 hover:bg-red-500/[0.08] rounded-lg transition-all duration-200"
+                              aria-label={`Remove ${item.name} from cart`}
+                            >
+                              <Trash2 size={13} aria-hidden="true" />
+                            </button>
+                          </div>
+
+                          {/* Price row */}
+                          <div className="flex items-baseline gap-2 mt-1">
+                            <span className="text-[14px] sm:text-[15px] font-semibold text-white tracking-tight tabular-nums">
+                              ₹{item.price.toLocaleString()}
+                            </span>
+                            {hasDiscount && (
+                              <span className="text-[11px] text-gray-500 line-through tabular-nums">
+                                ₹{item.compare_at_price!.toLocaleString()}
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Bottom row: qty + line total */}
+                          <div className="flex items-end justify-between gap-2 mt-auto pt-3">
+                            <div className="inline-flex items-center bg-white/[0.04] border border-white/[0.08] rounded-xl overflow-hidden">
+                              <button
+                                onClick={() =>
+                                  updateQuantity(item.id, item.quantity - 1)
+                                }
+                                disabled={item.quantity <= 1}
+                                className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center text-gray-400 hover:text-white hover:bg-white/[0.06] disabled:opacity-30 disabled:cursor-not-allowed transition-colors duration-200"
+                                aria-label={`Decrease quantity of ${item.name}`}
+                              >
+                                <Minus size={12} aria-hidden="true" />
+                              </button>
+                              <span className="w-8 text-center text-white text-[13px] font-semibold tabular-nums">
+                                {item.quantity}
+                              </span>
+                              <button
+                                onClick={() =>
+                                  updateQuantity(item.id, item.quantity + 1)
+                                }
+                                disabled={item.quantity >= item.stock}
+                                className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center text-gray-400 hover:text-white hover:bg-white/[0.06] disabled:opacity-30 disabled:cursor-not-allowed transition-colors duration-200"
+                                aria-label={`Increase quantity of ${item.name}`}
+                              >
+                                <Plus size={12} aria-hidden="true" />
+                              </button>
+                            </div>
+
+                            <div className="text-right">
+                              <div className="text-[14px] sm:text-[15px] font-bold text-white tabular-nums leading-tight">
+                                ₹
+                                {(item.price * item.quantity).toLocaleString()}
+                              </div>
+                              {item.stock <= 10 && item.stock > 0 && (
+                                <div className="text-[9px] text-amber-400 mt-0.5">
+                                  Only {item.stock} left
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Item savings note */}
+                          {itemSavings > 0 && (
+                            <div className="mt-2 text-[10px] text-emerald-400/90 flex items-center gap-1">
+                              <Gift size={9} aria-hidden="true" />
+                              You save ₹{itemSavings.toLocaleString()} on this
+                              item
                             </div>
                           )}
                         </div>
-                      </Link>
-
-                      <div className="flex-1 min-w-0">
-                        <div className="flex justify-between items-start gap-2">
-                          <Link href={`/products/${item.id}`} className="text-sm font-semibold text-white hover:text-blue-400 transition line-clamp-2 flex-1">
-                            {item.name}
-                          </Link>
-                          <button
-                            onClick={() => removeItem(item.id)}
-                            className="text-gray-400 hover:text-red-400 transition-colors flex-shrink-0"
-                            aria-label={`Remove ${item.name} from cart`}
-                          >
-                            <Trash2 size={14} aria-hidden="true" />
-                          </button>
-                        </div>
-
-                        <div className="flex items-center gap-2 mt-1">
-                          <span className="text-base font-bold text-white">₹{item.price.toLocaleString()}</span>
-                          {item.compare_at_price && item.compare_at_price > item.price && (
-                            <span className="text-xs text-gray-400 line-through">₹{item.compare_at_price.toLocaleString()}</span>
-                          )}
-                        </div>
-
-                        <div className="flex items-center justify-between mt-2">
-                          <div className="flex items-center gap-2 bg-gray-800 rounded-lg">
-                            <button
-                              onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                              className="w-7 h-7 flex items-center justify-center hover:bg-gray-700 rounded-l-lg transition-colors"
-                              aria-label={`Decrease quantity of ${item.name}`}
-                            >
-                              <Minus size={12} className="text-gray-400" aria-hidden="true" />
-                            </button>
-                            <span className="w-8 text-center text-white text-sm">{item.quantity}</span>
-                            <button
-                              onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                              className="w-7 h-7 flex items-center justify-center hover:bg-gray-700 rounded-r-lg transition-colors"
-                              aria-label={`Increase quantity of ${item.name}`}
-                            >
-                              <Plus size={12} className="text-gray-400" aria-hidden="true" />
-                            </button>
-                          </div>
-                          <div className="text-right">
-                            <div className="text-sm font-semibold text-white">₹{(item.price * item.quantity).toLocaleString()}</div>
-                            <div className="text-[10px] text-gray-400">{item.stock} left</div>
-                          </div>
-                        </div>
                       </div>
-                    </div>
-                  </motion.div>
-                ))}
+                    </motion.div>
+                  )
+                })}
               </AnimatePresence>
             </div>
 
+            {/* Continue shopping */}
             <Link
               href="/products"
-              className="inline-flex items-center gap-1 text-gray-400 hover:text-blue-400 transition-colors mt-4 group text-sm"
+              className="group inline-flex items-center gap-1.5 mt-5 text-[12px] font-medium text-gray-500 hover:text-blue-400 transition-colors"
             >
-              <ArrowLeft size={14} className="group-hover:-translate-x-1 transition-transform" aria-hidden="true" />
+              <ArrowLeft
+                size={13}
+                className="transition-transform duration-300 group-hover:-translate-x-1"
+                aria-hidden="true"
+              />
               Continue Shopping
             </Link>
           </div>
 
-          {/* Order Summary */}
-          <div className="lg:col-span-5 order-1 lg:order-2" id="order-summary">
+          {/* ═════════════════════════════════════════════
+              Order summary (desktop)
+             ═════════════════════════════════════════════ */}
+          <aside
+            className="hidden lg:block lg:col-span-5 order-1 lg:order-2"
+            id="order-summary"
+          >
             <div className="sticky top-24">
-              <div className="hidden lg:block bg-gradient-to-br from-gray-900 to-gray-900/50 rounded-xl border border-gray-800 p-5">
-                <div className="flex items-center gap-2 mb-4">
-                  <Sparkles size={16} className="text-blue-400" aria-hidden="true" />
-                  <h2 className="text-base font-semibold text-white">Order Summary</h2>
+              <div className="relative overflow-hidden bg-gradient-to-b from-[#131313] to-[#0e0e0e] rounded-2xl border border-white/[0.08] p-6 shadow-2xl shadow-black/30">
+                {/* Ambient glow */}
+                <div
+                  aria-hidden="true"
+                  className="pointer-events-none absolute -top-24 -right-24 w-[280px] h-[280px] bg-blue-500/[0.06] blur-[100px]"
+                />
+
+                {/* Header */}
+                <div className="relative flex items-center gap-2 mb-5">
+                  <div className="w-8 h-8 rounded-xl bg-blue-500/[0.1] border border-blue-500/20 flex items-center justify-center">
+                    <Sparkles
+                      size={13}
+                      className="text-blue-400"
+                      aria-hidden="true"
+                    />
+                  </div>
+                  <h2 className="text-[15px] font-semibold text-white tracking-tight">
+                    Order Summary
+                  </h2>
                 </div>
 
+                {/* Savings callout */}
                 {savings > 0 && (
-                  <div className="bg-green-500/10 rounded-lg p-2 mb-4 border border-green-500/20">
-                    <div className="flex items-center gap-2 text-green-400 text-xs">
-                      <Gift size={12} aria-hidden="true" />
-                      <span>You're saving ₹{savings.toLocaleString()}!</span>
-                    </div>
-                  </div>
+                  <motion.div
+                    initial={{ opacity: 0, y: -4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.3 }}
+                    className="relative flex items-center gap-2 rounded-xl bg-emerald-500/[0.08] border border-emerald-500/25 px-3 py-2 mb-4"
+                  >
+                    <Gift
+                      size={13}
+                      className="text-emerald-400 flex-shrink-0"
+                      aria-hidden="true"
+                    />
+                    <p className="text-[11px] text-emerald-300 font-medium">
+                      You&apos;re saving ₹{savings.toLocaleString()} today
+                    </p>
+                  </motion.div>
                 )}
 
-                <div className="mb-4">
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      value={couponCode}
-                      onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
-                      placeholder="Coupon code"
-                      className="flex-1 px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-blue-500"
-                    />
-                    <button
-                      onClick={applyCoupon}
-                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all text-sm font-medium"
-                    >
-                      Apply
-                    </button>
-                  </div>
-                  <div className="flex gap-2 mt-2">
-                    <span className="text-[10px] text-gray-400 cursor-pointer hover:text-blue-400" onClick={() => setCouponCode('WELCOME10')}>WELCOME10</span>
-                    <span className="text-[10px] text-gray-400">•</span>
-                    <span className="text-[10px] text-gray-400 cursor-pointer hover:text-blue-400" onClick={() => setCouponCode('BRAND20')}>BRAND20</span>
-                  </div>
-                </div>
-
-                <div className="space-y-2 text-sm">
+                {/* Lines */}
+                <div className="relative space-y-3 text-[13px]">
                   <div className="flex justify-between text-gray-400">
                     <span>Subtotal</span>
-                    <span>₹{subtotal.toLocaleString()}</span>
+                    <span className="text-white font-medium tabular-nums">
+                      ₹{subtotal.toLocaleString()}
+                    </span>
                   </div>
-
-                  {discount > 0 && (
-                    <div className="flex justify-between text-green-400">
-                      <span>Discount</span>
-                      <span>-₹{discount.toLocaleString()}</span>
-                    </div>
-                  )}
 
                   <div className="flex justify-between text-gray-400">
                     <span>Shipping</span>
-                    <span>{shipping === 0 ? 'Free' : `₹${shipping}`}</span>
+                    <span
+                      className={`font-medium tabular-nums ${
+                        shipping === 0
+                          ? 'text-emerald-400'
+                          : 'text-white'
+                      }`}
+                    >
+                      {shipping === 0 ? 'Free' : `₹${shipping}`}
+                    </span>
                   </div>
 
-                  {subtotal < 5000 && subtotal > 0 && (
-                    <div className="bg-blue-500/10 rounded-lg p-2">
-                      <div className="flex items-center gap-2 text-blue-400 text-[11px]">
+                  {/* Free shipping progress */}
+                  {remainingForFreeShipping > 0 && (
+                    <div className="rounded-xl bg-blue-500/[0.08] border border-blue-500/20 p-3">
+                      <div className="flex items-center gap-2 text-blue-300 text-[11px] font-medium mb-2">
                         <Truck size={12} aria-hidden="true" />
-                        <span>Add ₹{(5000 - subtotal).toLocaleString()} for free shipping</span>
+                        <span>
+                          Add ₹
+                          {remainingForFreeShipping.toLocaleString()} for free
+                          shipping
+                        </span>
                       </div>
-                      <div className="w-full bg-gray-700 rounded-full h-1 mt-2">
-                        <div
-                          className="bg-gradient-to-r from-blue-500 to-blue-400 h-1 rounded-full transition-all"
-                          style={{ width: `${Math.min((subtotal / 5000) * 100, 100)}%` }}
-                        ></div>
+                      <div className="w-full bg-white/[0.06] rounded-full h-1 overflow-hidden">
+                        <motion.div
+                          initial={{ width: 0 }}
+                          animate={{ width: `${freeShippingProgress}%` }}
+                          transition={{ duration: 0.6, ease: 'easeOut' }}
+                          className="h-full bg-gradient-to-r from-blue-500 to-blue-400 rounded-full"
+                        />
                       </div>
+                      <p className="text-[9px] text-gray-500 mt-1.5 tabular-nums">
+                        ₹{subtotal.toLocaleString()} of ₹5,000
+                      </p>
                     </div>
                   )}
-
-                  <div className="border-t border-gray-800 pt-3 mt-3">
-                    <div className="flex justify-between text-white font-bold">
-                      <span>Total</span>
-                      <span>₹{total.toLocaleString()}</span>
-                    </div>
-                    <p className="text-[10px] text-gray-400 mt-1">Inclusive of all taxes</p>
-                  </div>
                 </div>
 
+                {/* Total */}
+                <div className="relative border-t border-white/[0.08] pt-4 mt-5">
+                  <div className="flex items-baseline justify-between">
+                    <span className="text-[13px] font-semibold text-white">
+                      Total
+                    </span>
+                    <span className="text-2xl font-bold text-white tracking-tight tabular-nums">
+                      ₹{total.toLocaleString()}
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-gray-500 mt-1">
+                    Inclusive of all taxes
+                  </p>
+                </div>
+
+                {/* Checkout CTA */}
                 <Link
                   href="/checkout"
-                  className="w-full mt-5 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg flex items-center justify-center gap-2 hover:from-blue-700 hover:to-blue-800 transition-all text-sm font-medium"
+                  className="group relative w-full mt-5 py-3.5 bg-gradient-to-r from-blue-600 to-blue-500 text-white rounded-xl flex items-center justify-center gap-2 text-[13px] font-semibold overflow-hidden shadow-lg shadow-blue-500/25 hover:shadow-xl hover:shadow-blue-500/40 transition-shadow duration-300"
                 >
-                  <CreditCard size={16} aria-hidden="true" />
-                  Proceed to Checkout
+                  <span
+                    aria-hidden="true"
+                    className="pointer-events-none absolute inset-y-0 -inset-x-1/2 bg-gradient-to-r from-transparent via-white/25 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-[900ms] ease-out"
+                  />
+                  <CreditCard
+                    size={15}
+                    className="relative z-10"
+                    aria-hidden="true"
+                  />
+                  <span className="relative z-10">Proceed to Checkout</span>
                 </Link>
 
-                <div className="grid grid-cols-3 gap-2 mt-4 pt-4 border-t border-gray-800">
-                  <div className="text-center">
-                    <Shield size={14} className="text-blue-400 mx-auto mb-1" aria-hidden="true" />
-                    <p className="text-[10px] text-gray-400">Secure Payment</p>
-                  </div>
-                  <div className="text-center">
-                    <Truck size={14} className="text-blue-400 mx-auto mb-1" aria-hidden="true" />
-                    <p className="text-[10px] text-gray-400">Fast Delivery</p>
-                  </div>
-                  <div className="text-center">
-                    <Clock size={14} className="text-blue-400 mx-auto mb-1" aria-hidden="true" />
-                    <p className="text-[10px] text-gray-400">14 Day Returns</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="lg:hidden bg-gray-900/50 rounded-xl border border-gray-800 p-4 mt-4">
-                <div className="space-y-3 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-gray-400">Subtotal</span>
-                    <span className="text-white">₹{subtotal.toLocaleString()}</span>
-                  </div>
-                  {discount > 0 && (
-                    <div className="flex justify-between">
-                      <span className="text-gray-400">Discount</span>
-                      <span className="text-green-400">-₹{discount.toLocaleString()}</span>
+                {/* Trust strip */}
+                <div className="relative grid grid-cols-3 gap-2 mt-5 pt-5 border-t border-white/[0.06]">
+                  {[
+                    { Icon: Shield, label: 'Secure Payment' },
+                    { Icon: Truck, label: 'Fast Delivery' },
+                    { Icon: Clock, label: '14-Day Returns' },
+                  ].map(({ Icon, label }) => (
+                    <div key={label} className="text-center">
+                      <Icon
+                        size={14}
+                        className="text-blue-400 mx-auto mb-1"
+                        aria-hidden="true"
+                      />
+                      <p className="text-[10px] text-gray-500 leading-tight">
+                        {label}
+                      </p>
                     </div>
-                  )}
-                  <div className="flex justify-between">
-                    <span className="text-gray-400">Shipping</span>
-                    <span className="text-white">{shipping === 0 ? 'Free' : `₹${shipping}`}</span>
-                  </div>
-                  {appliedCoupon && (
-                    <div className="flex justify-between">
-                      <span className="text-gray-400">Coupon</span>
-                      <span className="text-green-400">{appliedCoupon}</span>
-                    </div>
-                  )}
-                  <div className="border-t border-gray-800 pt-3 flex justify-between font-bold">
-                    <span className="text-white">Total</span>
-                    <span className="text-white text-lg">₹{total.toLocaleString()}</span>
-                  </div>
-                </div>
-
-                <div className="mt-4 pt-3 border-t border-gray-800">
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      value={couponCode}
-                      onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
-                      placeholder="Coupon code"
-                      className="flex-1 px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-blue-500"
-                    />
-                    <button
-                      onClick={applyCoupon}
-                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all text-sm font-medium"
-                    >
-                      Apply
-                    </button>
-                  </div>
+                  ))}
                 </div>
               </div>
             </div>
+          </aside>
+
+          {/* ═════════════════════════════════════════════
+              Mobile order summary (after items)
+             ═════════════════════════════════════════════ */}
+          <div
+            className="lg:hidden order-3 bg-gradient-to-b from-[#131313] to-[#0e0e0e] rounded-2xl border border-white/[0.08] p-5"
+            id="order-summary-mobile"
+          >
+            <h2 className="text-[14px] font-semibold text-white mb-4">
+              Order Summary
+            </h2>
+
+            <div className="space-y-2.5 text-[13px]">
+              <div className="flex justify-between text-gray-400">
+                <span>Subtotal</span>
+                <span className="text-white font-medium tabular-nums">
+                  ₹{subtotal.toLocaleString()}
+                </span>
+              </div>
+
+              <div className="flex justify-between text-gray-400">
+                <span>Shipping</span>
+                <span
+                  className={`font-medium tabular-nums ${
+                    shipping === 0 ? 'text-emerald-400' : 'text-white'
+                  }`}
+                >
+                  {shipping === 0 ? 'Free' : `₹${shipping}`}
+                </span>
+              </div>
+
+              {remainingForFreeShipping > 0 && (
+                <div className="rounded-xl bg-blue-500/[0.08] border border-blue-500/20 p-3 mt-1">
+                  <div className="flex items-center gap-2 text-blue-300 text-[11px] font-medium mb-2">
+                    <Truck size={11} aria-hidden="true" />
+                    <span>
+                      Add ₹{remainingForFreeShipping.toLocaleString()} for free
+                      shipping
+                    </span>
+                  </div>
+                  <div className="w-full bg-white/[0.06] rounded-full h-1 overflow-hidden">
+                    <motion.div
+                      initial={{ width: 0 }}
+                      animate={{ width: `${freeShippingProgress}%` }}
+                      transition={{ duration: 0.6, ease: 'easeOut' }}
+                      className="h-full bg-gradient-to-r from-blue-500 to-blue-400 rounded-full"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="border-t border-white/[0.08] pt-4 mt-4 flex items-baseline justify-between">
+              <span className="text-[13px] font-semibold text-white">
+                Total
+              </span>
+              <span className="text-xl font-bold text-white tabular-nums tracking-tight">
+                ₹{total.toLocaleString()}
+              </span>
+            </div>
+
+            <Link
+              href="/checkout"
+              className="mt-4 w-full py-3 bg-gradient-to-r from-blue-600 to-blue-500 text-white rounded-xl flex items-center justify-center gap-2 text-[13px] font-semibold shadow-lg shadow-blue-500/25"
+            >
+              <CreditCard size={15} aria-hidden="true" />
+              Proceed to Checkout
+            </Link>
           </div>
         </div>
       </div>

@@ -26,7 +26,7 @@ const geistMono = Geist_Mono({
   display: "swap",
 })
 
-// ---- Metadata ----
+// ---- Metadata (unchanged — SEO protected) ----
 export const metadata: Metadata = {
   title: {
     default: "VESTIOR – Premium Tailored Fashion",
@@ -96,15 +96,12 @@ export const metadata: Metadata = {
   },
 
   icons: {
-    // Modern SVG — preferred by all modern browsers
     icon: [
       { url: "/favicon.svg", type: "image/svg+xml" },
       { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
       { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
     ],
-    // Legacy fallback for older browsers
     shortcut: "/favicon.svg",
-    // iOS Safari
     apple: [
       { url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" },
     ],
@@ -127,12 +124,10 @@ export const metadata: Metadata = {
   },
 }
 
-// ---- Viewport ----
+// ---- Viewport (unchanged — accessibility preserved) ----
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  // maximum-scale + user-scalable removed — Lighthouse flags these as WCAG violations.
-  // Users must be able to zoom for accessibility.
   themeColor: [
     { media: "(prefers-color-scheme: dark)", color: "#0A0A0A" },
     { media: "(prefers-color-scheme: light)", color: "#0A0A0A" },
@@ -162,7 +157,7 @@ export default function RootLayout({
           href={process.env.NEXT_PUBLIC_SUPABASE_URL}
         />
 
-        {/* Google Fonts — preconnect speeds up Geist fonts */}
+        {/* Google Fonts */}
         <link
           rel="preconnect"
           href="https://fonts.gstatic.com"
@@ -171,22 +166,28 @@ export default function RootLayout({
         <link rel="dns-prefetch" href="https://fonts.gstatic.com" />
       </head>
       <body
-        className="font-sans bg-[#0A0A0A] text-white antialiased"
+        className="font-sans bg-[#0A0A0A] text-white antialiased selection:bg-blue-500/30 selection:text-white"
         suppressHydrationWarning
       >
-        {/* Skip link for keyboard / screen reader users (WCAG AA) */}
+        {/* ─────────────────────────────────────────────
+            Skip link — enhanced focus state
+           ───────────────────────────────────────────── */}
         <a
           href="#main-content"
-          className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-[100] focus:px-4 focus:py-2 focus:bg-blue-600 focus:text-white focus:rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400"
+          className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-[999] focus:px-5 focus:py-2.5 focus:bg-blue-600 focus:text-white focus:text-sm focus:font-medium focus:rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-400/60 focus:ring-offset-2 focus:ring-offset-[#0A0A0A] focus:shadow-2xl focus:shadow-blue-500/30 transition-all"
         >
           Skip to main content
         </a>
 
         <OrganizationSchema
-          siteUrl={process.env.NEXT_PUBLIC_SITE_URL || 'https://vestior.vercel.app'}
+          siteUrl={
+            process.env.NEXT_PUBLIC_SITE_URL || 'https://vestior.vercel.app'
+          }
         />
         <WebsiteSchema
-          siteUrl={process.env.NEXT_PUBLIC_SITE_URL || 'https://vestior.vercel.app'}
+          siteUrl={
+            process.env.NEXT_PUBLIC_SITE_URL || 'https://vestior.vercel.app'
+          }
         />
         <AuthProvider>
           <WishlistProvider>
@@ -197,17 +198,74 @@ export default function RootLayout({
           </WishlistProvider>
         </AuthProvider>
 
-        {/* Toaster — aria-live wrapper so screen readers announce toasts */}
+        {/* ─────────────────────────────────────────────
+            Toaster — aria-live wrapper for screen readers
+           ───────────────────────────────────────────── */}
         <div aria-live="polite" aria-atomic="true">
           <Toaster
             position="top-right"
+            gutter={12}
+            containerClassName="!z-[9999]"
             toastOptions={{
-              style: {
-                background: "#1f1f1f",
-                color: "#fff",
-                border: "1px solid rgba(255,255,255,0.1)",
-              },
               duration: 3000,
+              style: {
+                background: "rgba(18, 18, 18, 0.95)",
+                color: "#fff",
+                border: "1px solid rgba(255, 255, 255, 0.08)",
+                backdropFilter: "blur(12px)",
+                WebkitBackdropFilter: "blur(12px)",
+                borderRadius: "14px",
+                fontSize: "13px",
+                fontWeight: 500,
+                padding: "12px 16px",
+                boxShadow:
+                  "0 10px 30px -10px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.02)",
+                maxWidth: "380px",
+              },
+              success: {
+                iconTheme: {
+                  primary: "#10b981",
+                  secondary: "#0A0A0A",
+                },
+                style: {
+                  background: "rgba(16, 185, 129, 0.08)",
+                  color: "#fff",
+                  border: "1px solid rgba(16, 185, 129, 0.25)",
+                  backdropFilter: "blur(12px)",
+                  WebkitBackdropFilter: "blur(12px)",
+                  borderRadius: "14px",
+                  fontSize: "13px",
+                  fontWeight: 500,
+                  padding: "12px 16px",
+                  boxShadow:
+                    "0 10px 30px -10px rgba(16, 185, 129, 0.25), 0 0 0 1px rgba(16, 185, 129, 0.1)",
+                },
+              },
+              error: {
+                iconTheme: {
+                  primary: "#ef4444",
+                  secondary: "#0A0A0A",
+                },
+                style: {
+                  background: "rgba(239, 68, 68, 0.08)",
+                  color: "#fff",
+                  border: "1px solid rgba(239, 68, 68, 0.25)",
+                  backdropFilter: "blur(12px)",
+                  WebkitBackdropFilter: "blur(12px)",
+                  borderRadius: "14px",
+                  fontSize: "13px",
+                  fontWeight: 500,
+                  padding: "12px 16px",
+                  boxShadow:
+                    "0 10px 30px -10px rgba(239, 68, 68, 0.25), 0 0 0 1px rgba(239, 68, 68, 0.1)",
+                },
+              },
+              loading: {
+                iconTheme: {
+                  primary: "#3b82f6",
+                  secondary: "#0A0A0A",
+                },
+              },
               ariaProps: {
                 role: 'status',
                 'aria-live': 'polite',
@@ -216,12 +274,12 @@ export default function RootLayout({
           />
         </div>
 
-        {/* GA4 Tracking for page views & device/browser data */}
+        {/* GA4 */}
         <Suspense fallback={null}>
           <GoogleAnalytics />
         </Suspense>
 
-        {/* PWA — service worker + install prompt */}
+        {/* PWA */}
         <ServiceWorkerRegister />
         <InstallPrompt />
       </body>

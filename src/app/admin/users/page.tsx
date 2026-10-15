@@ -5,7 +5,6 @@ import UsersTable from '@/components/admin/UsersTable'
 export const dynamic = 'force-dynamic'
 
 export default async function AdminUsersPage() {
-  // Fetch all profiles (admin-only view)
   const { data: profiles } = await supabaseAdmin
     .from('profiles')
     .select(
@@ -13,7 +12,6 @@ export default async function AdminUsersPage() {
     )
     .order('created_at', { ascending: false })
 
-  // Fetch current viewer's super admin status
   const supabase = await createClient()
   const {
     data: { user },

@@ -13,52 +13,83 @@ import type { VisitorOverview } from '@/lib/tracking/session-queries'
 
 const container = {
   hidden: { opacity: 0 },
-  show: { opacity: 1, transition: { staggerChildren: 0.08 } },
+  show: { opacity: 1, transition: { staggerChildren: 0.05 } },
 }
-const item = { hidden: { opacity: 0, y: 20 }, show: { opacity: 1, y: 0 } }
 
-export default function VisitorsStats({ overview }: { overview: VisitorOverview }) {
+const item = {
+  hidden: { opacity: 0, y: 16 },
+  show: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.4, ease: [0.22, 1, 0.36, 1] as const },
+  },
+}
+
+export default function VisitorsStats({
+  overview,
+}: {
+  overview: VisitorOverview
+}) {
   const cards = [
     {
       label: 'Live Now',
       value: overview.live,
       icon: Activity,
-      color: 'border-l-emerald-500',
+      accent: 'border-l-emerald-500',
+      glow: 'bg-emerald-500/[0.06]',
+      iconBg: 'bg-emerald-500/[0.1]',
+      iconText: 'text-emerald-400',
       sub: 'active in last 5 min',
+      showLiveDot: overview.live > 0,
     },
     {
       label: 'Guests Today',
       value: overview.todayGuests,
       icon: UserX,
-      color: 'border-l-amber-500',
+      accent: 'border-l-amber-500',
+      glow: 'bg-amber-500/[0.06]',
+      iconBg: 'bg-amber-500/[0.1]',
+      iconText: 'text-amber-400',
       sub: 'not logged in',
     },
     {
       label: 'Users Today',
       value: overview.todayUsers,
       icon: UserCheck,
-      color: 'border-l-indigo-500',
+      accent: 'border-l-indigo-500',
+      glow: 'bg-indigo-500/[0.06]',
+      iconBg: 'bg-indigo-500/[0.1]',
+      iconText: 'text-indigo-400',
       sub: 'logged in',
     },
     {
       label: 'New Visitors',
       value: overview.todayNew,
       icon: Sparkles,
-      color: 'border-l-purple-500',
+      accent: 'border-l-violet-500',
+      glow: 'bg-violet-500/[0.06]',
+      iconBg: 'bg-violet-500/[0.1]',
+      iconText: 'text-violet-400',
       sub: 'first-time sessions',
     },
     {
       label: 'Returning',
       value: overview.todayReturning,
       icon: RotateCcw,
-      color: 'border-l-rose-500',
+      accent: 'border-l-rose-500',
+      glow: 'bg-rose-500/[0.06]',
+      iconBg: 'bg-rose-500/[0.1]',
+      iconText: 'text-rose-400',
       sub: 'seen before',
     },
     {
       label: 'Orders Today',
       value: overview.todayOrders,
       icon: ShoppingCart,
-      color: 'border-l-teal-500',
+      accent: 'border-l-teal-500',
+      glow: 'bg-teal-500/[0.06]',
+      iconBg: 'bg-teal-500/[0.1]',
+      iconText: 'text-teal-400',
       sub: 'placed in sessions',
     },
   ]
@@ -68,28 +99,62 @@ export default function VisitorsStats({ overview }: { overview: VisitorOverview 
       variants={container}
       initial="hidden"
       animate="show"
-      className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4"
+      className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3 sm:gap-4"
     >
-      {cards.map((c) => (
-        <motion.div
-          key={c.label}
-          variants={item}
-          whileHover={{ scale: 1.02, y: -2 }}
-          className="relative bg-[#0f0f0f]/60 backdrop-blur-md p-5 rounded-2xl border border-white/10 overflow-hidden shadow-xl"
-        >
-          <div
-            className={`absolute left-0 top-1/2 -translate-y-1/2 w-1 h-12 rounded-r-full ${c.color}`}
-          />
-          <div className="relative z-10 pl-3">
-            <div className="flex items-center justify-between mb-2">
-              <c.icon className="w-5 h-5 text-white/60" />
+      {cards.map((c) => {
+        const Icon = c.icon
+        return (
+          <motion.div
+            key={c.label}
+            variants={item}
+            whileHover={{ y: -3 }}
+            transition={{ duration: 0.2 }}
+            className="group relative overflow-hidden bg-gradient-to-b from-[#131313] to-[#0e0e0e] border border-white/[0.06] hover:border-white/[0.12] p-4 rounded-2xl transition-colors duration-300"
+          >
+            {/* Left accent bar */}
+            <div
+              aria-hidden="true"
+              className={`absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-10 rounded-r-full ${c.accent}`}
+            />
+
+            {/* Ambient glow */}
+            <div
+              aria-hidden="true"
+              className={`pointer-events-none absolute -top-12 -right-12 w-[100px] h-[100px] ${c.glow} blur-[60px]`}
+            />
+
+            <div className="relative pl-2.5">
+              <div className="flex items-center justify-between mb-2.5">
+                <div
+                  className={`w-7 h-7 rounded-lg ${c.iconBg} border border-white/[0.06] flex items-center justify-center transition-transform duration-300 group-hover:scale-105`}
+                >
+                  <Icon size={12} className={c.iconText} aria-hidden="true" />
+                </div>
+
+                {/* Live dot for "Live Now" card */}
+                {c.showLiveDot && (
+                  <span className="relative flex w-2 h-2" aria-hidden="true">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-60" />
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+                  </span>
+                )}
+              </div>
+
+              <p className="text-[9px] tracking-[0.15em] uppercase font-semibold text-gray-500">
+                {c.label}
+              </p>
+
+              <p className="text-lg sm:text-xl font-bold text-white mt-0.5 tabular-nums tracking-tight">
+                {c.value.toLocaleString()}
+              </p>
+
+              <p className="text-[10px] text-gray-500 mt-0.5 truncate">
+                {c.sub}
+              </p>
             </div>
-            <p className="text-sm text-gray-400">{c.label}</p>
-            <p className="text-2xl font-bold text-white mt-1">{c.value}</p>
-            <p className="text-xs text-gray-500 mt-1">{c.sub}</p>
-          </div>
-        </motion.div>
-      ))}
+          </motion.div>
+        )
+      })}
     </motion.div>
   )
 }

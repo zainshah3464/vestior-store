@@ -4,7 +4,8 @@ import ProductGrid from '@/components/ProductGrid'
 import ProductFiltersSidebar from '@/components/ProductFilters'
 import ProductSort from '@/components/ProductSort'
 import ActiveFilters from '@/components/ActiveFilters'
-import { Filter } from 'lucide-react'
+import { Filter, PackageOpen } from 'lucide-react'
+import Link from 'next/link'
 import { parseProductImages } from '@/lib/utils'
 import { parseFilters, type SortOption } from '@/lib/products/filters'
 import { getBatchRatingSummaries } from '@/lib/reviews/queries'
@@ -63,13 +64,11 @@ export default async function ProductsPage({
       query = query.order('price', { ascending: false })
       break
     case 'popular':
-      // New arrivals get priority, then most recent
       query = query
         .order('is_new_arrival', { ascending: false })
         .order('created_at', { ascending: false })
       break
     case 'rating':
-      // Rating sort happens post-query (needs aggregate)
       query = query.order('created_at', { ascending: false })
       break
     case 'newest':
@@ -86,7 +85,7 @@ export default async function ProductsPage({
   }))
 
   // ─────────────────────────────────────────────
-  // Fetch rating summaries for all products (batch)
+  // Batch rating summaries
   // ─────────────────────────────────────────────
   const productIds = parsed.map((p) => p.id)
   const ratingMap = await getBatchRatingSummaries(productIds)
@@ -97,65 +96,138 @@ export default async function ProductsPage({
     ratingSummary: ratingMap[p.id] ?? null,
   }))
 
-  // Post-sort by rating if requested
+  // Post-sort by rating
   if (sort === 'rating') {
     enriched = enriched.sort((a, b) => {
       const aRating = a.ratingSummary?.averageRating ?? 0
       const bRating = b.ratingSummary?.averageRating ?? 0
       if (bRating !== aRating) return bRating - aRating
-      // tie-break: more reviews first
       const aCount = a.ratingSummary?.totalCount ?? 0
       const bCount = b.ratingSummary?.totalCount ?? 0
       return bCount - aCount
     })
   }
 
-  return (
-    <div className="min-h-screen bg-black pt-20 pb-16">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Header */}
-        <div className="mb-6">
-          <h1 className="text-3xl md:text-4xl font-bold text-white">
-            {filters.category || 'All Products'}
-          </h1>
-          <p className="text-gray-400 mt-1">
-            {enriched.length} product{enriched.length === 1 ? '' : 's'} found
-          </p>
-        </div>
+  const productCount = enriched.length
+  const hasProducts = productCount > 0
+  const pageTitle = filters.category || 'All Products'
 
-        {/* Layout */}
-        <div className="flex gap-6">
+  return (
+    <div className="relative min-h-screen bg-black pt-20 md:pt-24 xl:pt-28 pb-20 md:pb-24 xl:pb-28 overflow-hidden">
+      {/* ─────────────────────────────────────────────
+          Ambient backdrop
+         ───────────────────────────────────────────── */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 z-0"
+      >
+        <div className="absolute -top-32 left-1/2 -translate-x-1/2 w-[700px] h-[400px] bg-blue-500/[0.05] blur-[120px]" />
+        <div className="absolute top-1/3 right-0 w-[380px] h-[380px] bg-indigo-500/[0.03] blur-[110px]" />
+      </div>
+
+      <div className="relative z-10 w-full px-5 sm:px-8 md:px-10 lg:px-14 xl:px-20 2xl:px-28">
+        {/* ─────────────────────────────────────────────
+            Page header — editorial
+           ───────────────────────────────────────────── */}
+        <header className="mb-8 md:mb-12 xl:mb-14 2xl:mb-16">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/[0.04] border border-white/[0.08] mb-3 backdrop-blur-sm">
+            <PackageOpen
+              size={11}
+              className="text-blue-400"
+              aria-hidden="true"
+            />
+            <span className="text-[10px] tracking-[0.18em] uppercase font-medium text-gray-400">
+              Collection
+            </span>
+          </div>
+
+          <div className="flex items-baseline justify-between gap-4 flex-wrap">
+            <h1 className="text-2xl sm:text-3xl md:text-4xl xl:text-5xl font-bold text-white tracking-[-0.02em] leading-tight">
+              {pageTitle}
+            </h1>
+            <p className="text-[12px] sm:text-[13px] text-gray-500 font-medium">
+              {productCount.toLocaleString()}{' '}
+              {productCount === 1 ? 'product' : 'products'}
+            </p>
+          </div>
+        </header>
+
+        {/* ─────────────────────────────────────────────
+            Layout
+           ───────────────────────────────────────────── */}
+        <div className="flex flex-col lg:flex-row gap-6 lg:gap-8 xl:gap-10 2xl:gap-12">
+          {/* Sidebar (desktop + mobile trigger) */}
           <ProductFiltersSidebar
             basePath="/products"
             categories={CATEGORIES}
             filters={filters}
           />
 
+          {/* Main content */}
           <div className="flex-1 min-w-0">
-            {/* Sort + active filters */}
-            <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
-              <ActiveFilters basePath="/products" filters={filters} />
-              <div className="ml-auto">
-                <ProductSort basePath="/products" currentSort={sort} />
+            {/* Toolbar: active filters + sort */}
+            <div className="flex items-start justify-between gap-3 mb-5 flex-wrap">
+              <div className="flex-1 min-w-0">
+                <ActiveFilters
+                  basePath="/products"
+                  filters={filters}
+                />
+              </div>
+              <div className="flex-shrink-0 ml-auto">
+                <ProductSort
+                  basePath="/products"
+                  currentSort={sort}
+                />
               </div>
             </div>
 
-            {enriched.length > 0 ? (
+            {/* Results */}
+            {hasProducts ? (
               <ProductGrid products={enriched} />
             ) : (
-              <div className="text-center py-16">
-                <Filter size={32} className="text-gray-600 mx-auto mb-2" />
-                <p className="text-gray-400 mb-2">No products match your filters.</p>
-                <a
-                  href="/products"
-                  className="text-sm text-indigo-400 hover:underline"
-                >
-                  Clear all filters
-                </a>
-              </div>
+              <EmptyState />
             )}
           </div>
         </div>
+      </div>
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────
+// Empty state — refined, editorial
+// ─────────────────────────────────────────────
+function EmptyState() {
+  return (
+    <div className="relative flex flex-col items-center justify-center py-20 md:py-28 xl:py-32 2xl:py-36 text-center overflow-hidden rounded-3xl border border-white/[0.06] bg-gradient-to-b from-[#111111]/60 to-[#0a0a0a]">
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute -top-24 left-1/2 -translate-x-1/2 w-[400px] h-[200px] bg-blue-500/[0.06] blur-[100px]"
+      />
+
+      <div className="relative px-6">
+        <div className="relative w-20 h-20 rounded-2xl bg-gradient-to-br from-blue-500/10 to-indigo-500/[0.05] border border-blue-500/20 flex items-center justify-center mx-auto mb-5 shadow-2xl shadow-blue-500/5">
+          <Filter
+            size={28}
+            className="text-blue-400/70"
+            aria-hidden="true"
+          />
+        </div>
+
+        <h3 className="text-[17px] sm:text-lg font-semibold text-white mb-2">
+          No products match your filters
+        </h3>
+        <p className="text-[13px] text-gray-500 max-w-sm mx-auto leading-relaxed mb-6">
+          Try adjusting your price range, category, or availability to see
+          more results.
+        </p>
+
+        <Link
+          href="/products"
+          className="group inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-white/[0.04] border border-white/[0.08] text-[13px] font-medium text-gray-300 hover:text-white hover:bg-blue-600 hover:border-blue-400/40 transition-all duration-300"
+        >
+          Clear all filters
+        </Link>
       </div>
     </div>
   )

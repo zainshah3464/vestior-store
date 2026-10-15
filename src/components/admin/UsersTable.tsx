@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -13,9 +13,14 @@ import {
   Eye,
   Crown,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   Shield,
   Loader2,
   Activity,
+  X,
+  ExternalLink,
+  Filter,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import UserDetailsModal from './UserDetailsModal'
@@ -43,6 +48,40 @@ interface Props {
   viewerId: string | null
 }
 
+// ─────────────────────────────────────────────
+// Role badge styling
+// ─────────────────────────────────────────────
+const ROLE_STYLES: Record<
+  string,
+  { bg: string; text: string; border: string; dot: string }
+> = {
+  superadmin: {
+    bg: 'bg-amber-500/[0.1]',
+    text: 'text-amber-300',
+    border: 'border-amber-500/25',
+    dot: 'bg-amber-400',
+  },
+  admin: {
+    bg: 'bg-indigo-500/[0.1]',
+    text: 'text-indigo-300',
+    border: 'border-indigo-500/25',
+    dot: 'bg-indigo-400',
+  },
+  customer: {
+    bg: 'bg-emerald-500/[0.1]',
+    text: 'text-emerald-300',
+    border: 'border-emerald-500/25',
+    dot: 'bg-emerald-400',
+  },
+}
+
+const DEFAULT_ROLE = {
+  bg: 'bg-gray-500/[0.1]',
+  text: 'text-gray-300',
+  border: 'border-gray-500/25',
+  dot: 'bg-gray-400',
+}
+
 export default function UsersTable({
   profiles,
   viewerIsSuperAdmin,
@@ -55,38 +94,34 @@ export default function UsersTable({
   const [selectedUser, setSelectedUser] = useState<Profile | null>(null)
   const [roleMenuFor, setRoleMenuFor] = useState<string | null>(null)
   const [changingRoleFor, setChangingRoleFor] = useState<string | null>(null)
+  const menuContainerRef = useRef<HTMLDivElement>(null)
   const perPage = 10
 
-  // Background animated shapes
-  const [shapes, setShapes] = useState<
-    { x: number; y: number; size: number; duration: number; delay: number }[]
-  >([])
-
-  useEffect(() => {
-    setShapes(
-      Array.from({ length: 5 }).map(() => ({
-        x: Math.random() * 100,
-        y: Math.random() * 100,
-        size: 30 + Math.random() * 60,
-        duration: 12 + Math.random() * 18,
-        delay: Math.random() * 3,
-      }))
-    )
-  }, [])
-
+  // ─────────────────────────────────────────────
   // Close role menu on outside click
+  // ─────────────────────────────────────────────
   useEffect(() => {
     if (!roleMenuFor) return
-    const handler = () => setRoleMenuFor(null)
-    document.addEventListener('click', handler)
-    return () => document.removeEventListener('click', handler)
+    const handler = (e: MouseEvent) => {
+      if (
+        menuContainerRef.current &&
+        !menuContainerRef.current.contains(e.target as Node)
+      ) {
+        setRoleMenuFor(null)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
   }, [roleMenuFor])
 
-  // Filter
+  // ─────────────────────────────────────────────
+  // Filter — preserved logic
+  // ─────────────────────────────────────────────
   const filtered = profiles.filter((p) => {
+    const q = search.toLowerCase()
     const matchesSearch =
-      p.full_name?.toLowerCase().includes(search.toLowerCase()) ||
-      p.email.toLowerCase().includes(search.toLowerCase()) ||
+      p.full_name?.toLowerCase().includes(q) ||
+      p.email.toLowerCase().includes(q) ||
       p.phone?.includes(search)
     const matchesRole = roleFilter === 'all' || p.role === roleFilter
     return matchesSearch && matchesRole
@@ -98,7 +133,9 @@ export default function UsersTable({
     currentPage * perPage
   )
 
-  // Stats
+  // ─────────────────────────────────────────────
+  // Stats — preserved
+  // ─────────────────────────────────────────────
   const totalUsers = profiles.length
   const adminCount = profiles.filter((p) => p.role === 'admin').length
   const customerCount = profiles.filter((p) => p.role !== 'admin').length
@@ -113,30 +150,50 @@ export default function UsersTable({
       label: 'Total Users',
       value: totalUsers,
       icon: Users,
-      color: 'border-l-indigo-500',
+      accent: 'border-l-indigo-500',
+      glow: 'bg-indigo-500/[0.06]',
+      iconBg: 'bg-indigo-500/[0.1]',
+      iconText: 'text-indigo-400',
     },
     {
       label: 'Admins',
       value: adminCount,
       icon: UserCog,
-      color: 'border-l-purple-500',
+      accent: 'border-l-violet-500',
+      glow: 'bg-violet-500/[0.06]',
+      iconBg: 'bg-violet-500/[0.1]',
+      iconText: 'text-violet-400',
     },
     {
       label: 'Customers',
       value: customerCount,
       icon: UserCheck,
-      color: 'border-l-emerald-500',
+      accent: 'border-l-emerald-500',
+      glow: 'bg-emerald-500/[0.06]',
+      iconBg: 'bg-emerald-500/[0.1]',
+      iconText: 'text-emerald-400',
     },
     {
       label: 'New This Week',
       value: newThisWeek,
       icon: UserPlus,
-      color: 'border-l-amber-500',
+      accent: 'border-l-amber-500',
+      glow: 'bg-amber-500/[0.06]',
+      iconBg: 'bg-amber-500/[0.1]',
+      iconText: 'text-amber-400',
     },
   ]
 
+  const hasActiveFilters = search !== '' || roleFilter !== 'all'
+
+  const clearFilters = () => {
+    setSearch('')
+    setRoleFilter('all')
+    setCurrentPage(1)
+  }
+
   // ─────────────────────────────────────────────
-  // Role change handler
+  // Role change — preserved logic
   // ─────────────────────────────────────────────
   const handleRoleChange = async (
     target: Profile,
@@ -167,234 +224,368 @@ export default function UsersTable({
     }
   }
 
-  // A row is actionable if:
-  //   • viewer is super admin
-  //   • target is NOT the viewer
-  //   • target is NOT another super admin
   const canChangeRole = (p: Profile) =>
     viewerIsSuperAdmin && p.id !== viewerId && !p.is_super_admin
 
   return (
-    <div className="relative overflow-hidden">
-      {/* Floating background shapes */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        {shapes.map((shape, i) => (
-          <motion.div
-            key={i}
-            className="absolute rounded-full bg-gradient-to-br from-indigo-500/5 to-purple-500/5 backdrop-blur-xl border border-white/5"
-            style={{
-              left: `${shape.x}%`,
-              top: `${shape.y}%`,
-              width: shape.size,
-              height: shape.size,
-            }}
-            animate={{
-              x: [0, 20, -15, 0],
-              y: [0, -30, 15, 0],
-              scale: [1, 1.08, 0.95, 1],
-              opacity: [0.3, 0.5, 0.3],
-            }}
-            transition={{
-              repeat: Infinity,
-              duration: shape.duration,
-              delay: shape.delay,
-              ease: 'easeInOut',
-            }}
-          />
-        ))}
-      </div>
-
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
+    <div className="space-y-5 sm:space-y-6">
+      {/* ═════════════════════════════════════════════
+          Header — Editorial
+         ═════════════════════════════════════════════ */}
+      <motion.header
+        initial={{ opacity: 0, y: -8 }}
         animate={{ opacity: 1, y: 0 }}
-        className="relative z-10"
+        transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
       >
-        {/* Header & Search */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-          <h1 className="text-2xl font-bold text-white">Users</h1>
-          <div className="flex gap-3 w-full sm:w-auto">
-            <div className="relative flex-1 sm:w-72">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
-              <input
-                type="text"
-                placeholder="Search name, email or phone..."
-                value={search}
-                onChange={(e) => {
-                  setSearch(e.target.value)
-                  setCurrentPage(1)
-                }}
-                className="w-full bg-white/5 border border-white/10 rounded-xl py-2.5 pl-10 pr-4 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-indigo-500/50 focus:bg-white/10 transition-all"
-              />
-            </div>
-            <select
-              value={roleFilter}
-              onChange={(e) => {
-                setRoleFilter(e.target.value)
-                setCurrentPage(1)
-              }}
-              className="bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500/50 transition-all"
-            >
-              <option value="all" className="bg-[#1a1a1a]">
-                All Roles
-              </option>
-              <option value="admin" className="bg-[#1a1a1a]">
-                Admin
-              </option>
-              <option value="customer" className="bg-[#1a1a1a]">
-                Customer
-              </option>
-            </select>
-          </div>
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/[0.04] border border-white/[0.08] mb-3 backdrop-blur-sm">
+          <Users size={11} className="text-indigo-400" aria-hidden="true" />
+          <span className="text-[10px] tracking-[0.18em] uppercase font-medium text-gray-400">
+            Directory
+          </span>
         </div>
 
-        {/* Quick Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-          {stats.map((stat, i) => (
+        <div className="flex items-end justify-between gap-4 flex-wrap">
+          <div className="min-w-0">
+            <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-[-0.02em] leading-tight">
+              Users
+            </h1>
+            <p className="text-[12px] sm:text-[13px] text-gray-500 mt-1.5 max-w-2xl leading-relaxed">
+              Manage customers, admins, and roles across your platform.
+            </p>
+          </div>
+
+          {totalUsers > 0 && (
+            <p className="text-[11px] sm:text-[12px] text-gray-500 font-medium tabular-nums flex-shrink-0">
+              {totalUsers.toLocaleString()} total
+            </p>
+          )}
+        </div>
+      </motion.header>
+
+      {/* ═════════════════════════════════════════════
+          Stats cards
+         ═════════════════════════════════════════════ */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+        {stats.map((stat, i) => {
+          const Icon = stat.icon
+          return (
             <motion.div
               key={stat.label}
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.1 }}
-              whileHover={{ scale: 1.02, y: -2 }}
-              className="relative bg-[#0f0f0f]/60 backdrop-blur-md p-4 rounded-xl border border-white/10 overflow-hidden shadow-xl"
+              transition={{
+                delay: i * 0.05,
+                duration: 0.4,
+                ease: [0.22, 1, 0.36, 1],
+              }}
+              whileHover={{ y: -3 }}
+              className="group relative overflow-hidden bg-gradient-to-b from-[#131313] to-[#0e0e0e] border border-white/[0.06] hover:border-white/[0.12] p-4 sm:p-5 rounded-2xl transition-colors duration-300"
             >
               <div
-                className={`absolute left-0 top-1/2 -translate-y-1/2 w-1 h-10 rounded-r-full ${stat.color}`}
+                aria-hidden="true"
+                className={`absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-10 rounded-r-full ${stat.accent}`}
               />
-              <div className="relative z-10 pl-3">
-                <div className="flex items-center justify-between mb-1">
-                  <stat.icon className="w-5 h-5 text-white/60" />
+              <div
+                aria-hidden="true"
+                className={`pointer-events-none absolute -top-16 -right-16 w-[140px] h-[140px] ${stat.glow} blur-[70px]`}
+              />
+              <div className="relative pl-3">
+                <div
+                  className={`w-8 h-8 rounded-xl ${stat.iconBg} border border-white/[0.06] flex items-center justify-center mb-3 transition-transform duration-300 group-hover:scale-105`}
+                >
+                  <Icon
+                    size={14}
+                    className={stat.iconText}
+                    aria-hidden="true"
+                  />
                 </div>
-                <p className="text-xs text-gray-400">{stat.label}</p>
-                <p className="text-xl font-bold text-white">{stat.value}</p>
+                <p className="text-[10px] tracking-[0.15em] uppercase font-medium text-gray-500">
+                  {stat.label}
+                </p>
+                <p className="text-xl sm:text-2xl font-bold text-white mt-1 tabular-nums tracking-tight">
+                  {stat.value.toLocaleString()}
+                </p>
               </div>
             </motion.div>
-          ))}
+          )
+        })}
+      </div>
+
+      {/* ═════════════════════════════════════════════
+          Filter bar
+         ═════════════════════════════════════════════ */}
+      <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-2.5">
+        <div className="relative">
+          <Search
+            className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-500 pointer-events-none"
+            aria-hidden="true"
+          />
+          <input
+            type="text"
+            placeholder="Search by name, email, or phone…"
+            value={search}
+            onChange={(e) => {
+              setSearch(e.target.value)
+              setCurrentPage(1)
+            }}
+            className="w-full bg-white/[0.04] border border-white/[0.08] rounded-xl py-2.5 pl-9 pr-9 text-[12px] text-white placeholder-gray-600 focus:outline-none focus:border-indigo-500/50 focus:bg-white/[0.06] focus:shadow-[0_0_0_3px_rgba(99,102,241,0.08)] transition-all duration-200"
+          />
+          {search && (
+            <button
+              type="button"
+              onClick={() => {
+                setSearch('')
+                setCurrentPage(1)
+              }}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 rounded text-gray-500 hover:text-white hover:bg-white/[0.06] transition-all"
+              aria-label="Clear search"
+            >
+              <X size={11} aria-hidden="true" />
+            </button>
+          )}
         </div>
 
-        {/* Table */}
-        {paginated.length === 0 ? (
-          <div className="text-center py-16 text-gray-500">
-            No users found.
+        <select
+          value={roleFilter}
+          onChange={(e) => {
+            setRoleFilter(e.target.value)
+            setCurrentPage(1)
+          }}
+          aria-label="Filter by role"
+          className="bg-white/[0.04] border border-white/[0.08] rounded-xl px-3 py-2.5 text-[12px] text-white focus:outline-none focus:border-indigo-500/50 focus:bg-white/[0.06] cursor-pointer [&>option]:bg-[#1a1a1a] [&>option]:text-white min-w-[150px]"
+        >
+          <option value="all">All Roles</option>
+          <option value="admin">Admin</option>
+          <option value="customer">Customer</option>
+        </select>
+      </div>
+
+      {/* ═════════════════════════════════════════════
+          Empty state
+         ═════════════════════════════════════════════ */}
+      {paginated.length === 0 ? (
+        <div className="relative flex flex-col items-center justify-center py-16 px-4 text-center overflow-hidden bg-gradient-to-b from-[#131313] to-[#0e0e0e] border border-white/[0.06] rounded-2xl">
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute -top-24 left-1/2 -translate-x-1/2 w-[400px] h-[240px] bg-indigo-500/[0.05] blur-[100px]"
+          />
+          <div className="relative">
+            <div className="w-14 h-14 rounded-2xl bg-white/[0.03] border border-white/[0.06] flex items-center justify-center mx-auto mb-3">
+              <Users
+                size={22}
+                className="text-gray-600"
+                aria-hidden="true"
+              />
+            </div>
+            <h3 className="text-[14px] font-semibold text-white mb-1">
+              No users found
+            </h3>
+            <p className="text-[12px] text-gray-500 max-w-xs">
+              {hasActiveFilters
+                ? 'Try adjusting your filters or search query.'
+                : 'Users will appear here once they sign up.'}
+            </p>
+            {hasActiveFilters && (
+              <button
+                type="button"
+                onClick={clearFilters}
+                className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-white/[0.04] border border-white/[0.08] text-[12px] font-medium text-gray-300 hover:text-white hover:bg-white/[0.06] hover:border-white/15 transition-all duration-300"
+              >
+                <X size={11} aria-hidden="true" />
+                Clear all filters
+              </button>
+            )}
           </div>
-        ) : (
-          <div className="bg-[#0f0f0f]/60 backdrop-blur-md border border-white/10 rounded-2xl overflow-hidden shadow-xl">
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-white/5">
-                  <tr>
-                    <th className="p-4 text-left text-sm text-gray-400">
-                      User
-                    </th>
-                    <th className="p-4 text-left text-sm text-gray-400">
-                      Email
-                    </th>
-                    <th className="p-4 text-left text-sm text-gray-400 hidden md:table-cell">
-                      Phone
-                    </th>
-                    <th className="p-4 text-left text-sm text-gray-400">
-                      Role
-                    </th>
-                    <th className="p-4 text-left text-sm text-gray-400 hidden sm:table-cell">
-                      Joined
-                    </th>
-                    <th className="p-4 text-left text-sm text-gray-400">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {paginated.map((profile, i) => (
+        </div>
+      ) : (
+        <div className="relative overflow-hidden bg-gradient-to-b from-[#131313] to-[#0e0e0e] border border-white/[0.06] rounded-2xl">
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-white/[0.04]">
+                  <th className="px-4 sm:px-5 py-3 text-left text-[10px] tracking-[0.15em] uppercase font-semibold text-gray-500">
+                    User
+                  </th>
+                  <th className="px-4 sm:px-5 py-3 text-left text-[10px] tracking-[0.15em] uppercase font-semibold text-gray-500 hidden md:table-cell">
+                    Contact
+                  </th>
+                  <th className="px-4 sm:px-5 py-3 text-left text-[10px] tracking-[0.15em] uppercase font-semibold text-gray-500">
+                    Role
+                  </th>
+                  <th className="px-4 sm:px-5 py-3 text-left text-[10px] tracking-[0.15em] uppercase font-semibold text-gray-500 hidden lg:table-cell">
+                    Joined
+                  </th>
+                  <th className="px-4 sm:px-5 py-3 text-right text-[10px] tracking-[0.15em] uppercase font-semibold text-gray-500">
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {paginated.map((profile, i) => {
+                  const initial =
+                    profile.full_name?.charAt(0)?.toUpperCase() ||
+                    profile.email?.charAt(0)?.toUpperCase() ||
+                    '?'
+
+                  // Determine role styling
+                  let roleKey = 'customer'
+                  if (profile.is_super_admin) roleKey = 'superadmin'
+                  else if (profile.role === 'admin') roleKey = 'admin'
+                  const roleStyle = ROLE_STYLES[roleKey] ?? DEFAULT_ROLE
+
+                  return (
                     <motion.tr
                       key={profile.id}
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      transition={{ delay: i * 0.03 }}
-                      className="border-t border-white/5 hover:bg-white/5 transition-colors"
+                      initial={{ opacity: 0, x: -6 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{
+                        delay: Math.min(i * 0.02, 0.25),
+                        duration: 0.3,
+                        ease: [0.22, 1, 0.36, 1],
+                      }}
+                      className="group border-b border-white/[0.03] last:border-b-0 hover:bg-white/[0.02] transition-colors"
                     >
-                      <td className="p-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-sm font-semibold">
-                            {profile.full_name?.charAt(0)?.toUpperCase() ||
-                              profile.email?.charAt(0)?.toUpperCase() ||
-                              '?'}
+                      {/* User */}
+                      <td className="px-4 sm:px-5 py-3">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div
+                            className="relative w-9 h-9 rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center text-white text-[12px] font-semibold ring-1 ring-white/[0.08] flex-shrink-0"
+                            aria-hidden="true"
+                          >
+                            {initial}
                           </div>
-                          <span className="text-white text-sm font-medium">
-                            {profile.full_name || 'N/A'}
-                          </span>
+                          <div className="min-w-0">
+                            <p className="text-[12px] font-semibold text-white truncate leading-tight">
+                              {profile.full_name || 'N/A'}
+                            </p>
+                            <p className="text-[10px] text-gray-500 mt-0.5 truncate md:hidden">
+                              {profile.email}
+                            </p>
+                          </div>
                         </div>
                       </td>
-                      <td className="p-4 text-sm text-gray-400">
-                        {profile.email}
+
+                      {/* Contact */}
+                      <td className="px-4 sm:px-5 py-3 hidden md:table-cell">
+                        <div className="space-y-0.5">
+                          <p className="text-[11px] text-gray-300 truncate max-w-[220px]">
+                            {profile.email}
+                          </p>
+                          {profile.phone && (
+                            <p className="text-[10px] text-gray-500 tabular-nums">
+                              {profile.phone}
+                            </p>
+                          )}
+                        </div>
                       </td>
-                      <td className="p-4 text-sm text-gray-400 hidden md:table-cell">
-                        {profile.phone || '—'}
+
+                      {/* Role */}
+                      <td className="px-4 sm:px-5 py-3">
+                        <span
+                          className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider border ${roleStyle.bg} ${roleStyle.text} ${roleStyle.border}`}
+                        >
+                          {roleKey === 'superadmin' ? (
+                            <Crown size={9} aria-hidden="true" />
+                          ) : roleKey === 'admin' ? (
+                            <Shield size={9} aria-hidden="true" />
+                          ) : (
+                            <span
+                              className={`w-1 h-1 rounded-full ${roleStyle.dot}`}
+                              aria-hidden="true"
+                            />
+                          )}
+                          {profile.is_super_admin
+                            ? 'Super Admin'
+                            : profile.role}
+                        </span>
                       </td>
-                      <td className="p-4">
-                        {profile.is_super_admin ? (
-                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-full bg-amber-500/20 text-amber-400 font-medium">
-                            <Crown size={11} />
-                            Super Admin
-                          </span>
-                        ) : (
-                          <span
-                            className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-full ${
-                              profile.role === 'admin'
-                                ? 'bg-indigo-500/20 text-indigo-400'
-                                : 'bg-gray-500/20 text-gray-400'
-                            }`}
-                          >
-                            {profile.role === 'admin' && <Shield size={11} />}
-                            {profile.role}
-                          </span>
-                        )}
+
+                      {/* Joined */}
+                      <td className="px-4 sm:px-5 py-3 hidden lg:table-cell">
+                        <span className="text-[11px] text-gray-400 tabular-nums">
+                          {new Date(profile.created_at).toLocaleDateString(
+                            'en-GB',
+                            {
+                              day: 'numeric',
+                              month: 'short',
+                              year: 'numeric',
+                            }
+                          )}
+                        </span>
                       </td>
-                      <td className="p-4 text-sm text-gray-400 hidden sm:table-cell">
-                        {new Date(profile.created_at).toLocaleDateString(
-                          'en-GB'
-                        )}
-                      </td>
-                      <td className="p-4">
-                        <div className="flex items-center gap-2">
+
+                      {/* Actions */}
+                      <td className="px-4 sm:px-5 py-3">
+                        <div className="flex items-center justify-end gap-1">
+                          {/* View */}
                           <button
+                            type="button"
                             onClick={() => setSelectedUser(profile)}
-                            className="flex items-center gap-1.5 text-indigo-400 hover:text-indigo-300 text-sm font-medium transition"
+                            className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-medium text-indigo-400 hover:text-indigo-300 hover:bg-indigo-500/[0.08] transition-all duration-200"
+                            aria-label={`View ${profile.email}`}
                           >
-                            <Eye size={15} />
+                            <Eye size={12} aria-hidden="true" />
                             View
                           </button>
 
+                          {/* Activity */}
                           <Link
                             href={`/admin/users/${profile.id}/activity`}
-                            className="flex items-center gap-1 text-rose-400 hover:text-rose-300 text-sm font-medium transition"
+                            className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-medium text-rose-400 hover:text-rose-300 hover:bg-rose-500/[0.08] transition-all duration-200"
+                            aria-label={`Activity for ${profile.email}`}
                           >
-                            <Activity size={14} />
-                            Activity
+                            <Activity size={12} aria-hidden="true" />
+                            <span className="hidden sm:inline">Activity</span>
                           </Link>
 
+                          {/* Role dropdown */}
                           {canChangeRole(profile) && (
                             <div
                               className="relative"
-                              onClick={(e) => e.stopPropagation()}
+                              ref={
+                                roleMenuFor === profile.id
+                                  ? menuContainerRef
+                                  : undefined
+                              }
                             >
                               <button
-                                onClick={() =>
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation()
                                   setRoleMenuFor(
                                     roleMenuFor === profile.id
                                       ? null
                                       : profile.id
                                   )
-                                }
+                                }}
                                 disabled={changingRoleFor === profile.id}
-                                className="flex items-center gap-1 text-amber-400 hover:text-amber-300 text-sm font-medium transition disabled:opacity-50"
+                                aria-label={`Change role for ${profile.email}`}
+                                aria-haspopup="menu"
+                                aria-expanded={roleMenuFor === profile.id}
+                                className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-medium text-amber-400 hover:text-amber-300 hover:bg-amber-500/[0.08] disabled:opacity-50 transition-all duration-200"
                               >
                                 {changingRoleFor === profile.id ? (
-                                  <Loader2 size={14} className="animate-spin" />
+                                  <Loader2
+                                    size={12}
+                                    className="animate-spin"
+                                    aria-hidden="true"
+                                  />
                                 ) : (
-                                  <Crown size={14} />
+                                  <Crown
+                                    size={12}
+                                    aria-hidden="true"
+                                  />
                                 )}
-                                Role
-                                <ChevronDown size={12} />
+                                <span className="hidden sm:inline">Role</span>
+                                <ChevronDown
+                                  size={10}
+                                  className={`transition-transform duration-200 ${
+                                    roleMenuFor === profile.id
+                                      ? 'rotate-180'
+                                      : ''
+                                  }`}
+                                  aria-hidden="true"
+                                />
                               </button>
 
                               <AnimatePresence>
@@ -402,44 +593,68 @@ export default function UsersTable({
                                   <motion.div
                                     initial={{
                                       opacity: 0,
-                                      y: -5,
-                                      scale: 0.95,
+                                      y: -6,
+                                      scale: 0.96,
                                     }}
                                     animate={{ opacity: 1, y: 0, scale: 1 }}
                                     exit={{
                                       opacity: 0,
-                                      y: -5,
-                                      scale: 0.95,
+                                      y: -6,
+                                      scale: 0.96,
                                     }}
-                                    transition={{ duration: 0.15 }}
-                                    className="absolute right-0 mt-2 w-44 bg-[#121212] border border-white/10 rounded-xl shadow-2xl overflow-hidden z-30"
+                                    transition={{
+                                      duration: 0.18,
+                                      ease: [0.22, 1, 0.36, 1],
+                                    }}
+                                    role="menu"
+                                    className="absolute right-0 mt-2 w-48 bg-[#121212]/98 backdrop-blur-xl border border-white/[0.08] rounded-xl shadow-2xl shadow-black/60 overflow-hidden z-30"
                                   >
-                                    <button
-                                      onClick={() =>
-                                        handleRoleChange(profile, 'admin')
-                                      }
-                                      disabled={profile.role === 'admin'}
-                                      className="w-full text-left px-4 py-2.5 text-sm text-gray-300 hover:bg-white/5 transition disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2"
-                                    >
-                                      <Shield
-                                        size={14}
-                                        className="text-indigo-400"
-                                      />
-                                      Make Admin
-                                    </button>
-                                    <button
-                                      onClick={() =>
-                                        handleRoleChange(profile, 'customer')
-                                      }
-                                      disabled={profile.role === 'customer'}
-                                      className="w-full text-left px-4 py-2.5 text-sm text-gray-300 hover:bg-white/5 transition disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2"
-                                    >
-                                      <UserCheck
-                                        size={14}
-                                        className="text-emerald-400"
-                                      />
-                                      Make Customer
-                                    </button>
+                                    <div className="px-3 py-2 border-b border-white/[0.06]">
+                                      <p className="text-[9px] tracking-[0.15em] uppercase font-semibold text-gray-500">
+                                        Change Role
+                                      </p>
+                                    </div>
+
+                                    <div className="p-1">
+                                      <button
+                                        type="button"
+                                        role="menuitem"
+                                        onClick={() =>
+                                          handleRoleChange(profile, 'admin')
+                                        }
+                                        disabled={profile.role === 'admin'}
+                                        className="w-full text-left px-3 py-2 rounded-lg text-[12px] text-gray-300 hover:text-white hover:bg-white/[0.04] disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent transition-colors flex items-center gap-2"
+                                      >
+                                        <Shield
+                                          size={13}
+                                          className="text-indigo-400 flex-shrink-0"
+                                          aria-hidden="true"
+                                        />
+                                        Make Admin
+                                      </button>
+
+                                      <button
+                                        type="button"
+                                        role="menuitem"
+                                        onClick={() =>
+                                          handleRoleChange(
+                                            profile,
+                                            'customer'
+                                          )
+                                        }
+                                        disabled={
+                                          profile.role === 'customer'
+                                        }
+                                        className="w-full text-left px-3 py-2 rounded-lg text-[12px] text-gray-300 hover:text-white hover:bg-white/[0.04] disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent transition-colors flex items-center gap-2"
+                                      >
+                                        <UserCheck
+                                          size={13}
+                                          className="text-emerald-400 flex-shrink-0"
+                                          aria-hidden="true"
+                                        />
+                                        Make Customer
+                                      </button>
+                                    </div>
                                   </motion.div>
                                 )}
                               </AnimatePresence>
@@ -448,44 +663,71 @@ export default function UsersTable({
                         </div>
                       </td>
                     </motion.tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Pagination */}
-            {totalPages > 1 && (
-              <div className="flex items-center justify-between p-4 border-t border-white/10">
-                <span className="text-sm text-gray-400">
-                  Page {currentPage} of {totalPages}
-                </span>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() =>
-                      setCurrentPage((prev) => Math.max(prev - 1, 1))
-                    }
-                    disabled={currentPage === 1}
-                    className="px-3 py-1 text-sm rounded-lg bg-white/5 text-gray-300 hover:bg-white/10 disabled:opacity-40 transition"
-                  >
-                    Previous
-                  </button>
-                  <button
-                    onClick={() =>
-                      setCurrentPage((prev) =>
-                        Math.min(prev + 1, totalPages)
-                      )
-                    }
-                    disabled={currentPage === totalPages}
-                    className="px-3 py-1 text-sm rounded-lg bg-white/5 text-gray-300 hover:bg-white/10 disabled:opacity-40 transition"
-                  >
-                    Next
-                  </button>
-                </div>
-              </div>
-            )}
+                  )
+                })}
+              </tbody>
+            </table>
           </div>
-        )}
-      </motion.div>
+
+          {/* ─────────────────────────────────────────────
+              Pagination
+             ───────────────────────────────────────────── */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between gap-3 p-3 sm:p-4 border-t border-white/[0.06]">
+              <span className="text-[11px] text-gray-500 tabular-nums">
+                Page{' '}
+                <span className="text-gray-300 font-medium">
+                  {currentPage}
+                </span>{' '}
+                of{' '}
+                <span className="text-gray-300 font-medium">
+                  {totalPages}
+                </span>{' '}
+                ·{' '}
+                <span className="text-gray-300 font-medium">
+                  {filtered.length.toLocaleString()}
+                </span>{' '}
+                filtered
+              </span>
+
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() =>
+                    setCurrentPage((prev) => Math.max(prev - 1, 1))
+                  }
+                  disabled={currentPage === 1}
+                  className="group inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-white/[0.03] border border-white/[0.06] text-[11px] font-medium text-gray-400 hover:text-white hover:bg-white/[0.06] hover:border-white/15 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-white/[0.03] disabled:hover:text-gray-400 transition-all duration-200"
+                >
+                  <ChevronLeft
+                    size={12}
+                    className="transition-transform duration-300 group-hover:-translate-x-0.5 group-disabled:translate-x-0"
+                    aria-hidden="true"
+                  />
+                  Previous
+                </button>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setCurrentPage((prev) =>
+                      Math.min(prev + 1, totalPages)
+                    )
+                  }
+                  disabled={currentPage === totalPages}
+                  className="group inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-white/[0.03] border border-white/[0.06] text-[11px] font-medium text-gray-400 hover:text-white hover:bg-white/[0.06] hover:border-white/15 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-white/[0.03] disabled:hover:text-gray-400 transition-all duration-200"
+                >
+                  Next
+                  <ChevronRight
+                    size={12}
+                    className="transition-transform duration-300 group-hover:translate-x-0.5 group-disabled:translate-x-0"
+                    aria-hidden="true"
+                  />
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* User Details Modal */}
       <UserDetailsModal

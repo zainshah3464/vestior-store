@@ -11,7 +11,7 @@ import {
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import toast from 'react-hot-toast'
-import { Bell } from 'lucide-react'
+import { Bell, Sparkles, CheckCheck, ExternalLink } from 'lucide-react'
 
 export interface AdminNotification {
   id: string
@@ -31,13 +31,15 @@ interface AdminNotificationsContextValue {
   clearAll: () => void
 }
 
-const AdminNotificationsContext = createContext<AdminNotificationsContextValue>({
-  notifications: [],
-  unreadCount: 0,
-  markAsRead: () => {},
-  markAllAsRead: () => {},
-  clearAll: () => {},
-})
+const AdminNotificationsContext = createContext<AdminNotificationsContextValue>(
+  {
+    notifications: [],
+    unreadCount: 0,
+    markAsRead: () => {},
+    markAllAsRead: () => {},
+    clearAll: () => {},
+  }
+)
 
 export const useAdminNotifications = () =>
   useContext(AdminNotificationsContext)
@@ -47,7 +49,7 @@ const MAX_NOTIFICATIONS = 30
 
 /**
  * Play a short notification beep using the Web Audio API.
- * No external file needed — pure browser synthesis.
+ * Preserved exactly.
  */
 function playNotificationSound() {
   try {
@@ -59,7 +61,6 @@ function playNotificationSound() {
 
     const ctx = new AudioContextClass()
 
-    // Two-tone chime: C5 → E5
     const notes = [
       { freq: 523.25, start: 0, dur: 0.15 },
       { freq: 659.25, start: 0.13, dur: 0.22 },
@@ -82,15 +83,15 @@ function playNotificationSound() {
       osc.stop(ctx.currentTime + start + dur)
     })
 
-    // Close the context after the sound finishes
     setTimeout(() => ctx.close().catch(() => {}), 800)
   } catch {
-    // Silent fail — sound is a nice-to-have
+    // Silent fail
   }
 }
 
 /**
  * Ask for browser notification permission once.
+ * Preserved exactly.
  */
 async function ensureNotificationPermission(): Promise<boolean> {
   if (typeof window === 'undefined') return false
@@ -117,7 +118,7 @@ export default function AdminNotificationsProvider({
   const [permissionGranted, setPermissionGranted] = useState(false)
 
   // ─────────────────────────────────────────────
-  // Hydrate from localStorage
+  // Hydrate from localStorage — preserved
   // ─────────────────────────────────────────────
   useEffect(() => {
     try {
@@ -132,7 +133,7 @@ export default function AdminNotificationsProvider({
   }, [])
 
   // ─────────────────────────────────────────────
-  // Persist on change
+  // Persist on change — preserved
   // ─────────────────────────────────────────────
   useEffect(() => {
     try {
@@ -146,7 +147,7 @@ export default function AdminNotificationsProvider({
   }, [notifications])
 
   // ─────────────────────────────────────────────
-  // Browser permission
+  // Browser permission — preserved
   // ─────────────────────────────────────────────
   useEffect(() => {
     ensureNotificationPermission().then((granted) => {
@@ -154,6 +155,9 @@ export default function AdminNotificationsProvider({
     })
   }, [])
 
+  // ─────────────────────────────────────────────
+  // Add notification — REDESIGNED toast
+  // ─────────────────────────────────────────────
   const addNotification = useCallback(
     (n: Omit<AdminNotification, 'id' | 'createdAt' | 'read'>) => {
       const notification: AdminNotification = {
@@ -163,40 +167,89 @@ export default function AdminNotificationsProvider({
         read: false,
       }
 
-      setNotifications((prev) => [notification, ...prev].slice(0, MAX_NOTIFICATIONS))
+      setNotifications((prev) =>
+        [notification, ...prev].slice(0, MAX_NOTIFICATIONS)
+      )
 
-      // Toast
+      // ─────────────────────────────────────────────
+      // Premium custom toast
+      // ─────────────────────────────────────────────
+      const isOrderPlaced = notification.type === 'order_placed'
+      const isPayment = notification.type === 'payment_completed'
+
+      const toastIconBg = isOrderPlaced
+        ? 'bg-indigo-500/[0.12] border-indigo-500/30'
+        : isPayment
+        ? 'bg-emerald-500/[0.12] border-emerald-500/30'
+        : 'bg-red-500/[0.12] border-red-500/30'
+
+      const toastIconColor = isOrderPlaced
+        ? 'text-indigo-400'
+        : isPayment
+        ? 'text-emerald-400'
+        : 'text-red-400'
+
+      const toastBorder = isOrderPlaced
+        ? 'border-l-indigo-500'
+        : isPayment
+        ? 'border-l-emerald-500'
+        : 'border-l-red-500'
+
+      const ToastIcon = isOrderPlaced
+        ? Sparkles
+        : isPayment
+        ? CheckCheck
+        : Bell
+
       toast.custom(
         (t) => (
           <div
             className={`${
               t.visible ? 'animate-enter' : 'animate-leave'
-            } max-w-md w-full bg-[#0f0f0f] shadow-lg rounded-xl pointer-events-auto flex ring-1 ring-white/10 border-l-4 border-indigo-500`}
+            } max-w-md w-full bg-[#0f0f0f]/98 backdrop-blur-xl shadow-2xl shadow-black/60 rounded-2xl pointer-events-auto flex ring-1 ring-white/[0.08] border-l-[3px] ${toastBorder} overflow-hidden`}
           >
             <div className="flex-1 w-0 p-4">
-              <div className="flex items-start">
-                <div className="flex-shrink-0 pt-0.5">
-                  <Bell className="h-5 w-5 text-indigo-400" />
+              <div className="flex items-start gap-3">
+                {/* Icon tile */}
+                <div
+                  className={`flex-shrink-0 w-9 h-9 rounded-xl ${toastIconBg} border flex items-center justify-center`}
+                >
+                  <ToastIcon
+                    size={15}
+                    className={toastIconColor}
+                    aria-hidden="true"
+                  />
                 </div>
-                <div className="ml-3 flex-1">
-                  <p className="text-sm font-medium text-white">
+
+                <div className="flex-1 min-w-0">
+                  <p className="text-[13px] font-semibold text-white leading-tight">
                     {notification.title}
                   </p>
-                  <p className="mt-1 text-xs text-gray-400">
+                  <p className="text-[11px] text-gray-400 mt-1 leading-relaxed line-clamp-2">
                     {notification.message}
                   </p>
                 </div>
               </div>
             </div>
-            <div className="flex border-l border-white/10">
+
+            {/* View action */}
+            <div className="flex border-l border-white/[0.06]">
               <button
+                type="button"
                 onClick={() => {
                   toast.dismiss(t.id)
                   router.push(`/admin/orders/${notification.orderId}`)
                 }}
-                className="w-full border border-transparent rounded-none rounded-r-xl p-4 flex items-center justify-center text-xs font-medium text-indigo-400 hover:text-indigo-300 focus:outline-none"
+                className="group w-full px-4 flex items-center justify-center text-[11px] font-semibold text-indigo-400 hover:text-indigo-300 hover:bg-indigo-500/[0.06] transition-all duration-200 focus:outline-none"
               >
-                View
+                <span className="inline-flex items-center gap-1.5">
+                  View
+                  <ExternalLink
+                    size={10}
+                    className="transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5"
+                    aria-hidden="true"
+                  />
+                </span>
               </button>
             </div>
           </div>
@@ -204,10 +257,10 @@ export default function AdminNotificationsProvider({
         { duration: 8000, position: 'top-right' }
       )
 
-      // Sound
+      // Sound — preserved
       playNotificationSound()
 
-      // Browser notification
+      // Browser notification — preserved
       if (permissionGranted && typeof Notification !== 'undefined') {
         try {
           const bn = new Notification(notification.title, {
@@ -230,7 +283,7 @@ export default function AdminNotificationsProvider({
   )
 
   // ─────────────────────────────────────────────
-  // Realtime subscription
+  // Realtime subscription — preserved exactly
   // ─────────────────────────────────────────────
   useEffect(() => {
     const supabase = supabaseRef.current
@@ -270,7 +323,6 @@ export default function AdminNotificationsProvider({
             total: number
           }
 
-          // Only notify on payment_status → completed transitions
           if (
             old?.payment_status !== 'completed' &&
             next.payment_status === 'completed'
@@ -300,7 +352,7 @@ export default function AdminNotificationsProvider({
   }, [addNotification])
 
   // ─────────────────────────────────────────────
-  // Actions
+  // Actions — preserved
   // ─────────────────────────────────────────────
   const markAsRead = useCallback((id: string) => {
     setNotifications((prev) =>

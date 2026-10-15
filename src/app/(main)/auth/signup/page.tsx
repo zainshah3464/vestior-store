@@ -5,6 +5,8 @@ import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
+import { motion } from 'framer-motion'
+import { User, Mail, Lock, ArrowRight, Shield, Sparkles } from 'lucide-react'
 import { checkPasswordStrength } from '@/lib/password'
 import PasswordInput from '@/components/auth/PasswordInput'
 import PasswordStrengthMeter from '@/components/auth/PasswordStrengthMeter'
@@ -44,11 +46,11 @@ export default function SignupPage() {
       return
     }
 
-    // Detect existing email: Supabase returns a user with empty
-    // `identities` array when the email already exists. This is
-    // intentional (prevents email enumeration) — we surface it as
-    // a friendly message instead of silently showing "created".
-    if (data.user && data.user.identities && data.user.identities.length === 0) {
+    if (
+      data.user &&
+      data.user.identities &&
+      data.user.identities.length === 0
+    ) {
       toast.error(
         'An account with this email already exists. Please sign in or reset your password.'
       )
@@ -60,14 +62,11 @@ export default function SignupPage() {
       'Account created! Please check your email to verify your account.'
     )
 
-    // Fire-and-forget welcome email queue
     fetch('/api/auth/welcome', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, fullName: name }),
-    }).catch(() => {
-      // Best-effort only
-    })
+    }).catch(() => {})
 
     router.push('/auth/verify-email')
     setLoading(false)
@@ -84,123 +83,226 @@ export default function SignupPage() {
   }
 
   return (
-    <div className="min-h-screen bg-black flex items-center justify-center pt-20 pb-16">
-      <div className="max-w-md w-full mx-auto px-4">
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-white">Create Account</h1>
-          <p className="text-gray-400 mt-2">Join VESTIOR today</p>
-        </div>
+    <div className="relative min-h-screen bg-black pt-20 pb-16 flex items-center justify-center overflow-hidden">
+      {/* Ambient background */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 z-0"
+      >
+        <div className="absolute -top-32 left-1/2 -translate-x-1/2 w-[700px] h-[400px] bg-emerald-500/[0.05] blur-[130px]" />
+        <div className="absolute top-1/3 right-0 w-[380px] h-[380px] bg-blue-500/[0.04] blur-[120px]" />
+        <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-indigo-500/[0.03] blur-[120px]" />
+      </div>
 
-        <form onSubmit={handleSignup} className="space-y-4">
-          <div>
-            <label
-              htmlFor="signup-name"
-              className="block text-sm text-gray-400 mb-1"
-            >
-              Full Name
-            </label>
-            <input
-              id="signup-name"
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="w-full px-4 py-3 bg-gray-900 border border-gray-800 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition"
-              placeholder="John Doe"
-              autoComplete="name"
-              required
-              disabled={loading}
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+        className="relative z-10 max-w-md w-full mx-auto px-4 sm:px-6"
+      >
+        {/* Header */}
+        <header className="text-center mb-8">
+          <div className="relative inline-flex items-center justify-center mb-5">
+            <div
+              aria-hidden="true"
+              className="absolute w-20 h-20 rounded-full bg-emerald-500/20 blur-2xl"
             />
+            <div className="relative w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 border border-emerald-400/30 flex items-center justify-center shadow-2xl shadow-emerald-500/30">
+              <Sparkles
+                size={22}
+                className="text-white"
+                aria-hidden="true"
+                strokeWidth={2}
+              />
+            </div>
           </div>
 
-          <div>
-            <label
-              htmlFor="signup-email"
-              className="block text-sm text-gray-400 mb-1"
+          <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-[-0.02em] mb-2">
+            Create your account
+          </h1>
+          <p className="text-[13px] text-gray-500">
+            Join VESTIOR and start shopping
+          </p>
+        </header>
+
+        {/* Form card */}
+        <div className="relative overflow-hidden bg-gradient-to-b from-[#131313] to-[#0e0e0e] border border-white/[0.08] rounded-2xl p-6 sm:p-7 shadow-2xl shadow-black/40">
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute -top-24 -right-24 w-[240px] h-[240px] bg-emerald-500/[0.05] blur-[90px]"
+          />
+
+          <form onSubmit={handleSignup} className="relative space-y-4">
+            {/* Name */}
+            <div>
+              <label
+                htmlFor="signup-name"
+                className="flex items-center gap-1.5 text-[10px] tracking-[0.15em] uppercase font-semibold text-gray-400 mb-2"
+              >
+                <User
+                  size={10}
+                  className="text-gray-500"
+                  aria-hidden="true"
+                />
+                Full Name
+              </label>
+              <input
+                id="signup-name"
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="w-full px-3.5 py-3 bg-black/50 border border-white/[0.08] rounded-xl text-[13px] text-white placeholder-gray-600 focus:outline-none focus:border-emerald-500/50 focus:bg-black/70 focus:shadow-[0_0_0_3px_rgba(16,185,129,0.08)] transition-all duration-200"
+                placeholder="John Doe"
+                autoComplete="name"
+                required
+                disabled={loading}
+              />
+            </div>
+
+            {/* Email */}
+            <div>
+              <label
+                htmlFor="signup-email"
+                className="flex items-center gap-1.5 text-[10px] tracking-[0.15em] uppercase font-semibold text-gray-400 mb-2"
+              >
+                <Mail
+                  size={10}
+                  className="text-gray-500"
+                  aria-hidden="true"
+                />
+                Email
+              </label>
+              <input
+                id="signup-email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full px-3.5 py-3 bg-black/50 border border-white/[0.08] rounded-xl text-[13px] text-white placeholder-gray-600 focus:outline-none focus:border-emerald-500/50 focus:bg-black/70 focus:shadow-[0_0_0_3px_rgba(16,185,129,0.08)] transition-all duration-200"
+                placeholder="you@example.com"
+                autoComplete="email"
+                required
+                disabled={loading}
+              />
+            </div>
+
+            {/* Password */}
+            <div>
+              <label
+                htmlFor="signup-password"
+                className="flex items-center gap-1.5 text-[10px] tracking-[0.15em] uppercase font-semibold text-gray-400 mb-2"
+              >
+                <Lock
+                  size={10}
+                  className="text-gray-500"
+                  aria-hidden="true"
+                />
+                Password
+              </label>
+              <PasswordInput
+                value={password}
+                onChange={setPassword}
+                name="signup-password"
+                autoComplete="new-password"
+                placeholder="Create a strong password"
+                required
+                disabled={loading}
+              />
+              <PasswordStrengthMeter password={password} />
+            </div>
+
+            {/* Submit */}
+            <motion.button
+              type="submit"
+              disabled={!canSubmit || loading}
+              whileTap={!canSubmit || loading ? {} : { scale: 0.99 }}
+              className="group/btn relative w-full py-3.5 bg-gradient-to-r from-emerald-600 to-emerald-500 text-white rounded-xl text-[13px] font-semibold overflow-hidden shadow-lg shadow-emerald-500/25 hover:shadow-xl hover:shadow-emerald-500/40 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 flex items-center justify-center gap-2 mt-6"
             >
-              Email
-            </label>
-            <input
-              id="signup-email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-4 py-3 bg-gray-900 border border-gray-800 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition"
-              placeholder="you@example.com"
-              autoComplete="email"
-              required
-              disabled={loading}
-            />
+              {!loading && canSubmit && (
+                <span
+                  aria-hidden="true"
+                  className="pointer-events-none absolute inset-y-0 -inset-x-1/2 bg-gradient-to-r from-transparent via-white/25 to-transparent -translate-x-full group-hover/btn:translate-x-full transition-transform duration-[900ms] ease-out"
+                />
+              )}
+              <span className="relative z-10 inline-flex items-center gap-2">
+                {loading ? (
+                  <>
+                    <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    Creating account…
+                  </>
+                ) : (
+                  <>
+                    Create Account
+                    <ArrowRight
+                      size={14}
+                      className="transition-transform duration-300 group-hover/btn:translate-x-0.5"
+                      aria-hidden="true"
+                    />
+                  </>
+                )}
+              </span>
+            </motion.button>
+          </form>
+
+          {/* Divider */}
+          <div className="relative flex items-center gap-3 my-6">
+            <div className="flex-1 h-px bg-gradient-to-r from-transparent via-white/[0.08] to-white/[0.08]" />
+            <span className="text-[10px] tracking-[0.15em] uppercase font-medium text-gray-600">
+              or
+            </span>
+            <div className="flex-1 h-px bg-gradient-to-l from-transparent via-white/[0.08] to-white/[0.08]" />
           </div>
 
-          <div>
-            <label
-              htmlFor="signup-password"
-              className="block text-sm text-gray-400 mb-1"
-            >
-              Password
-            </label>
-            <PasswordInput
-              value={password}
-              onChange={setPassword}
-              name="signup-password"
-              autoComplete="new-password"
-              placeholder="Create a strong password"
-              required
-              disabled={loading}
-            />
-            <PasswordStrengthMeter password={password} />
-          </div>
-
-          <button
-            type="submit"
-            disabled={!canSubmit || loading}
-            className="w-full py-3 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition disabled:opacity-50"
+          {/* Google */}
+          <motion.button
+            type="button"
+            onClick={handleGoogleLogin}
+            whileTap={{ scale: 0.99 }}
+            className="relative w-full py-3 bg-white/[0.06] border border-white/[0.08] text-white rounded-xl text-[13px] font-medium hover:bg-white/[0.1] hover:border-white/15 transition-all duration-200 flex items-center justify-center gap-2.5"
           >
-            {loading ? 'Creating account...' : 'Create Account'}
-          </button>
-        </form>
-
-        {/* Divider */}
-        <div className="flex items-center gap-4 my-6">
-          <div className="flex-1 h-px bg-gray-800" />
-          <span className="text-xs text-gray-400 uppercase">or</span>
-          <div className="flex-1 h-px bg-gray-800" />
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              aria-hidden="true"
+            >
+              <path
+                fill="#EA4335"
+                d="M5.26620003,9.76452941 C6.19878754,6.93863203 8.85444915,4.90909091 12,4.90909091 C13.6909091,4.90909091 15.2181818,5.50909091 16.4181818,6.49090909 L19.9090909,3 C17.7818182,1.14545455 15.0545455,0 12,0 C7.27006974,0 3.1977497,2.69829785 1.23999023,6.65002441 L5.26620003,9.76452941 Z"
+              />
+              <path
+                fill="#34A853"
+                d="M16.0407269,18.0125889 C14.9509167,18.7163016 13.5660892,19.0909091 12,19.0909091 C8.86648613,19.0909091 6.21911939,17.076871 5.27698177,14.2678769 L1.23746264,17.3349879 C3.19279051,21.2936293 7.26500293,24 12,24 C14.9328362,24 17.7353462,22.9573505 19.834192,20.9995801 L16.0407269,18.0125889 Z"
+              />
+              <path
+                fill="#4A90E2"
+                d="M19.834192,20.9995801 C22.0291676,18.9520994 23.4545455,15.903663 23.4545455,12 C23.4545455,11.2909091 23.3454545,10.5272727 23.1818182,9.81818182 L12,9.81818182 L12,14.4545455 L18.4363636,14.4545455 C18.1187732,16.013626 17.2662994,17.2212117 16.0407269,18.0125889 L19.834192,20.9995801 Z"
+              />
+              <path
+                fill="#FBBC05"
+                d="M5.27698177,14.2678769 C5.03832634,13.556323 4.90909091,12.7937589 4.90909091,12 C4.90909091,11.2182781 5.03443639,10.4668129 5.26620003,9.76452941 L1.23999023,6.65002441 C0.43658717,8.26043162 0,10.0753848 0,12 C0,13.9195484 0.444780743,15.7301709 1.23746264,17.3349879 L5.27698177,14.2678769 Z"
+              />
+            </svg>
+            Continue with Google
+          </motion.button>
         </div>
 
-        {/* Google Sign-In */}
-        <button
-          type="button"
-          onClick={handleGoogleLogin}
-          className="w-full py-3 bg-white text-black rounded-xl font-medium hover:bg-gray-200 transition flex items-center justify-center gap-2"
-        >
-          <svg width="20" height="20" viewBox="0 0 24 24">
-            <path
-              fill="#EA4335"
-              d="M5.26620003,9.76452941 C6.19878754,6.93863203 8.85444915,4.90909091 12,4.90909091 C13.6909091,4.90909091 15.2181818,5.50909091 16.4181818,6.49090909 L19.9090909,3 C17.7818182,1.14545455 15.0545455,0 12,0 C7.27006974,0 3.1977497,2.69829785 1.23999023,6.65002441 L5.26620003,9.76452941 Z"
-            />
-            <path
-              fill="#34A853"
-              d="M16.0407269,18.0125889 C14.9509167,18.7163016 13.5660892,19.0909091 12,19.0909091 C8.86648613,19.0909091 6.21911939,17.076871 5.27698177,14.2678769 L1.23746264,17.3349879 C3.19279051,21.2936293 7.26500293,24 12,24 C14.9328362,24 17.7353462,22.9573505 19.834192,20.9995801 L16.0407269,18.0125889 Z"
-            />
-            <path
-              fill="#4A90E2"
-              d="M19.834192,20.9995801 C22.0291676,18.9520994 23.4545455,15.903663 23.4545455,12 C23.4545455,11.2909091 23.3454545,10.5272727 23.1818182,9.81818182 L12,9.81818182 L12,14.4545455 L18.4363636,14.4545455 C18.1187732,16.013626 17.2662994,17.2212117 16.0407269,18.0125889 L19.834192,20.9995801 Z"
-            />
-            <path
-              fill="#FBBC05"
-              d="M5.27698177,14.2678769 C5.03832634,13.556323 4.90909091,12.7937589 4.90909091,12 C4.90909091,11.2182781 5.03443639,10.4668129 5.26620003,9.76452941 L1.23999023,6.65002441 C0.43658717,8.26043162 0,10.0753848 0,12 C0,13.9195484 0.444780743,15.7301709 1.23746264,17.3349879 L5.27698177,14.2678769 Z"
-            />
-          </svg>
-          Continue with Google
-        </button>
-
-        <p className="text-center text-gray-400 mt-6 text-sm">
+        {/* Footer link */}
+        <p className="text-center text-[12px] text-gray-500 mt-6">
           Already have an account?{' '}
-          <Link href="/auth/login" className="text-blue-500 hover:underline">
+          <Link
+            href="/auth/login"
+            className="text-emerald-400 font-medium hover:text-emerald-300 transition-colors"
+          >
             Sign in
           </Link>
         </p>
-      </div>
+
+        {/* Trust footer */}
+        <p className="text-[10px] text-gray-600 text-center mt-4 flex items-center justify-center gap-1.5">
+          <Shield size={9} aria-hidden="true" />
+          Your data is encrypted and never shared
+        </p>
+      </motion.div>
     </div>
   )
 }

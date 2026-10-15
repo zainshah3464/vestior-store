@@ -5,13 +5,29 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { motion } from 'framer-motion'
 import {
-  ChevronLeft, Package, Clock, CheckCircle, XCircle, Truck,
-  MapPin, CreditCard, Receipt, Calendar, Download,
+  ChevronLeft,
+  Package,
+  Clock,
+  CheckCircle,
+  XCircle,
+  Truck,
+  MapPin,
+  CreditCard,
+  Receipt,
+  Calendar,
+  Download,
+  Hash,
+  User,
+  Phone,
+  Lock,
+  RotateCcw,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import type { OrderDetail } from '@/lib/orders/queries'
 
-
+// ─────────────────────────────────────────────
+// Status maps — preserved logic
+// ─────────────────────────────────────────────
 const STATUS_ICONS: Record<string, React.ElementType> = {
   pending: Clock,
   processing: Package,
@@ -20,21 +36,81 @@ const STATUS_ICONS: Record<string, React.ElementType> = {
   cancelled: XCircle,
 }
 
-const STATUS_COLORS: Record<string, { text: string; bg: string; border: string }> = {
-  pending: { text: 'text-yellow-400', bg: 'bg-yellow-400/10', border: 'border-yellow-400/20' },
-  processing: { text: 'text-blue-400', bg: 'bg-blue-400/10', border: 'border-blue-400/20' },
-  shipped: { text: 'text-purple-400', bg: 'bg-purple-400/10', border: 'border-purple-400/20' },
-  delivered: { text: 'text-green-400', bg: 'bg-green-400/10', border: 'border-green-400/20' },
-  cancelled: { text: 'text-red-400', bg: 'bg-red-400/10', border: 'border-red-400/20' },
+const STATUS_COLORS: Record<
+  string,
+  { text: string; bg: string; border: string; dot: string }
+> = {
+  pending: {
+    text: 'text-amber-300',
+    bg: 'bg-amber-500/[0.08]',
+    border: 'border-amber-500/25',
+    dot: 'bg-amber-400',
+  },
+  processing: {
+    text: 'text-blue-300',
+    bg: 'bg-blue-500/[0.08]',
+    border: 'border-blue-500/25',
+    dot: 'bg-blue-400',
+  },
+  shipped: {
+    text: 'text-violet-300',
+    bg: 'bg-violet-500/[0.08]',
+    border: 'border-violet-500/25',
+    dot: 'bg-violet-400',
+  },
+  delivered: {
+    text: 'text-emerald-300',
+    bg: 'bg-emerald-500/[0.08]',
+    border: 'border-emerald-500/25',
+    dot: 'bg-emerald-400',
+  },
+  cancelled: {
+    text: 'text-red-300',
+    bg: 'bg-red-500/[0.08]',
+    border: 'border-red-500/25',
+    dot: 'bg-red-400',
+  },
+}
+
+const PAYMENT_STYLES: Record<
+  string,
+  { text: string; bg: string; border: string }
+> = {
+  completed: {
+    text: 'text-emerald-300',
+    bg: 'bg-emerald-500/[0.08]',
+    border: 'border-emerald-500/25',
+  },
+  pending: {
+    text: 'text-amber-300',
+    bg: 'bg-amber-500/[0.08]',
+    border: 'border-amber-500/25',
+  },
+  failed: {
+    text: 'text-red-300',
+    bg: 'bg-red-500/[0.08]',
+    border: 'border-red-500/25',
+  },
+  refunded: {
+    text: 'text-violet-300',
+    bg: 'bg-violet-500/[0.08]',
+    border: 'border-violet-500/25',
+  },
 }
 
 const STATUS_STEPS = ['pending', 'processing', 'shipped', 'delivered'] as const
 
-export default function CustomerOrderDetail({ detail }: { detail: OrderDetail }) {
+export default function CustomerOrderDetail({
+  detail,
+}: {
+  detail: OrderDetail
+}) {
   const [currentStatus, setCurrentStatus] = useState(detail.order.status)
   const supabase = createClient()
 
-  // Realtime updates
+  // ─────────────────────────────────────────────
+  // Realtime updates — preserved
+  // ─────────────────────────────────────────────
   useEffect(() => {
     const channel = supabase
       .channel(`order-${detail.order.id}`)
@@ -59,94 +135,211 @@ export default function CustomerOrderDetail({ detail }: { detail: OrderDetail })
 
   const statusStyle = STATUS_COLORS[currentStatus] ?? STATUS_COLORS.pending
   const StatusIcon = STATUS_ICONS[currentStatus] ?? Package
-  const currentStepIndex = STATUS_STEPS.indexOf(currentStatus as (typeof STATUS_STEPS)[number])
+  const currentStepIndex = STATUS_STEPS.indexOf(
+    currentStatus as (typeof STATUS_STEPS)[number]
+  )
+
+  const paymentStyle =
+    PAYMENT_STYLES[detail.order.paymentStatus] ?? PAYMENT_STYLES.pending
+
+  const orderDate = new Date(detail.order.createdAt)
 
   return (
-    <div className="min-h-screen bg-black pt-20 pb-16">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div className="relative min-h-screen bg-black pt-20 pb-20 overflow-hidden">
+      {/* ─────────────────────────────────────────────
+          Ambient background
+         ───────────────────────────────────────────── */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 z-0"
+      >
+        <div className="absolute -top-32 left-1/4 w-[500px] h-[400px] bg-indigo-500/[0.05] blur-[130px]" />
+        <div className="absolute top-1/2 right-0 w-[380px] h-[380px] bg-violet-500/[0.03] blur-[120px]" />
+      </div>
+
+      <div className="relative z-10 max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* ─────────────────────────────────────────────
+            Back link
+           ───────────────────────────────────────────── */}
         <Link
           href="/orders"
-          className="inline-flex items-center gap-1 text-gray-400 hover:text-white mb-6 transition text-sm"
+          className="group inline-flex items-center gap-1.5 text-[12px] font-medium text-gray-500 hover:text-white mb-6 md:mb-8 transition-colors"
         >
-          <ChevronLeft size={16} />
+          <ChevronLeft
+            size={14}
+            className="transition-transform duration-300 group-hover:-translate-x-0.5"
+            aria-hidden="true"
+          />
           Back to Orders
         </Link>
 
-        {/* Header */}
-        <div className="flex items-start justify-between flex-wrap gap-4 mb-8">
-          <div>
-            <p className="text-xs text-gray-400 font-mono">
-              ORDER #{detail.order.id.slice(0, 8).toUpperCase()}
-            </p>
-            <h1 className="text-2xl md:text-3xl font-bold text-white mt-1">
+        {/* ─────────────────────────────────────────────
+            Header
+           ───────────────────────────────────────────── */}
+        <header className="flex items-start justify-between gap-4 flex-wrap mb-6 md:mb-8">
+          <div className="min-w-0">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/[0.04] border border-white/[0.08] mb-3 backdrop-blur-sm">
+              <Hash size={10} className="text-blue-400" aria-hidden="true" />
+              <span className="text-[10px] tracking-[0.18em] uppercase font-medium text-gray-400">
+                Order
+              </span>
+              <span className="font-mono text-[11px] font-semibold text-white tracking-wider">
+                {detail.order.id.slice(0, 8).toUpperCase()}
+              </span>
+            </div>
+
+            <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white tracking-[-0.02em] leading-tight">
               Order Details
             </h1>
-            <p className="text-gray-400 text-sm mt-1 flex items-center gap-2">
-              <Calendar size={14} />
-              {new Date(detail.order.createdAt).toLocaleString('en-GB', {
-                day: 'numeric',
-                month: 'short',
-                year: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit',
-              })}
+
+            <p className="text-[11px] sm:text-[12px] text-gray-500 mt-2 flex items-center gap-1.5">
+              <Calendar size={11} aria-hidden="true" />
+              <span>
+                {orderDate.toLocaleString('en-GB', {
+                  day: 'numeric',
+                  month: 'short',
+                  year: 'numeric',
+                  hour: '2-digit',
+                  minute: '2-digit',
+                })}
+              </span>
             </p>
           </div>
-          <div className="flex items-center gap-3 flex-wrap">
-            <div
-              className={`flex items-center gap-2 px-4 py-2 rounded-full border ${statusStyle.bg} ${statusStyle.border} ${statusStyle.text}`}
+
+          <div className="flex items-center gap-2.5 flex-wrap">
+            {/* Status badge */}
+            <motion.div
+              key={currentStatus}
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ type: 'spring', stiffness: 500, damping: 25 }}
+              className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-full border text-[12px] font-semibold capitalize ${statusStyle.bg} ${statusStyle.border} ${statusStyle.text}`}
             >
-              <StatusIcon size={16} />
-              <span className="text-sm font-medium capitalize">{currentStatus}</span>
-            </div>
+              <span className="relative flex w-1.5 h-1.5" aria-hidden="true">
+                {currentStatus !== 'delivered' &&
+                  currentStatus !== 'cancelled' && (
+                    <span
+                      className={`animate-ping absolute inline-flex h-full w-full rounded-full ${statusStyle.dot} opacity-60`}
+                    />
+                  )}
+                <span
+                  className={`relative inline-flex rounded-full h-1.5 w-1.5 ${statusStyle.dot}`}
+                />
+              </span>
+              <StatusIcon size={13} aria-hidden="true" />
+              {currentStatus}
+            </motion.div>
+
+            {/* Invoice button */}
             <Link
               href={`/orders/${detail.order.id}/invoice`}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/10 text-gray-300 hover:text-white hover:border-indigo-500/30 hover:bg-indigo-500/10 transition text-sm"
+              className="group inline-flex items-center gap-2 px-3.5 py-2 rounded-full bg-white/[0.04] border border-white/[0.08] text-gray-300 hover:text-white hover:bg-white/[0.06] hover:border-white/15 transition-all duration-300 text-[12px] font-medium"
             >
-              <Download size={14} />
+              <Download
+                size={13}
+                className="transition-transform duration-300 group-hover:translate-y-0.5"
+                aria-hidden="true"
+              />
               Invoice
             </Link>
           </div>
-        </div>
+        </header>
 
-        {/* Progress tracker */}
+        {/* ─────────────────────────────────────────────
+            Progress tracker
+           ───────────────────────────────────────────── */}
         {currentStatus !== 'cancelled' && (
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-[#0f0f0f]/60 backdrop-blur-md border border-white/10 rounded-2xl p-6 mb-6"
+            transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+            className="relative overflow-hidden bg-gradient-to-b from-[#131313] to-[#0e0e0e] border border-white/[0.08] rounded-2xl p-5 sm:p-6 mb-6 shadow-2xl shadow-black/20"
           >
-            <div className="flex items-center justify-between">
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute -top-24 left-1/2 -translate-x-1/2 w-[300px] h-[200px] bg-indigo-500/[0.06] blur-[100px]"
+            />
+
+            <div className="relative flex items-center justify-between">
               {STATUS_STEPS.map((step, i) => {
                 const Icon = STATUS_ICONS[step]
                 const isActive = i <= currentStepIndex
                 const isCurrent = i === currentStepIndex
+                const isComplete = i < currentStepIndex
+
                 return (
                   <div key={step} className="flex-1 flex items-center">
                     <div className="flex flex-col items-center gap-2 flex-shrink-0">
                       <div
-                        className={`w-10 h-10 rounded-full flex items-center justify-center border-2 transition-all ${
+                        className={`relative w-10 h-10 sm:w-11 sm:h-11 rounded-full flex items-center justify-center border-2 transition-all duration-500 ${
                           isActive
-                            ? 'border-indigo-500 bg-indigo-500/20 text-indigo-400'
-                            : 'border-gray-700 bg-transparent text-gray-600'
-                        } ${isCurrent ? 'ring-4 ring-indigo-500/20' : ''}`}
+                            ? 'border-indigo-500 bg-indigo-500/[0.15] text-indigo-300'
+                            : 'border-white/[0.08] bg-white/[0.02] text-gray-600'
+                        }`}
                       >
-                        <Icon size={18} />
+                        {isComplete ? (
+                          <motion.span
+                            initial={{ scale: 0.6, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            transition={{
+                              type: 'spring',
+                              stiffness: 500,
+                              damping: 22,
+                            }}
+                          >
+                            <CheckCircle
+                              size={17}
+                              aria-hidden="true"
+                            />
+                          </motion.span>
+                        ) : (
+                          <Icon
+                            size={16}
+                            aria-hidden="true"
+                          />
+                        )}
+
+                        {/* Current step pulse ring */}
+                        {isCurrent && !isComplete && (
+                          <motion.span
+                            aria-hidden="true"
+                            animate={{
+                              scale: [1, 1.4, 1],
+                              opacity: [0.5, 0, 0.5],
+                            }}
+                            transition={{
+                              duration: 2,
+                              repeat: Infinity,
+                              ease: 'easeInOut',
+                            }}
+                            className="absolute inset-0 rounded-full bg-indigo-500/30"
+                          />
+                        )}
                       </div>
+
                       <span
-                        className={`text-xs capitalize hidden sm:block ${
-                          isActive ? 'text-indigo-400' : 'text-gray-600'
+                        className={`text-[10px] sm:text-[11px] font-semibold tracking-wide capitalize hidden sm:block transition-colors ${
+                          isActive ? 'text-indigo-300' : 'text-gray-600'
                         }`}
                       >
                         {step}
                       </span>
                     </div>
+
                     {i < STATUS_STEPS.length - 1 && (
-                      <div
-                        className={`flex-1 h-0.5 mx-2 ${
-                          i < currentStepIndex ? 'bg-indigo-500' : 'bg-gray-800'
-                        }`}
-                      />
+                      <div className="relative flex-1 h-[2px] mx-1.5 sm:mx-3 bg-white/[0.06] rounded-full overflow-hidden">
+                        <motion.div
+                          initial={false}
+                          animate={{
+                            width: i < currentStepIndex ? '100%' : '0%',
+                          }}
+                          transition={{
+                            duration: 0.6,
+                            ease: [0.22, 1, 0.36, 1],
+                          }}
+                          className="absolute inset-y-0 left-0 bg-gradient-to-r from-indigo-500 to-violet-500 rounded-full"
+                        />
+                      </div>
                     )}
                   </div>
                 )
@@ -155,21 +348,56 @@ export default function CustomerOrderDetail({ detail }: { detail: OrderDetail })
           </motion.div>
         )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Left column */}
-          <div className="lg:col-span-2 space-y-6">
+        {/* ─────────────────────────────────────────────
+            Content grid
+           ───────────────────────────────────────────── */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 lg:gap-6">
+          {/* ═════════════════════════════════════════════
+              LEFT — items + shipping
+             ═════════════════════════════════════════════ */}
+          <div className="lg:col-span-2 space-y-5">
             {/* Items */}
-            <div className="bg-[#0f0f0f]/60 backdrop-blur-md border border-white/10 rounded-2xl overflow-hidden">
-              <div className="p-5 border-b border-white/10">
-                <h2 className="font-semibold text-white flex items-center gap-2">
-                  <Package size={18} className="text-indigo-400" />
-                  Items ({detail.items.length})
+            <motion.div
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{
+                duration: 0.5,
+                delay: 0.1,
+                ease: [0.22, 1, 0.36, 1],
+              }}
+              className="overflow-hidden bg-gradient-to-b from-[#131313] to-[#0e0e0e] border border-white/[0.08] rounded-2xl shadow-2xl shadow-black/20"
+            >
+              <div className="p-4 sm:p-5 border-b border-white/[0.06] flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-indigo-500/[0.1] border border-indigo-500/25 flex items-center justify-center">
+                  <Package
+                    size={14}
+                    className="text-indigo-400"
+                    aria-hidden="true"
+                  />
+                </div>
+                <h2 className="text-[13px] font-semibold text-white">
+                  Items
+                  <span className="ml-1.5 text-gray-500 font-normal tabular-nums">
+                    ({detail.items.length})
+                  </span>
                 </h2>
               </div>
-              <div className="divide-y divide-white/5">
-                {detail.items.map((item) => (
-                  <div key={item.id} className="p-4 flex items-center gap-4">
-                    <div className="w-16 h-16 rounded-lg overflow-hidden bg-gray-900 flex-shrink-0 border border-white/10">
+
+              <ul className="divide-y divide-white/[0.04]">
+                {detail.items.map((item, idx) => (
+                  <motion.li
+                    key={item.id}
+                    initial={{ opacity: 0, y: 6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{
+                      duration: 0.35,
+                      delay: 0.15 + idx * 0.04,
+                      ease: [0.22, 1, 0.36, 1],
+                    }}
+                    className="p-3.5 sm:p-4 flex items-center gap-3 sm:gap-4"
+                  >
+                    {/* Image */}
+                    <div className="relative w-14 h-14 sm:w-16 sm:h-16 rounded-xl overflow-hidden bg-black border border-white/[0.06] flex-shrink-0">
                       {item.product?.images?.[0] ? (
                         <Image
                           src={item.product.images[0]}
@@ -179,116 +407,227 @@ export default function CustomerOrderDetail({ detail }: { detail: OrderDetail })
                           className="w-full h-full object-cover"
                         />
                       ) : (
-                        <div className="w-full h-full flex items-center justify-center text-gray-600 text-xs">
-                          No image
+                        <div className="w-full h-full flex items-center justify-center">
+                          <Package
+                            size={18}
+                            className="text-gray-600"
+                            aria-hidden="true"
+                          />
                         </div>
                       )}
                     </div>
+
+                    {/* Name + qty */}
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-white truncate">
+                      <p className="text-[13px] font-medium text-white truncate leading-tight">
                         {item.productName}
                       </p>
-                      <p className="text-xs text-gray-400 mt-0.5">
-                        Qty: {item.quantity} × ₹{item.price.toLocaleString()}
+                      <p className="text-[11px] text-gray-500 mt-1 tabular-nums">
+                        Qty {item.quantity} × ₹{item.price.toLocaleString()}
                       </p>
                     </div>
-                    <p className="text-sm font-semibold text-white">
+
+                    {/* Line total */}
+                    <p className="text-[13px] sm:text-[14px] font-semibold text-white tabular-nums flex-shrink-0">
                       ₹{(item.price * item.quantity).toLocaleString()}
                     </p>
-                  </div>
+                  </motion.li>
                 ))}
-              </div>
-            </div>
+              </ul>
+            </motion.div>
 
             {/* Shipping address */}
-            <div className="bg-[#0f0f0f]/60 backdrop-blur-md border border-white/10 rounded-2xl p-5">
-              <h2 className="font-semibold text-white flex items-center gap-2 mb-4">
-                <MapPin size={18} className="text-indigo-400" />
-                Shipping Address
-              </h2>
-              <div className="text-sm text-gray-300 space-y-1">
-                <p className="font-medium text-white">
+            <motion.div
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{
+                duration: 0.5,
+                delay: 0.15,
+                ease: [0.22, 1, 0.36, 1],
+              }}
+              className="relative overflow-hidden bg-gradient-to-b from-[#131313] to-[#0e0e0e] border border-white/[0.08] rounded-2xl p-4 sm:p-5 shadow-2xl shadow-black/20"
+            >
+              <div
+                aria-hidden="true"
+                className="pointer-events-none absolute -top-20 -right-20 w-[240px] h-[240px] bg-blue-500/[0.05] blur-[90px]"
+              />
+
+              <div className="relative flex items-center gap-2.5 mb-4">
+                <div className="w-8 h-8 rounded-xl bg-blue-500/[0.1] border border-blue-500/25 flex items-center justify-center">
+                  <MapPin
+                    size={14}
+                    className="text-blue-400"
+                    aria-hidden="true"
+                  />
+                </div>
+                <h2 className="text-[13px] font-semibold text-white">
+                  Shipping Address
+                </h2>
+              </div>
+
+              <div className="relative text-[13px] text-gray-300 space-y-1.5">
+                <p className="font-semibold text-white flex items-center gap-2">
+                  <User
+                    size={12}
+                    className="text-gray-500"
+                    aria-hidden="true"
+                  />
                   {String(detail.order.address.full_name ?? '')}
                 </p>
-                <p>{String(detail.order.address.phone ?? '')}</p>
-                <p>{String(detail.order.address.line1 ?? '')}</p>
-                {Boolean(detail.order.address.line2) && (
-                  <p>{String(detail.order.address.line2)}</p>
-                )}
-                <p>
-                  {String(detail.order.address.city ?? '')},{' '}
-                  {String(detail.order.address.state ?? '')} —{' '}
-                  {String(detail.order.address.pincode ?? '')}
+                <p className="flex items-center gap-2 text-gray-400">
+                  <Phone
+                    size={12}
+                    className="text-gray-500"
+                    aria-hidden="true"
+                  />
+                  {String(detail.order.address.phone ?? '')}
                 </p>
+                <div className="pt-1 pl-5 border-l-2 border-white/[0.06] space-y-0.5">
+                  <p>{String(detail.order.address.line1 ?? '')}</p>
+                  {Boolean(detail.order.address.line2) && (
+                    <p>{String(detail.order.address.line2)}</p>
+                  )}
+                  <p>
+                    {String(detail.order.address.city ?? '')},{' '}
+                    {String(detail.order.address.state ?? '')} —{' '}
+                    <span className="tabular-nums">
+                      {String(detail.order.address.pincode ?? '')}
+                    </span>
+                  </p>
+                </div>
               </div>
-            </div>
+            </motion.div>
           </div>
 
-          {/* Right column */}
-          <div className="space-y-6">
-            {/* Payment summary */}
-            <div className="bg-[#0f0f0f]/60 backdrop-blur-md border border-white/10 rounded-2xl p-5">
-              <h2 className="font-semibold text-white flex items-center gap-2 mb-4">
-                <Receipt size={18} className="text-indigo-400" />
-                Summary
-              </h2>
-              <div className="space-y-2 text-sm">
+          {/* ═════════════════════════════════════════════
+              RIGHT — summary + payment
+             ═════════════════════════════════════════════ */}
+          <div className="space-y-5">
+            {/* Summary */}
+            <motion.div
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{
+                duration: 0.5,
+                delay: 0.2,
+                ease: [0.22, 1, 0.36, 1],
+              }}
+              className="relative overflow-hidden bg-gradient-to-b from-[#131313] to-[#0e0e0e] border border-white/[0.08] rounded-2xl p-4 sm:p-5 shadow-2xl shadow-black/20"
+            >
+              <div
+                aria-hidden="true"
+                className="pointer-events-none absolute -top-20 -right-20 w-[240px] h-[240px] bg-amber-500/[0.04] blur-[90px]"
+              />
+
+              <div className="relative flex items-center gap-2.5 mb-4">
+                <div className="w-8 h-8 rounded-xl bg-amber-500/[0.1] border border-amber-500/25 flex items-center justify-center">
+                  <Receipt
+                    size={14}
+                    className="text-amber-400"
+                    aria-hidden="true"
+                  />
+                </div>
+                <h2 className="text-[13px] font-semibold text-white">
+                  Summary
+                </h2>
+              </div>
+
+              <div className="relative space-y-2.5 text-[12px]">
                 <div className="flex justify-between text-gray-400">
                   <span>Subtotal</span>
-                  <span>₹{detail.order.subtotal.toLocaleString()}</span>
+                  <span className="text-white tabular-nums">
+                    ₹{detail.order.subtotal.toLocaleString()}
+                  </span>
                 </div>
                 <div className="flex justify-between text-gray-400">
                   <span>Shipping</span>
-                  <span>
+                  <span
+                    className={`tabular-nums ${
+                      detail.order.shipping === 0
+                        ? 'text-emerald-400'
+                        : 'text-white'
+                    }`}
+                  >
                     {detail.order.shipping === 0
                       ? 'Free'
                       : `₹${detail.order.shipping.toLocaleString()}`}
                   </span>
                 </div>
-                <div className="border-t border-white/10 pt-2 flex justify-between font-bold text-white">
-                  <span>Total</span>
-                  <span>₹{detail.order.total.toLocaleString()}</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Payment info */}
-            <div className="bg-[#0f0f0f]/60 backdrop-blur-md border border-white/10 rounded-2xl p-5">
-              <h2 className="font-semibold text-white flex items-center gap-2 mb-4">
-                <CreditCard size={18} className="text-indigo-400" />
-                Payment
-              </h2>
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-gray-400">Method</span>
-                  <span className="text-white uppercase">
-                    {detail.order.paymentProvider ?? detail.order.paymentMethod}
+                <div className="border-t border-white/[0.08] pt-3 mt-1 flex items-baseline justify-between">
+                  <span className="text-[13px] font-semibold text-white">
+                    Total
+                  </span>
+                  <span className="text-xl font-bold text-white tabular-nums tracking-tight">
+                    ₹{detail.order.total.toLocaleString()}
                   </span>
                 </div>
-                <div className="flex justify-between">
+              </div>
+            </motion.div>
+
+            {/* Payment info */}
+            <motion.div
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{
+                duration: 0.5,
+                delay: 0.25,
+                ease: [0.22, 1, 0.36, 1],
+              }}
+              className="relative overflow-hidden bg-gradient-to-b from-[#131313] to-[#0e0e0e] border border-white/[0.08] rounded-2xl p-4 sm:p-5 shadow-2xl shadow-black/20"
+            >
+              <div
+                aria-hidden="true"
+                className="pointer-events-none absolute -top-20 -right-20 w-[240px] h-[240px] bg-emerald-500/[0.04] blur-[90px]"
+              />
+
+              <div className="relative flex items-center gap-2.5 mb-4">
+                <div className="w-8 h-8 rounded-xl bg-emerald-500/[0.1] border border-emerald-500/25 flex items-center justify-center">
+                  <CreditCard
+                    size={14}
+                    className="text-emerald-400"
+                    aria-hidden="true"
+                  />
+                </div>
+                <h2 className="text-[13px] font-semibold text-white">
+                  Payment
+                </h2>
+              </div>
+
+              <div className="relative space-y-3 text-[12px]">
+                <div className="flex items-center justify-between">
+                  <span className="text-gray-400">Method</span>
+                  <span className="text-white font-medium uppercase tracking-wide">
+                    {detail.order.paymentProvider ??
+                      detail.order.paymentMethod}
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-between">
                   <span className="text-gray-400">Status</span>
                   <span
-                    className={`text-xs px-2 py-0.5 rounded-full ${
-                      detail.order.paymentStatus === 'completed'
-                        ? 'bg-emerald-500/20 text-emerald-400'
-                        : detail.order.paymentStatus === 'refunded'
-                        ? 'bg-purple-500/20 text-purple-400'
-                        : 'bg-yellow-500/20 text-yellow-400'
-                    }`}
+                    className={`text-[11px] px-2 py-0.5 rounded-full capitalize border ${paymentStyle.bg} ${paymentStyle.border} ${paymentStyle.text}`}
                   >
                     {detail.order.paymentStatus}
                   </span>
                 </div>
+
                 {detail.order.paidAt && (
-                  <div className="flex justify-between">
+                  <div className="flex items-center justify-between">
                     <span className="text-gray-400">Paid on</span>
-                    <span className="text-white text-xs">
-                      {new Date(detail.order.paidAt).toLocaleDateString('en-GB')}
+                    <span className="text-white tabular-nums">
+                      {new Date(detail.order.paidAt).toLocaleDateString(
+                        'en-GB',
+                        {
+                          day: 'numeric',
+                          month: 'short',
+                          year: 'numeric',
+                        }
+                      )}
                     </span>
                   </div>
                 )}
               </div>
-            </div>
+            </motion.div>
           </div>
         </div>
       </div>

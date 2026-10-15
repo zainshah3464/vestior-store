@@ -1,8 +1,8 @@
 'use client'
 
-import { useRef, useState, useEffect } from 'react'
-import { ChevronLeft, ChevronRight, TrendingUp } from 'lucide-react'
-import { motion, useInView, AnimatePresence, Variants } from 'framer-motion'
+import { useRef, useState, useEffect, useCallback } from 'react'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { motion, useInView, type Variants } from 'framer-motion'
 import ProductCard from './ProductCard'
 
 interface Product {
@@ -15,7 +15,11 @@ interface Product {
   stock: number
 }
 
-export default function HomeProductSection({ products }: { products: Product[] }) {
+export default function HomeProductSection({
+  products,
+}: {
+  products: Product[]
+}) {
   const midPoint = Math.ceil(products.length / 2)
   const firstRowProducts = products.slice(0, midPoint)
   const secondRowProducts = products.slice(midPoint)
@@ -29,62 +33,103 @@ export default function HomeProductSection({ products }: { products: Product[] }
   const [showSecondLeftArrow, setShowSecondLeftArrow] = useState(false)
   const [showSecondRightArrow, setShowSecondRightArrow] = useState(false)
 
-  const isInView = useInView(sectionRef, { once: true, amount: 0.2 })
+  const [firstProgress, setFirstProgress] = useState(0)
+  const [secondProgress, setSecondProgress] = useState(0)
 
-  const checkScroll = (container: HTMLDivElement | null, setLeft: (val: boolean) => void, setRight: (val: boolean) => void) => {
-    if (container) {
+  const isInView = useInView(sectionRef, { once: true, amount: 0.15 })
+
+  const checkScroll = useCallback(
+    (
+      container: HTMLDivElement | null,
+      setLeft: (val: boolean) => void,
+      setRight: (val: boolean) => void,
+      setProgress: (val: number) => void
+    ) => {
+      if (!container) return
       const scrollLeft = container.scrollLeft
       const maxScroll = container.scrollWidth - container.clientWidth
-      setLeft(scrollLeft > 20)
-      setRight(scrollLeft < maxScroll - 20)
-    }
-  }
 
-  const debouncedCheckScroll = (container: HTMLDivElement | null, setLeft: (val: boolean) => void, setRight: (val: boolean) => void) => {
-    setTimeout(() => {
-      checkScroll(container, setLeft, setRight)
-    }, 100)
-  }
+      setLeft(scrollLeft > 4)
+      setRight(scrollLeft < maxScroll - 4)
+      setProgress(maxScroll > 0 ? Math.min(scrollLeft / maxScroll, 1) : 0)
+    },
+    []
+  )
 
-  const scrollRow = (container: HTMLDivElement | null, direction: 'left' | 'right') => {
-    if (container) {
-      const scrollAmount = container.clientWidth * 0.8
-      container.scrollBy({
-        left: direction === 'left' ? -scrollAmount : scrollAmount,
-        behavior: 'smooth'
-      })
-    }
+  const scrollRow = (
+    container: HTMLDivElement | null,
+    direction: 'left' | 'right'
+  ) => {
+    if (!container) return
+    const scrollAmount = container.clientWidth * 0.85
+    container.scrollBy({
+      left: direction === 'left' ? -scrollAmount : scrollAmount,
+      behavior: 'smooth',
+    })
   }
 
   useEffect(() => {
     const firstContainer = firstRowRef.current
     const secondContainer = secondRowRef.current
 
-    const handleFirstScroll = () => checkScroll(firstContainer, setShowFirstLeftArrow, setShowFirstRightArrow)
-    const handleSecondScroll = () => checkScroll(secondContainer, setShowSecondLeftArrow, setShowSecondRightArrow)
-
-    const handleResize = () => {
-      debouncedCheckScroll(firstContainer, setShowFirstLeftArrow, setShowFirstRightArrow)
-      if (secondContainer) debouncedCheckScroll(secondContainer, setShowSecondLeftArrow, setShowSecondRightArrow)
-    }
+    const handleFirstScroll = () =>
+      checkScroll(
+        firstContainer,
+        setShowFirstLeftArrow,
+        setShowFirstRightArrow,
+        setFirstProgress
+      )
+    const handleSecondScroll = () =>
+      checkScroll(
+        secondContainer,
+        setShowSecondLeftArrow,
+        setShowSecondRightArrow,
+        setSecondProgress
+      )
 
     if (firstContainer) {
-      checkScroll(firstContainer, setShowFirstLeftArrow, setShowFirstRightArrow)
-      firstContainer.addEventListener('scroll', handleFirstScroll)
+      checkScroll(
+        firstContainer,
+        setShowFirstLeftArrow,
+        setShowFirstRightArrow,
+        setFirstProgress
+      )
+      firstContainer.addEventListener('scroll', handleFirstScroll, {
+        passive: true,
+      })
     }
     if (secondContainer) {
-      checkScroll(secondContainer, setShowSecondLeftArrow, setShowSecondRightArrow)
-      secondContainer.addEventListener('scroll', handleSecondScroll)
+      checkScroll(
+        secondContainer,
+        setShowSecondLeftArrow,
+        setShowSecondRightArrow,
+        setSecondProgress
+      )
+      secondContainer.addEventListener('scroll', handleSecondScroll, {
+        passive: true,
+      })
     }
 
-    window.addEventListener('resize', handleResize)
+    const handleResize = () => {
+      handleFirstScroll()
+      handleSecondScroll()
+    }
+
+    window.addEventListener('resize', handleResize, { passive: true })
+
+    const ro = new ResizeObserver(handleResize)
+    if (firstContainer) ro.observe(firstContainer)
+    if (secondContainer) ro.observe(secondContainer)
 
     return () => {
-      if (firstContainer) firstContainer.removeEventListener('scroll', handleFirstScroll)
-      if (secondContainer) secondContainer.removeEventListener('scroll', handleSecondScroll)
+      if (firstContainer)
+        firstContainer.removeEventListener('scroll', handleFirstScroll)
+      if (secondContainer)
+        secondContainer.removeEventListener('scroll', handleSecondScroll)
       window.removeEventListener('resize', handleResize)
+      ro.disconnect()
     }
-  }, [products])
+  }, [products, checkScroll])
 
   if (!products || products.length === 0) return null
 
@@ -94,68 +139,115 @@ export default function HomeProductSection({ products }: { products: Product[] }
   }
 
   const rowVariants: Variants = {
-    hidden: { opacity: 0, y: 20 },
-    visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: 'easeOut' } },
+    hidden: { opacity: 0, y: 24 },
+    visible: {
+      opacity: 1,
+      y: 0,
+      transition: { duration: 0.55, ease: [0.22, 1, 0.36, 1] },
+    },
   }
 
-  // 👇 Fixed: rowRef type now accepts RefObject<HTMLDivElement | null>
+  // ─────────────────────────────────────────────
+  // Scrollable row renderer
+  // ─────────────────────────────────────────────
   const renderScrollableRow = (
-    products: Product[],
+    rowProducts: Product[],
     rowRef: React.RefObject<HTMLDivElement | null>,
     showLeftArrow: boolean,
     showRightArrow: boolean,
+    progress: number,
     onScrollLeft: () => void,
     onScrollRight: () => void,
     rowIndex: number
   ) => (
-    <motion.div variants={rowVariants} className="relative group">
-      <AnimatePresence>
-        {showLeftArrow && (
-          <motion.button
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
-            onClick={onScrollLeft}
-            className="absolute -left-3 md:-left-5 top-1/2 -translate-y-1/2 z-20 bg-black/90 backdrop-blur-sm border border-blue-500/30 p-2 md:p-3 rounded-full hover:bg-blue-500 hover:border-blue-500 transition-all duration-300 shadow-xl hover:shadow-blue-500/25"
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.9 }}
-            aria-label="Scroll products left"
-          >
-            <ChevronLeft size={18} className="text-white md:w-5 md:h-5" aria-hidden="true" />
-          </motion.button>
-        )}
-      </AnimatePresence>
+    <motion.div variants={rowVariants} className="relative group/row">
+      {/* Left arrow */}
+      <motion.button
+        type="button"
+        onClick={onScrollLeft}
+        initial={false}
+        animate={{
+          opacity: showLeftArrow ? 1 : 0,
+          x: showLeftArrow ? 0 : -12,
+        }}
+        transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+        style={{ pointerEvents: showLeftArrow ? 'auto' : 'none' }}
+        aria-label="Scroll products left"
+        className="absolute -left-2 sm:-left-3 md:-left-5 top-1/2 -translate-y-1/2 z-20 w-10 h-10 md:w-11 md:h-11 rounded-full flex items-center justify-center bg-black/70 backdrop-blur-xl border border-white/[0.12] shadow-2xl shadow-black/60 hover:bg-blue-600 hover:border-blue-400/50 hover:scale-105 active:scale-95 transition-all duration-200"
+      >
+        <ChevronLeft
+          size={18}
+          className="text-white"
+          aria-hidden="true"
+        />
+      </motion.button>
 
-      <AnimatePresence>
-        {showRightArrow && (
-          <motion.button
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: 20 }}
-            onClick={onScrollRight}
-            className="absolute -right-3 md:-right-5 top-1/2 -translate-y-1/2 z-20 bg-black/90 backdrop-blur-sm border border-blue-500/30 p-2 md:p-3 rounded-full hover:bg-blue-500 hover:border-blue-500 transition-all duration-300 shadow-xl hover:shadow-blue-500/25"
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.9 }}
-            aria-label="Scroll products right"
-          >
-            <ChevronRight size={18} className="text-white md:w-5 md:h-5" aria-hidden="true" />
-          </motion.button>
-        )}
-      </AnimatePresence>
+      {/* Right arrow */}
+      <motion.button
+        type="button"
+        onClick={onScrollRight}
+        initial={false}
+        animate={{
+          opacity: showRightArrow ? 1 : 0,
+          x: showRightArrow ? 0 : 12,
+        }}
+        transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+        style={{ pointerEvents: showRightArrow ? 'auto' : 'none' }}
+        aria-label="Scroll products right"
+        className="absolute -right-2 sm:-right-3 md:-right-5 top-1/2 -translate-y-1/2 z-20 w-10 h-10 md:w-11 md:h-11 rounded-full flex items-center justify-center bg-black/70 backdrop-blur-xl border border-white/[0.12] shadow-2xl shadow-black/60 hover:bg-blue-600 hover:border-blue-400/50 hover:scale-105 active:scale-95 transition-all duration-200"
+      >
+        <ChevronRight
+          size={18}
+          className="text-white"
+          aria-hidden="true"
+        />
+      </motion.button>
 
+      {/* Left edge fade */}
+      <motion.div
+        aria-hidden="true"
+        initial={false}
+        animate={{ opacity: showLeftArrow ? 1 : 0 }}
+        transition={{ duration: 0.3 }}
+        className="pointer-events-none absolute left-0 top-0 bottom-0 w-10 sm:w-14 z-10 bg-gradient-to-r from-black via-black/70 to-transparent"
+      />
+
+      {/* Right edge fade */}
+      <motion.div
+        aria-hidden="true"
+        initial={false}
+        animate={{ opacity: showRightArrow ? 1 : 0 }}
+        transition={{ duration: 0.3 }}
+        className="pointer-events-none absolute right-0 top-0 bottom-0 w-10 sm:w-14 z-10 bg-gradient-to-l from-black via-black/70 to-transparent"
+      />
+
+      {/* Scrollable container */}
       <div
         ref={rowRef}
-        className="overflow-x-auto scrollbar-hide"
-        style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+        className="overflow-x-auto scrollbar-hide pb-4 -mx-4 px-4 sm:mx-0 sm:px-0 scroll-smooth snap-x snap-mandatory sm:snap-none"
+        style={{
+          scrollbarWidth: 'none',
+          msOverflowStyle: 'none',
+          WebkitOverflowScrolling: 'touch',
+        }}
       >
-        <div className="flex gap-4 md:gap-5 lg:gap-6 pb-4" style={{ width: 'max-content', minWidth: '100%' }}>
-          {products.map((product, index) => (
+        <div
+          className="flex gap-3 sm:gap-4 md:gap-5 lg:gap-6"
+          style={{ width: 'max-content', minWidth: '100%' }}
+        >
+          {rowProducts.map((product, index) => (
             <motion.div
               key={product.id}
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={isInView ? { opacity: 1, scale: 1 } : {}}
-              transition={{ duration: 0.4, delay: index * 0.05 }}
-              className="w-[170px] sm:w-[200px] md:w-[240px] lg:w-[280px] flex-shrink-0"
+              initial={{ opacity: 0, y: 16 }}
+              animate={
+                isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 16 }
+              }
+              transition={{
+                duration: 0.45,
+                delay: Math.min(index * 0.05, 0.35),
+                ease: [0.22, 1, 0.36, 1],
+              }}
+              className="w-[170px] sm:w-[200px] md:w-[240px] lg:w-[280px] flex-shrink-0 snap-start"
             >
               <ProductCard product={product} />
             </motion.div>
@@ -163,15 +255,20 @@ export default function HomeProductSection({ products }: { products: Product[] }
         </div>
       </div>
 
-      {rowIndex === 0 && products.length > 4 && (
-        <div className="hidden md:flex justify-center gap-1 mt-4">
-          {[...Array(Math.min(products.length, 6))].map((_, i) => (
-            <div
-              key={i}
-              className="h-0.5 rounded-full transition-all duration-300 bg-white/20"
-              style={{ width: '20px' }}
+      {/* Progress indicator — appears when scrollable */}
+      {(showLeftArrow || showRightArrow) && (
+        <div
+          aria-hidden="true"
+          className="mt-2 flex justify-center"
+        >
+          <div className="relative w-24 h-[2px] bg-white/[0.06] rounded-full overflow-hidden">
+            <motion.div
+              initial={false}
+              animate={{ x: `${progress * 100}%` }}
+              transition={{ duration: 0.25, ease: 'easeOut' }}
+              className="absolute top-0 left-0 h-full w-1/2 bg-gradient-to-r from-blue-500/0 via-blue-500 to-blue-500/0 rounded-full"
             />
-          ))}
+          </div>
         </div>
       )}
     </motion.div>
@@ -190,6 +287,7 @@ export default function HomeProductSection({ products }: { products: Product[] }
         firstRowRef,
         showFirstLeftArrow,
         showFirstRightArrow,
+        firstProgress,
         () => scrollRow(firstRowRef.current, 'left'),
         () => scrollRow(firstRowRef.current, 'right'),
         0
@@ -201,14 +299,11 @@ export default function HomeProductSection({ products }: { products: Product[] }
           secondRowRef,
           showSecondLeftArrow,
           showSecondRightArrow,
+          secondProgress,
           () => scrollRow(secondRowRef.current, 'left'),
           () => scrollRow(secondRowRef.current, 'right'),
           1
         )}
-
-      <div className="text-center mt-2">
-        <p className="text-xs text-gray-600">← Drag to scroll or use arrows →</p>
-      </div>
     </motion.div>
   )
 }

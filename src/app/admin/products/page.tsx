@@ -9,9 +9,9 @@ export default async function AdminProductsPage() {
     .select('id, name, price, stock, is_active, images, category_main')
     .order('created_at', { ascending: false })
 
-  const safeProducts = (products || []).map(product => ({
+  const safeProducts = (products || []).map((product) => ({
     ...product,
-    images: parseProductImages(product.images)
+    images: parseProductImages(product.images),
   }))
 
   return <ProductsTable products={safeProducts} />

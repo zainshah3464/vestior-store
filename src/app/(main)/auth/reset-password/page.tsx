@@ -14,8 +14,6 @@ export default async function ResetPasswordPage({
 
   const supabase = await createClient()
 
-  // If Supabase redirected here with a `code`, exchange it now.
-  // This happens when the user clicks the recovery link from email.
   if (code) {
     const { error } = await supabase.auth.exchangeCodeForSession(code)
 
@@ -25,7 +23,6 @@ export default async function ResetPasswordPage({
     }
   }
 
-  // User must now have a session (from the exchanged code)
   const {
     data: { user },
   } = await supabase.auth.getUser()

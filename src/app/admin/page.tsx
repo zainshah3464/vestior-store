@@ -27,7 +27,6 @@ export default async function AdminDashboard() {
     summary,
     recentActivity,
   ] = await Promise.all([
-    // Existing RPC (unchanged)
     supabaseAdmin.rpc('get_dashboard_stats'),
 
     supabaseAdmin
@@ -48,10 +47,8 @@ export default async function AdminDashboard() {
       .order('created_at', { ascending: false })
       .limit(5),
 
-    // New: comprehensive summary across all admin pages
     getDashboardSummary(),
 
-    // New: recent admin activity timeline
     getRecentActivity(8),
   ])
 

@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Download, X, Smartphone } from 'lucide-react'
+import { Download, X, Smartphone, Zap, WifiOff } from 'lucide-react'
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>
@@ -10,7 +10,7 @@ interface BeforeInstallPromptEvent extends Event {
 }
 
 const STORAGE_KEY = 'vestior-pwa-install-dismissed'
-const DISMISS_COOLDOWN_DAYS = 30 // 30 days cooldown after dismiss
+const DISMISS_COOLDOWN_DAYS = 30
 const AUTO_SHOW_DELAY_MS = 20_000
 
 function isDismissedRecently(): boolean {
@@ -39,15 +39,12 @@ export default function InstallPrompt() {
     const handler = (e: Event) => {
       e.preventDefault()
 
-      // Re-check dismissal (user may have dismissed in a prior session)
       if (isDismissedRecently()) return
 
       setDeferredPrompt(e as BeforeInstallPromptEvent)
 
-      // Clear any existing timer
       if (timeoutRef.current) clearTimeout(timeoutRef.current)
 
-      // Wait 20s before showing — less aggressive
       timeoutRef.current = setTimeout(() => {
         if (!isDismissedRecently()) setShow(true)
       }, AUTO_SHOW_DELAY_MS)
@@ -83,7 +80,6 @@ export default function InstallPrompt() {
   }
 
   const handleDismiss = () => {
-    // Clear any pending timer so it doesn't re-show
     if (timeoutRef.current) {
       clearTimeout(timeoutRef.current)
       timeoutRef.current = null
@@ -102,49 +98,124 @@ export default function InstallPrompt() {
     <AnimatePresence>
       {show && deferredPrompt && (
         <motion.div
-          initial={{ y: 100, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          exit={{ y: 100, opacity: 0 }}
+          initial={{ y: 100, opacity: 0, scale: 0.95 }}
+          animate={{ y: 0, opacity: 1, scale: 1 }}
+          exit={{ y: 100, opacity: 0, scale: 0.95 }}
           transition={{ type: 'spring', stiffness: 300, damping: 30 }}
           className="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-6 sm:bottom-24 sm:max-w-sm z-40"
         >
-          <div className="bg-[#0f0f0f] border border-white/10 rounded-2xl shadow-2xl shadow-black/50 p-4 flex items-start gap-3 backdrop-blur-xl">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center flex-shrink-0">
-              <Smartphone size={18} className="text-white" aria-hidden="true" />
-            </div>
+          <div className="relative overflow-hidden bg-gradient-to-b from-[#131313] to-[#0e0e0e] border border-white/[0.08] rounded-2xl shadow-2xl shadow-black/60 backdrop-blur-xl">
+            {/* Ambient glow */}
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute -top-16 -right-16 w-[180px] h-[180px] bg-indigo-500/[0.15] blur-[70px]"
+            />
 
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-white">
-                Install VESTIOR
-              </p>
-              <p className="text-xs text-gray-400 mt-0.5 leading-relaxed">
-                Get faster access with our app. Works offline.
-              </p>
+            <div className="relative p-4 flex items-start gap-3">
+              {/* App icon */}
+              <motion.div
+                initial={{ scale: 0.85, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{
+                  delay: 0.15,
+                  type: 'spring',
+                  stiffness: 400,
+                  damping: 22,
+                }}
+                className="relative flex-shrink-0"
+              >
+                <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shadow-lg shadow-indigo-500/30">
+                  <Smartphone
+                    size={18}
+                    className="text-white"
+                    aria-hidden="true"
+                  />
+                </div>
+                {/* Online dot */}
+                <span
+                  aria-hidden="true"
+                  className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-500 border-2 border-[#0e0e0e]"
+                />
+              </motion.div>
 
-              <div className="flex gap-2 mt-3">
-                <button
-                  onClick={handleInstall}
-                  className="flex-1 py-1.5 bg-indigo-600 text-white text-xs font-medium rounded-lg hover:bg-indigo-700 transition flex items-center justify-center gap-1"
-                >
-                  <Download size={12} aria-hidden="true" />
-                  Install
-                </button>
-                <button
-                  onClick={handleDismiss}
-                  className="px-3 py-1.5 text-xs text-gray-400 hover:text-white transition"
-                >
-                  Not now
-                </button>
+              {/* Content */}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-0.5">
+                  <p className="text-[13px] font-semibold text-white leading-tight">
+                    Install VESTIOR
+                  </p>
+                  <span className="inline-flex items-center gap-1 text-[9px] font-bold tracking-wider uppercase bg-indigo-500/[0.12] text-indigo-300 px-1.5 py-[2px] rounded border border-indigo-500/25">
+                    Free
+                  </span>
+                </div>
+                <p className="text-[11px] text-gray-400 leading-snug">
+                  Faster access · Works offline · One-tap launch
+                </p>
+
+                {/* Micro-benefits */}
+                <div className="flex items-center gap-3 mt-2 text-[10px] text-gray-500">
+                  <span className="flex items-center gap-1">
+                    <Zap
+                      size={9}
+                      className="text-amber-400"
+                      aria-hidden="true"
+                    />
+                    Fast
+                  </span>
+                  <span
+                    className="w-1 h-1 rounded-full bg-gray-700"
+                    aria-hidden="true"
+                  />
+                  <span className="flex items-center gap-1">
+                    <WifiOff
+                      size={9}
+                      className="text-blue-400"
+                      aria-hidden="true"
+                    />
+                    Offline
+                  </span>
+                </div>
+
+                {/* Buttons */}
+                <div className="flex gap-2 mt-3">
+                  <motion.button
+                    type="button"
+                    onClick={handleInstall}
+                    whileTap={{ scale: 0.97 }}
+                    className="group/btn relative flex-1 py-2 bg-gradient-to-r from-indigo-600 to-violet-600 text-white text-[12px] font-semibold rounded-lg overflow-hidden shadow-lg shadow-indigo-500/25 hover:shadow-xl hover:shadow-indigo-500/40 transition-shadow duration-300 flex items-center justify-center gap-1.5"
+                  >
+                    <span
+                      aria-hidden="true"
+                      className="pointer-events-none absolute inset-y-0 -inset-x-1/2 bg-gradient-to-r from-transparent via-white/25 to-transparent -translate-x-full group-hover/btn:translate-x-full transition-transform duration-[900ms] ease-out"
+                    />
+                    <Download
+                      size={12}
+                      className="relative z-10"
+                      aria-hidden="true"
+                    />
+                    <span className="relative z-10">Install</span>
+                  </motion.button>
+
+                  <button
+                    type="button"
+                    onClick={handleDismiss}
+                    className="px-3.5 py-2 text-[12px] font-medium text-gray-400 hover:text-white bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.08] hover:border-white/15 rounded-lg transition-all duration-200"
+                  >
+                    Not now
+                  </button>
+                </div>
               </div>
-            </div>
 
-            <button
-              onClick={handleDismiss}
-              className="text-gray-500 hover:text-white transition p-1 -mr-1 -mt-1"
-              aria-label="Dismiss install prompt"
-            >
-              <X size={14} aria-hidden="true" />
-            </button>
+              {/* Close */}
+              <button
+                type="button"
+                onClick={handleDismiss}
+                className="absolute top-2 right-2 p-1.5 rounded-lg text-gray-500 hover:text-white hover:bg-white/[0.06] transition-all duration-200"
+                aria-label="Dismiss install prompt"
+              >
+                <X size={13} aria-hidden="true" />
+              </button>
+            </div>
           </div>
         </motion.div>
       )}

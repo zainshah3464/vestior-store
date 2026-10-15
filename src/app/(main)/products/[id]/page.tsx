@@ -47,14 +47,18 @@ export async function generateMetadata({
     openGraph: {
       type: 'website',
       title: product.name,
-      description: product.description || `Shop ${product.name} at VESTIOR.`,
-      images: [{ url: firstImage, width: 1200, height: 630, alt: product.name }],
+      description:
+        product.description || `Shop ${product.name} at VESTIOR.`,
+      images: [
+        { url: firstImage, width: 1200, height: 630, alt: product.name },
+      ],
       url: `${SITE_URL}/products/${id}`,
     },
     twitter: {
       card: 'summary_large_image',
       title: product.name,
-      description: product.description || `Shop ${product.name} at VESTIOR.`,
+      description:
+        product.description || `Shop ${product.name} at VESTIOR.`,
       images: [firstImage],
     },
   }
@@ -117,31 +121,52 @@ export default async function ProductPage({
           { name: product.name, url: `${SITE_URL}/products/${id}` },
         ]}
       />
+
+      {/* ─────────────────────────────────────────────
+          Main product detail — client component
+         ───────────────────────────────────────────── */}
       <ProductDetailClient product={productWithParsedImages} />
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-16">
-        <ReviewsSection
-          productId={id}
-          initialReviews={reviews}
-          stats={stats}
-          currentUserId={user?.id ?? null}
-          userReview={userReview}
+      {/* ─────────────────────────────────────────────
+          Reviews section
+         ───────────────────────────────────────────── */}
+      <section className="relative bg-black">
+        <div
+          aria-hidden="true"
+          className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/[0.08] to-transparent"
         />
-      </div>
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 pb-16 md:pt-20 md:pb-20">
+          <ReviewsSection
+            productId={id}
+            initialReviews={reviews}
+            stats={stats}
+            currentUserId={user?.id ?? null}
+            userReview={userReview}
+          />
+        </div>
+      </section>
 
-      {/* Recommendations */}
-      <div className="bg-[#0A0A0A]">
-        <RecommendedRow
-          title="You May Also Like"
-          subtitle="Handpicked for you from our collection"
-          products={alsoLike}
+      {/* ─────────────────────────────────────────────
+          Recommendations
+         ───────────────────────────────────────────── */}
+      <div className="relative bg-[#0A0A0A]">
+        <div
+          aria-hidden="true"
+          className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/[0.08] to-transparent"
         />
-        <RecentlyViewed excludeId={id} />
-        <RecommendedRow
-          title="Related Products"
-          subtitle={`More from ${product.category_main ?? 'this category'}`}
-          products={related}
-        />
+        <div className="relative">
+          <RecommendedRow
+            title="You May Also Like"
+            subtitle="Handpicked for you from our collection"
+            products={alsoLike}
+          />
+          <RecentlyViewed excludeId={id} />
+          <RecommendedRow
+            title="Related Products"
+            subtitle={`More from ${product.category_main ?? 'this category'}`}
+            products={related}
+          />
+        </div>
       </div>
     </>
   )

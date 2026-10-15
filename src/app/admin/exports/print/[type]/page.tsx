@@ -143,7 +143,6 @@ export default async function ExportPrintPage({
     }
   }
 
-  // Convert typed filters to plain object for the print view
   const plainFilters: Record<string, string | undefined> = {
     fromDate: filters.fromDate,
     toDate: filters.toDate,
