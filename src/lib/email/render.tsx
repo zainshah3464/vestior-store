@@ -13,7 +13,7 @@ import AbandonedCartEmail from './templates/abandoned-cart'
 import WelcomeBackEmail from './templates/welcome-back'
 
 const SUBJECTS: Record<EmailTemplate, string> = {
-  welcome: 'Welcome to VESTIOR',
+  'welcome': 'Welcome to VESTIOR',
   'welcome-back': 'Welcome back to VESTIOR — we missed you!',
   'order-placed': 'Your VESTIOR order is confirmed',
   'payment-confirmed': 'Payment received — thank you!',
