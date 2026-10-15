@@ -8,6 +8,8 @@ import {
   Text,
   Button,
   Section,
+  Row,
+  Column,
   Hr,
   Img,
 } from '@react-email/components'
@@ -29,9 +31,6 @@ interface AbandonedCartProps {
   siteUrl?: string
 }
 
-// ─────────────────────────────────────────────
-// Accent tokens — violet (recovery / urgency)
-// ─────────────────────────────────────────────
 const ACCENT = '#8B5CF6'
 const ACCENT_DARK = '#7C3AED'
 const ACCENT_LIGHT = '#C4B5FD'
@@ -55,7 +54,6 @@ export default function AbandonedCartEmail({
       <Preview>Still thinking? Your VESTIOR cart is waiting</Preview>
       <Body style={body}>
         <Container style={container}>
-          {/* ─── Brand masthead ─── */}
           <Section style={brandSection}>
             <Text style={brandLogo}>
               <span style={brandDot}>●</span> VESTIOR
@@ -65,7 +63,6 @@ export default function AbandonedCartEmail({
 
           <Hr style={accentLine} />
 
-          {/* ─── Badge eyebrow ─── */}
           <Section style={badgeWrap}>
             <Text style={badge}>Cart Saved</Text>
           </Section>
@@ -81,7 +78,6 @@ export default function AbandonedCartEmail({
               : ' Items sell fast — don\u2019t miss out!'}
           </Text>
 
-          {/* ─── Coupon card ─── */}
           {hasOffer && (
             <Section style={couponCard}>
               <Text style={couponLabel}>Your Code</Text>
@@ -92,32 +88,44 @@ export default function AbandonedCartEmail({
             </Section>
           )}
 
-          {/* ─── Items ─── */}
           <Section style={itemsSection}>
             <Text style={itemsHeader}>Your Cart</Text>
             {items.slice(0, 5).map((item, i) => (
-              <Section key={i} style={itemRow}>
-                {item.image ? (
-                  <Img
-                    src={item.image}
-                    alt={item.name}
-                    width="56"
-                    height="56"
-                    style={itemImage}
-                  />
-                ) : (
-                  <div style={{ ...itemImage, background: '#1F1F1F' }} />
-                )}
-                <div style={itemDetails}>
+              <Row
+                key={i}
+                style={i < items.length - 1 ? itemRowBordered : itemRowLast}
+              >
+                <Column style={{ width: 70, verticalAlign: 'top' }}>
+                  {item.image ? (
+                    <Img
+                      src={item.image}
+                      alt={item.name}
+                      width="56"
+                      height="56"
+                      style={itemImage}
+                    />
+                  ) : (
+                    <div style={itemImagePlaceholder} />
+                  )}
+                </Column>
+                <Column style={{ verticalAlign: 'top' }}>
                   <Text style={itemName}>{item.name}</Text>
                   <Text style={itemMeta}>
                     Qty {item.quantity} × ₹{item.price.toLocaleString()}
                   </Text>
-                </div>
-                <Text style={itemPrice}>
-                  ₹{(item.price * item.quantity).toLocaleString()}
-                </Text>
-              </Section>
+                </Column>
+                <Column
+                  style={{
+                    width: 90,
+                    verticalAlign: 'top',
+                    textAlign: 'right',
+                  }}
+                >
+                  <Text style={itemPrice}>
+                    ₹{(item.price * item.quantity).toLocaleString()}
+                  </Text>
+                </Column>
+              </Row>
             ))}
             {items.length > 5 && (
               <Text style={moreText}>
@@ -129,13 +137,15 @@ export default function AbandonedCartEmail({
 
           <Hr style={hr} />
 
-          {/* ─── Subtotal ─── */}
-          <Section style={totalRow}>
-            <Text style={totalLabel}>Cart Subtotal</Text>
-            <Text style={totalValue}>₹{subtotal.toLocaleString()}</Text>
-          </Section>
+          <Row>
+            <Column>
+              <Text style={totalLabel}>Cart Subtotal</Text>
+            </Column>
+            <Column style={{ textAlign: 'right' }}>
+              <Text style={totalValue}>₹{subtotal.toLocaleString()}</Text>
+            </Column>
+          </Row>
 
-          {/* ─── CTA ─── */}
           <Section style={ctaSection}>
             <Button style={button} href={recoveryUrl}>
               Complete Your Order
@@ -161,9 +171,6 @@ export default function AbandonedCartEmail({
   )
 }
 
-// ─────────────────────────────────────────────
-// Styles
-// ─────────────────────────────────────────────
 const body: React.CSSProperties = {
   backgroundColor: '#0A0A0A',
   fontFamily:
@@ -293,23 +300,27 @@ const itemsHeader: React.CSSProperties = {
   fontWeight: 600,
 }
 
-const itemRow: React.CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
+const itemRowBordered: React.CSSProperties = {
   padding: '10px 0',
   borderBottom: '1px solid #1A1A1A',
 }
 
-const itemImage: React.CSSProperties = {
-  borderRadius: 10,
-  marginRight: 14,
-  objectFit: 'cover',
-  flexShrink: 0,
+const itemRowLast: React.CSSProperties = {
+  padding: '10px 0',
 }
 
-const itemDetails: React.CSSProperties = {
-  flex: 1,
-  minWidth: 0,
+const itemImage: React.CSSProperties = {
+  borderRadius: 10,
+  objectFit: 'cover',
+  display: 'block',
+}
+
+const itemImagePlaceholder: React.CSSProperties = {
+  width: 56,
+  height: 56,
+  borderRadius: 10,
+  backgroundColor: '#1F1F1F',
+  display: 'block',
 }
 
 const itemName: React.CSSProperties = {
@@ -332,7 +343,6 @@ const itemPrice: React.CSSProperties = {
   fontWeight: 600,
   margin: 0,
   whiteSpace: 'nowrap',
-  paddingLeft: 8,
 }
 
 const moreText: React.CSSProperties = {
@@ -345,13 +355,6 @@ const moreText: React.CSSProperties = {
 const hr: React.CSSProperties = {
   borderColor: '#1F1F1F',
   margin: '20px 0 16px 0',
-}
-
-const totalRow: React.CSSProperties = {
-  display: 'flex',
-  justifyContent: 'space-between',
-  alignItems: 'baseline',
-  padding: '8px 0',
 }
 
 const totalLabel: React.CSSProperties = {

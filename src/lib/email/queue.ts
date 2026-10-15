@@ -12,35 +12,24 @@ const qstash = new Client({
   baseUrl: env.QSTASH_URL,
 })
 
-/**
- * Development detection — QStash can't reach localhost.
- * In dev: send directly.
- * In production: queue via QStash.
- */
 function isLocalDevelopment(): boolean {
   const url = env.NEXT_PUBLIC_SITE_URL || ''
   return (
     url.includes('localhost') ||
     url.includes('127.0.0.1') ||
     url.includes('192.168.') ||
-    url.startsWith('http://')
+    url.endsWith('.local')
   )
 }
 
-/**
- * Queue (dev: send directly) an email.
- * Always logs to MongoDB. Never throws.
- */
 export async function queueEmail(
   params: QueueEmailParams
 ): Promise<string | null> {
-  // FIX (Bug #4): Declare logId outside try block so catch can access it
   let logId: string | null = null
 
   try {
     const db = await getDb()
 
-    // 1. Log intent
     const log = await db.collection(COLLECTIONS.EMAIL_LOGS).insertOne({
       user_id: params.userId ?? null,
       email: params.to,
@@ -53,63 +42,54 @@ export async function queueEmail(
 
     logId = log.insertedId.toString()
 
-    // 2. Development → send directly
     if (isLocalDevelopment()) {
       await sendNow({ ...params, logId })
       return logId
     }
 
-    // 3. Production → queue
     const payload: EmailJobPayload = { ...params, logId }
-    await qstash.publishJSON({
+    const res = await qstash.publishJSON({
       url: `${env.NEXT_PUBLIC_SITE_URL}/api/jobs/send-email`,
       body: payload,
       retries: 3,
       delay: params.delay ? parseDelay(params.delay) : undefined,
     })
 
+    console.log(
+      `[queueEmail] queued ${params.template} → ${params.to} (qstash=${res.messageId})`
+    )
+
     return logId
   } catch (err) {
     const errorMessage = err instanceof Error ? err.message : 'Unknown error'
-    console.error('[queueEmail] failed:', err)
+    console.error('[queueEmail] failed:', errorMessage)
 
-    // FIX (Bug #4): Mark the log as failed so it doesn't stay "queued" forever
     if (logId) {
-      await updateEmailLog(logId, {
-        status: 'failed',
-        error: errorMessage,
-      })
+      await updateEmailLog(logId, { status: 'failed', error: errorMessage })
     }
 
     return null
   }
 }
 
-/**
- * Direct send path (used in local development).
- */
 async function sendNow(payload: EmailJobPayload): Promise<void> {
   try {
     const { html, subject } = await renderEmail(payload.template, payload.data)
-
     const result = await sendEmail({
       to: payload.to,
       subject: payload.subject ?? subject,
       html,
     })
-
     await updateEmailLog(payload.logId, {
       status: 'sent',
       provider_message_id: result.messageId,
     })
-
     console.log(
       `[email] sent "${payload.template}" to ${payload.to} (id: ${result.messageId})`
     )
   } catch (err) {
     const errorMessage = err instanceof Error ? err.message : 'Unknown error'
     console.error('[email] direct send failed:', errorMessage)
-
     await updateEmailLog(payload.logId, {
       status: 'failed',
       error: errorMessage,

@@ -1,8 +1,6 @@
 /**
- * Cron: check for low-stock products and alert admin.
- *
- * Throttled to once every 12 hours to avoid spam.
- * Only sends if there are products with stock between 1 and 9.
+ * Cron: low-stock alert to admin.
+ * Throttle is set ONLY on real success.
  */
 
 import { NextRequest, NextResponse } from 'next/server'
@@ -13,28 +11,35 @@ import { env } from '@/lib/env'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
+export const maxDuration = 60
 
 const THROTTLE_KEY = 'throttle:alert:low-stock'
 const THROTTLE_HOURS = 12
+const MAX_LOW_STOCK = 200
 
 export async function GET(req: NextRequest) {
-  // 1. Verify cron secret
   const authHeader = req.headers.get('authorization')
   if (authHeader !== `Bearer ${env.CRON_SECRET}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  // 2. Throttle check
   const lastSent = await redis.get<number>(THROTTLE_KEY)
   if (lastSent && Date.now() - lastSent < THROTTLE_HOURS * 3600 * 1000) {
     return NextResponse.json({
       skipped: true,
       reason: 'throttled',
-      lastSentAgo: Math.round((Date.now() - lastSent) / 1000 / 60) + 'm',
+      minutesSince: Math.round((Date.now() - lastSent) / 60000),
     })
   }
 
-  // 3. Fetch low-stock products
+  if (!env.ADMIN_EMAIL || !env.ADMIN_EMAIL.includes('@')) {
+    console.error('[low-stock-alert] ADMIN_EMAIL missing or invalid')
+    return NextResponse.json(
+      { error: 'ADMIN_EMAIL not configured' },
+      { status: 500 }
+    )
+  }
+
   const { data: lowStock, error } = await supabaseAdmin
     .from('products')
     .select('id, name, stock, category_main')
@@ -42,8 +47,10 @@ export async function GET(req: NextRequest) {
     .gt('stock', 0)
     .lt('stock', 10)
     .order('stock', { ascending: true })
+    .limit(MAX_LOW_STOCK)
 
   if (error) {
+    console.error('[low-stock-alert] DB error:', error.message)
     return NextResponse.json(
       { error: 'DB error', detail: error.message },
       { status: 500 }
@@ -54,8 +61,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ skipped: true, reason: 'no low stock' })
   }
 
-  // 4. Queue admin email
-  await queueEmail({
+  const logId = await queueEmail({
     template: 'low-stock-alert',
     to: env.ADMIN_EMAIL,
     data: {
@@ -64,11 +70,21 @@ export async function GET(req: NextRequest) {
     },
   })
 
-  // 5. Mark throttle
+  if (!logId) {
+    console.error(
+      '[low-stock-alert] queueEmail failed — throttle NOT set (will retry next run)'
+    )
+    return NextResponse.json(
+      { error: 'Failed to queue email', count: lowStock.length },
+      { status: 500 }
+    )
+  }
+
   await redis.set(THROTTLE_KEY, Date.now())
 
   return NextResponse.json({
     sent: true,
     count: lowStock.length,
+    logId,
   })
 }

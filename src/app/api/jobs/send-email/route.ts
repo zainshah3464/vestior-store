@@ -1,8 +1,5 @@
 /**
  * QStash job handler — sends a single email via Gmail SMTP.
- *
- * Security: verifies QStash signature.
- * Retries: on failure, returns 500 → QStash retries (up to 3x).
  */
 
 import { NextRequest, NextResponse } from 'next/server'
@@ -19,13 +16,11 @@ export async function POST(req: NextRequest) {
   const body = await req.text()
   const signature = req.headers.get('upstash-signature')
 
-  // 1. Verify signature
   if (!signature || !(await verifyQStashSignature(signature, body))) {
     console.warn('[send-email] invalid signature')
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  // 2. Parse
   let payload: EmailJobPayload
   try {
     payload = JSON.parse(body)
@@ -33,7 +28,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
   }
 
-  // 3. Render
+  // Render
   let html: string
   let subject: string
   try {
@@ -46,11 +41,11 @@ export async function POST(req: NextRequest) {
       status: 'failed',
       error: (err as Error).message,
     })
-    // Don't retry render errors
+    // 200 → no retry, render errors are permanent
     return NextResponse.json({ error: 'Render failed' }, { status: 200 })
   }
 
-  // 4. Send via Gmail SMTP
+  // Send
   try {
     const result = await sendEmail({
       to: payload.to,
@@ -73,7 +68,6 @@ export async function POST(req: NextRequest) {
       status: 'failed',
       error: (err as Error).message,
     })
-    // Return 500 so QStash retries
     return NextResponse.json({ error: 'Send failed' }, { status: 500 })
   }
 }
