@@ -239,10 +239,10 @@ export default function Navbar() {
   }, [isSearchOpen, userMenuOpen])
 
   // ─────────────────────────────────────────────
-  // Body scroll lock when mobile menu open
+  // Body scroll lock — mobile menu OR search modal
   // ─────────────────────────────────────────────
   useEffect(() => {
-    if (isOpen) {
+    if (isOpen || isSearchOpen) {
       document.body.style.overflow = 'hidden'
     } else {
       document.body.style.overflow = 'unset'
@@ -250,7 +250,7 @@ export default function Navbar() {
     return () => {
       document.body.style.overflow = 'unset'
     }
-  }, [isOpen])
+  }, [isOpen, isSearchOpen])
 
   const handleLogout = async () => {
     const { error } = await supabase.auth.signOut()
