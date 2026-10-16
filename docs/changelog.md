@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Table of Contents
 
 - [Unreleased](#unreleased)
+- [v3.2.0 — Editorial Redesign + PDF Export + Bug Fixes](#v320--editorial-redesign--pdf-export--bug-fixes-2026-10-16)
 - [v3.1.0 — AI + PWA + Auth Polish](#v310--ai--pwa--auth-polish-2026-10-14)
 - [v3.0.0 — Enterprise Feature Set](#v300--enterprise-feature-set-2026-10-12)
 - [v2.0.0 — Production Hardening](#v200--production-hardening-2026-10-05)
@@ -19,25 +20,320 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Planned for v3.2.0
+### Planned for v3.3.0
 
 - Multi-currency support (USD, EUR, GBP, AED)
 - Sentry error tracking
 - Codecov integration
 - Order tracking via courier APIs (TCS, Leopards)
+- Groq paid tier evaluation
 
-### Planned for v3.3.0
+### Planned for v3.4.0
 
 - Multi-language (i18n — English + Urdu)
 - Guest order tracking via magic link
 - Advanced analytics (cohorts, retention, CLV)
+- Loyalty program with points
 
 ### Planned for v4.0.0
 
-- Loyalty program with points
 - Gift cards
 - PayPal integration (once available in Pakistan)
 - Semantic search for AI chatbot
+- Mobile app (React Native)
+- ML-powered recommendations
+
+---
+
+## [v3.2.0] — Editorial Redesign + PDF Export + Bug Fixes (2026-10-16)
+
+This is the **largest UI/UX overhaul + feature hardening release** since v3.0. It brings the entire application to a coherent **editorial design language**, adds **PDF print export**, redesigns all **10 email templates**, and fixes **7 critical bugs** across auth, checkout, cron, and email.
+
+**Scope:** 120 files changed, +23,657 / −8,498 lines (across multiple commits).
+
+### 🎨 Added — Editorial UI/UX Redesign (Massive)
+
+Redesigned the entire application around a **cohesive editorial design system** — a formalized set of tokens, patterns, and motion principles used consistently across every page.
+
+**Design tokens introduced:**
+- **Surfaces:** `#0A0A0A` base, `#131313 → #0E0E0E` card gradient, `white/[0.06]` borders
+- **Text hierarchy:** `tracking-tight` headlines, `text-[10px] tracking-[0.18em] uppercase` eyebrows, `tabular-nums` for all figures
+- **Semantic accent colors:** Indigo (primary), Emerald (success), Amber (warning), Red (danger), Violet (info), Teal (secondary), Gray (neutral)
+- **Motion curves:** `[0.22, 1, 0.36, 1]` easing, `0.4s` normal duration, `0.06s` stagger
+
+**Signature patterns established:**
+- **Bento stat cards** — left accent bar + ambient glow orb + icon tile + eyebrow + big number + subtitle
+- **Grouped sidebar navigation** — Overview / Commerce / Audience / Operations with layout-animated active bar
+- **Empty states** — icon tile + halo glow + title + description + CTA (never a bare "No data")
+- **Status pills** — `w-1 h-1 rounded-full` dot + icon + label, semantic color
+- **Eyebrow pills** — `text-[10px] tracking-[0.18em] uppercase` in accent-tinted bg
+- **Shine sweeps** — `-inset-x-1/2 bg-gradient-to-r from-transparent via-white/25 to-transparent` on primary CTAs
+- **Skeleton loaders** — matching card shape with `animate-pulse` (CLS = 0)
+- **Ambient glow orbs** — `blur-[70px]` accent-colored background glow per card
+- **Timeline dots** — pulse-ping for live states, solid for past
+
+**Pages redesigned:**
+- **Homepage** — Hero + CategorySection + HomeProductSection + RecommendedRow
+  - Ambient parallax orbs (mouse-tracked depth)
+  - Editorial corner crosshair marks
+  - Vertical brand mark on large screens ("VESTIOR · EST. 1968")
+  - Refined scroll indicator with mouse outline
+  - Bento category grid with hover "Shop Now" pill
+- **Products listing** — Editorial header, active filter chips, mobile drawer
+- **Product detail** — Image gallery, size selector, stock indicator, trust badges
+- **Reviews section** — Editorial cards with star accent + status badge
+- **Cart** — Playful rotating empty-state messages + floating mini-icons + marketing benefits strip
+- **Checkout** — Animated 2-step stepper with checkmarks + pulse rings
+- **Orders list + detail + invoice** — Animated progress tracker, editorial cards
+- **Wishlist** — Editorial grid with empty state (animated heart tile + sparkle accent)
+- **Profile** — Banner + avatar + quick links + form
+- **Auth pages** (login, signup, forgot, reset, verify) — Animated 3-column backgrounds, gradient icon tiles, shimmer CTAs
+- **Legal pages** (privacy, terms, refund) — Editorial TOC sidebar, numbered sections
+- **All 19 admin pages** — Dashboard, Analytics, Reports, Products, Orders, Payments, Coupons, Abandoned, Reviews, Visitors, Users, Sessions, Emails, Audit, Exports, Activity
+- **All 10 email templates** — Theme-matched editorial style
+- **Global error boundary** — Parallax orbs + reticle + particles + pulsing rings
+- **404 page** — Big "404" with per-digit parallax + pulsing portal rings
+- **All loading states** — Skeleton loaders matching final content shape
+
+**Admin notifications redesigned:**
+- Left accent bar (`border-l-[3px]`) semantic to notification type
+- Icon tile with matching bg + border
+- Title + 2-line message with line-clamp
+- "View" action with `ExternalLink` icon + hover translate + shine sweep
+- Auto-dismiss after 8s
+
+**Sidebar redesign:**
+- Grouped navigation (4 groups vs 14 flat links)
+- Layout-animated active bar (`layoutId="admin-sidebar-active"`)
+- Icon scales 1.10 on hover
+- Glow shadow on active state
+- "Back to Site" with `ExternalLink` icon on hover
+
+### 🖨️ Added — PDF Print Export
+
+`/admin/exports/print/[type]` — dedicated print-optimized views for all 5 export types.
+
+**Features:**
+- **Print-optimized CSS** — `@media print` with `visibility: hidden` on chrome, only `#export-print-area` visible
+- **A4 landscape** for tables (`@page { size: A4 landscape; margin: 10mm }`)
+- **UTF-8 BOM** — currency symbols (₹) render correctly
+- **Banded headers** (`thead { display: table-header-group }`) — auto-repeat on page breaks
+- **Row-level page-break** (`tr { page-break-inside: avoid }`) — no split rows
+- **Filter-aware** — date range, status, provider preserved in print
+- **Active filter chips** displayed in document header
+- **Record count + generation date** in header
+- **Zero external dependencies** — uses browser's native "Print → Save as PDF"
+
+**Available export types:**
+| Type | Key columns |
+|------|-------------|
+| **Orders** | Order ID, Date, Customer, Status, Payment, Provider, Subtotal, Shipping, Total, Items, City |
+| **Payments** | Order ID, Date, Provider, Txn ID, Amount, Currency, Status, Method |
+| **Emails** | Sent At, Template, Recipient, Status, Message ID, Error |
+| **Users** | User ID, Name, Email, Phone, Role, City, State, Joined |
+| **Audit** | Timestamp, Actor, Action, Target Type, Target ID, IP Hash |
+
+**New files:**
+- `src/app/admin/exports/print/[type]/page.tsx` — Server component with admin verification + data fetch
+- `src/components/admin/ExportPrintView.tsx` — Print-optimized render component
+
+**Why zero-dependency:**
+- No Puppeteer (300MB Chromium, 3-8s cold start, not serverless-compatible)
+- No PDF library (200-500KB bundle, manual layout)
+- Browser's native print dialog is the most powerful PDF generator available
+- Admin gets full control (paper size, margins, headers, footers)
+
+### 📸 Added — Organized Screenshot Structure
+
+Screenshots reorganized by context in `public/images/`:
+
+```
+public/images/
+├── admin_pages-images/          (10 admin screenshots)
+│   ├── admin-dashboard.jpg
+│   ├── admin-analytics-page.jpg
+│   ├── admin-product-management-page.jpg
+│   ├── admin-order-management-page.jpg
+│   ├── admin-payment-managemet-page.jpg
+│   ├── admin-coupon-management-page.jpg
+│   ├── admin-abandoned-cart-management-page.jpg
+│   ├── admin-review-approvel-page.jpg
+│   ├── admin-report-page.jpg
+│   └── admin-export-center-page.jpg
+├── customer_facing-images/      (9 customer screenshots)
+│   ├── home-page.jpg
+│   ├── home-category-page.jpg
+│   ├── product-page.jpg
+│   ├── product-id-page-quickview.jpg
+│   ├── cart-page.jpg
+│   ├── checkout-page.jpg
+│   ├── customer-order-page.jpg
+│   ├── customer-order-id-page.jpg
+│   └── customer-order-id-invoice.jpg
+└── email_template_images/       (7 email screenshots)
+    ├── abandoned-card-email.jpg
+    ├── cancelled-email.jpg
+    ├── delivered.jpg
+    ├── order-confirmed-email.jpg
+    ├── payment-succes.jpg
+    ├── reset-email-template.jpg
+    └── shipped-email.jpg
+```
+
+**Removed (11 old flat images):** `arrivals.png`, `cart.png`, `category.png`, `checkout.png`, `dashboard.png`, `featured.png`, `og-image.png`, `order.png`, `ordersadmin.png`, `productlisting.png`, `useradmin.png`.
+
+**Added:** `og-image.jpg` (replacing `og-image.png`).
+
+### 🐛 Fixed — Cron + Email Pipeline (4 critical bugs)
+
+1. **Low-stock throttle on failure**
+   - **Symptom:** If `queueEmail` failed, the throttle key was still set. The next cron run would skip — and the alert would never fire.
+   - **Fix:** Throttle key is now set **only on real success**. Failed runs leave the throttle unset so the next cron tick retries.
+   - **Verified via curl:** `{"lowStock":{"sent":true,"count":4},"abandonedCarts":{"processed":1,"sent":1,"failed":0}}`
+
+2. **Abandoned-cart parameter order**
+   - **Symptom:** `findAbandonedCarts(minAgeHours, maxReminders, limit)` — cron was passing args in the wrong order (`maxAgeHours` instead of `maxReminders`), silently limiting reminders to wrong values.
+   - **Fix:** Correct order with explicit code comment.
+
+3. **Abandoned-cart window**
+   - **Symptom:** Correct throttle window (50 minutes) + correct 2-hour cart age threshold were being skipped due to bug #2.
+   - **Fix:** Both parameters now correctly applied.
+
+4. **Email queue hardening**
+   - **Symptom:** If `qstash.publishJSON` threw (network error, token expired), the email log stayed `status: 'queued'` forever — invisible to admins.
+   - **Fix:** The log is now marked `status: 'failed'` with the error message. `logId` is declared outside the try block so the catch can access it.
+
+### 🔐 Fixed — Auth (1 critical bug)
+
+5. **Password reset / email confirm session missing**
+   - **Symptom:** Old flow used `code`-based exchange. After clicking the email link, users were left without a session — the reset form showed "session expired."
+   - **Fix:** Switched to `token_hash` flow. The `/auth/callback` route now uses `supabase.auth.verifyOtp({ token_hash, type })` which creates a real session in one atomic call.
+   - **Callback now handles both flows:**
+     - `token_hash` + `type` → password reset + email confirm (v3.2 preferred)
+     - `code` → OAuth Google login (legacy, still supported)
+
+### 💳 Fixed — Checkout (1 bug)
+
+6. **`order_placed` event not tracked on Stripe success**
+   - **Symptom:** COD flow tracked the event correctly, but the Stripe success path called `handlePaymentSuccess` without tracking. Stripe orders were invisible in product analytics.
+   - **Fix:** Both paths now emit `order_placed` with the correct `paymentMethod`, `couponCode`, and `discountAmount`.
+
+### 🎨 Refactored — UI Polish (1 refactor)
+
+7. **Edge fade gradients removed**
+   - **Symptom:** Scrollable rows (HomeProductSection, ProductRow, RecommendedRow) had left/right fade gradients that created inconsistent visual cut-off.
+   - **Fix:** Removed all edge fades in favor of sharp boundaries. Cleaner look, faster paint, clearer affordance.
+
+### 📧 Redesigned — All 10 Email Templates
+
+Theme-matched editorial style with semantic accent colors:
+
+- **Dark `#0A0A0A` background** — matches site theme
+- **Brand masthead** with accent-colored dot (`● VESTIOR`)
+- **Accent eyebrow badge** (uppercase, tracking-widest)
+- **Semantic accent color per template:**
+  - Blue (`#3B82F6`) for orders — order-placed, welcome
+  - Emerald (`#10B981`) for success — payment-confirmed, order-delivered
+  - Red (`#EF4444`) for failures — payment-failed, order-cancelled
+  - Amber (`#F59E0B`) for warnings — low-stock-alert
+  - Violet (`#8B5CF6`) for shipped / abandoned / welcome-back
+- **Hairline accent dividers** (`rgba(accent, 0.25)`)
+- **Gradient CTA buttons** with box-shadow
+- **Trust footer** with email reply prompt
+- **Auto-computed copyright year**
+
+**Templates redesigned:**
+1. `welcome.tsx` — Blue
+2. `welcome-back.tsx` — Violet
+3. `order-placed.tsx` — Blue
+4. `payment-confirmed.tsx` — Emerald
+5. `payment-failed.tsx` — Red
+6. `order-shipped.tsx` — Violet (with timeline visualization)
+7. `order-delivered.tsx` — Emerald
+8. `order-cancelled.tsx` — Red
+9. `low-stock-alert.tsx` — Amber
+10. `abandoned-cart.tsx` — Violet (with recovery coupon block)
+
+### 📊 Enhanced — Admin Notifications
+
+Editorial toast design with:
+- Left accent bar (`border-l-[3px]`) semantic to notification type
+- Icon tile with matching bg + border
+- Title + 2-line message with `line-clamp-2`
+- "View" action with `ExternalLink` icon + hover translate + shine sweep
+- Auto-dismiss after 8s
+- Bell icon with unread badge + pulse
+- Dropdown with last 30 notifications
+- localStorage persistence
+- Browser native notification (permission-gated)
+- Web Audio API chime (C5 → E5 two-note beep)
+
+### 🏗️ Added — Editorial Design System
+
+Formalized design language documented in `docs/architecture.md`:
+
+- **Consistent tokens** across 120+ files
+- **Semantic color mapping** — each accent = a meaning
+- **10 reusable patterns** — bento cards, empty states, status pills, eyebrows, shine sweeps, skeleton loaders, ambient orbs, timeline dots, grouped sidebar, toast
+- **Motion principles** — 4 rules: duration, easing, stagger, hover lift
+- **Zero runtime overhead** — pure CSS + Tailwind v4
+- **Full accessibility compliance** — WCAG AA on all semantic colors
+- **Documented for contributors** — new devs productive in a day
+
+### ⚡ Performance
+
+- **Lighthouse Desktop:** **97/100/100/100** (unchanged from v3.1)
+- **Lighthouse Mobile:** **91/100/100/100** (unchanged)
+- **Accessibility:** **100/100** (both platforms)
+- **Best Practices:** **100/100**
+- **SEO:** **100/100**
+- **CLS:** **0** (still perfect)
+- **Zero-dependency PDF print** — no Puppeteer/Chrome overhead
+- **Sharp scroll boundaries** — cleaner paint, faster render
+- **Design tokens** — one change propagates across the whole app
+
+### 📦 Dependencies
+
+- **No new dependencies added**
+- **No dependencies removed**
+- **100% free-tier compatible** (all integrations unchanged)
+
+### 📚 Documentation
+
+- README updated with v3.2 features + new screenshot paths
+- `docs/architecture.md` updated with 3 new sections:
+  - **Editorial UI Design System**
+  - **PDF Print Export Pipeline**
+  - **Cron Job Pipeline**
+- `docs/changelog.md` (this file) updated
+- Screenshot structure reorganized in `public/images/`
+
+### 🏗️ Architecture — New
+
+- **Design system layer** — tokens + patterns + motion principles
+- **PDF print layer** — server component + print CSS, zero dependencies
+- **Cron observability** — structured responses + throttle-on-success
+
+### 🧪 Testing — Updated
+
+- Manual verification of PDF print export (all 5 types)
+- Curl test for cron throttle behavior (verified: throttle-on-success)
+- Curl test for abandoned-cart window (verified: 2h age, 3 reminders)
+- Manual test for `token_hash` password reset flow (session created)
+
+### 📅 Commit Trail (v3.1 → v3.2)
+
+Chronological list of the commits that shaped this release:
+
+- `feat(ui): redesign entire app with editorial theme + responsive fixes` (120 files, +23,657 / −8,498)
+- `feat(email): redesign all email templates with theme-matched editorial style`
+- `fix(ui): polish row shadows, navbar scroll lock, and category page redesign`
+- `fix(cron): low-stock throttle on failure + abandoned-cart window + email queue hardening`
+- `fix(cron): correct param order in findAbandonedCarts (maxReminders, not maxAgeHours)`
+- `fix(checkout): track order_placed event on COD and Stripe success`
+- `fix(auth): use token_hash flow for reset/confirm email — fixes session missing`
+- `refactor(ui): remove edge fade gradients from scrollable rows for consistent sharp cut-off`
+- `feat(admin): add PDF print export + fix test suite + lint errors`
 
 ---
 
@@ -143,6 +439,11 @@ This release introduces **AI-powered shopping assistance**, **PWA capabilities**
 - **AI Setup section** in README + Deployment docs
 - **AI tools** — read-only, RLS-enforced
 - **AI system prompt** — server-side only, injection-resistant
+
+### 🎉 Added — Welcome-Back Email
+- New 10th template: `welcome-back.tsx`
+- Triggered on returning user login
+- Throttled to once per 7 days via `welcome_back_sent_at`
 
 ### 🐛 Fixed — Email System (5 critical bugs)
 
@@ -615,6 +916,7 @@ First public release.
 
 | Version | Date | Focus | Lighthouse (Desktop) |
 |---------|------|-------|---------------------|
+| **v3.2.0** | **2026-10-16** | **Editorial redesign + PDF export + bug fixes** | **97/100/100/100** |
 | v3.1.0 | 2026-10-14 | AI + PWA + Auth polish | 97/100/100/100 |
 | v3.0.0 | 2026-10-12 | Enterprise features | 98/100/100/100 |
 | v2.0.0 | 2026-10-05 | Security + perf | 87/85/100/100 |
@@ -623,6 +925,30 @@ First public release.
 ---
 
 ## Upgrade Guide
+
+### From v3.1 to v3.2
+
+**Database:** No new migrations required.
+
+**Environment:** No new env vars required.
+
+**Code:** No breaking changes. The editorial redesign replaces all UI components in-place. Simply pull the latest code and redeploy.
+
+**Deploy:**
+1. Pull latest code
+2. Redeploy on Vercel (or your host)
+3. Verify password reset flow works (session should be created)
+4. Test PDF print export (`/admin/exports` → click Print on any card)
+5. Verify Stripe checkout emits `order_placed` event (check MongoDB `events` collection)
+6. Trigger a cron manually — verify throttle only set on success
+
+**Verification checklist:**
+- [ ] Password reset: click email link → reset form loads with session
+- [ ] PDF export: `/admin/exports/print/orders` → print preview shows A4 landscape
+- [ ] Cron: `curl -H "Authorization: Bearer $CRON_SECRET" https://your-domain.com/api/cron/daily` returns success
+- [ ] Editorial UI: all admin pages use new design system
+- [ ] Email templates: check any sent email — should be new editorial style
+- [ ] Admin notifications: place test order → editorial toast appears with View action
 
 ### From v3.0 to v3.1
 
@@ -761,6 +1087,8 @@ Categories follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conve
 ---
 
 <p align="center">
-  <em>Last updated: 2026-10-14 · Maintained by <a href="https://github.com/zainshah3464">@zainshah3464</a></em>
+  <em>Last updated: 2026-10-16 · Maintained by <a href="https://github.com/zainshah3464">@zainshah3464</a></em>
 </p>
 ```
+
+---

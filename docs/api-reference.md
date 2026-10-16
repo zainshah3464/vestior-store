@@ -3,6 +3,8 @@
 > **Audience:** Engineers integrating with VESTIOR, or extending it.
 >
 > **Structure:** Server Actions, RPC functions, and API routes with full signatures, examples, and error contracts.
+>
+> **Version:** This document reflects **v3.2.0** (Editorial redesign + PDF export + cron hardening).
 
 ---
 
@@ -45,7 +47,11 @@
   - [POST /api/webhooks/stripe](#post-apiwebhooksstripe)
   - [POST /api/jobs/send-email](#post-apijobssend-email)
   - [GET /api/cron/daily](#get-apicrondaily)
+  - [GET /api/cron/low-stock-alert](#get-apicronlow-stock-alert)
+  - [GET /api/cron/abandoned-carts](#get-apicronabandoned-carts)
   - [GET /api/cron/keep-alive](#get-apicronkeep-alive)
+- [Print Routes (NEW v3.2)](#print-routes-new-v32)
+  - [GET /admin/exports/print/[type]](#get-adminexportsprinttype)
 - [Error Codes](#error-codes)
 
 ---
@@ -100,6 +106,16 @@ Next.js route handlers under `src/app/api/`. They:
 - Use standard HTTP methods (GET, POST, PUT, DELETE)
 - Return JSON with proper status codes
 - Support `Authorization` header where required
+
+### Print Routes (v3.2)
+
+Server Components under `src/app/admin/exports/print/`. They:
+
+- Render full-page HTML (no client JS except print button)
+- Verify admin session server-side before rendering
+- Use print-optimized CSS (`@media print`)
+- Leverage browser's native "Print → Save as PDF"
+- Zero external dependencies
 
 ---
 
@@ -203,7 +219,7 @@ const result = await placeOrder(
 // }
 ```
 
-**Atomicity (v3.1):** In v1, order creation, coupon redemption, and provider tagging were **3 separate operations**. Any failure left inconsistent state. In v2, all four concerns live in **one transaction** — if any step fails, everything rolls back. No retry logic, no compensating RPC.
+**Atomicity (v3.1+):** In v1, order creation, coupon redemption, and provider tagging were **3 separate operations**. Any failure left inconsistent state. In v2, all four concerns live in **one transaction** — if any step fails, everything rolls back. No retry logic, no compensating RPC.
 
 **Side effects:**
 - Inserts into `orders`, `order_items`, `coupon_redemptions` (if coupon)
@@ -212,6 +228,8 @@ const result = await placeOrder(
 - Queues `order-placed` email
 - Marks MongoDB cart snapshot as recovered
 - Revalidates `/orders`, `/admin/orders`, `/admin`, `/products`, `/`
+
+**v3.2 fix:** The `order_placed` tracking event is now emitted on **both COD and Stripe success paths** (see `/api/track`). Previously, only COD tracked the event. Stripe orders were invisible in product analytics.
 
 ---
 
@@ -254,6 +272,8 @@ const { alreadyPaid } = await confirmPayment(
 )
 ```
 
+**v3.2 note:** This action emits the `order_placed` tracking event on success (matching the COD path). Previously the Stripe path was missing the tracking call.
+
 ---
 
 ### updateOrderStatus
@@ -286,6 +306,8 @@ async function updateOrderStatus(
 | `Invalid status: X` | Not in allowed list |
 | `Unauthorized: Not logged in` | No session |
 | `Forbidden: Admin access required` | Non-admin user |
+
+**v3.2 note:** All status emails use the new editorial templates (see `docs/features.md` → Email Templates).
 
 ---
 
@@ -346,6 +368,8 @@ async function resendOrderEmail(
 - Uses `payment_provider` (not legacy `payment_method`)
 - Passes `discount_amount` and `coupon_code` to the email template
 - Email now displays discount line correctly
+
+**v3.2 note:** Emails now use the new editorial templates.
 
 ---
 
@@ -593,7 +617,7 @@ redeem_coupon_atomic(
 ) RETURNS jsonb
 ```
 
-**Note:** In v3.1, this RPC is **no longer used by `placeOrder`**. Coupon redemption happens inside `place_order_atomic` v2. This function remains for backward compatibility with external callers.
+**Note:** In v3.1+, this RPC is **no longer used by `placeOrder`**. Coupon redemption happens inside `place_order_atomic` v2. This function remains for backward compatibility with external callers.
 
 ---
 
@@ -739,6 +763,8 @@ get_sales_report(
 
 **Date range:** `NULL` on either side means "no bound on that side".
 
+**v3.2 note:** Reports page now uses the editorial redesign (trend badges, animated charts, status grid).
+
 ---
 
 ### get_product_sales_stats
@@ -778,6 +804,8 @@ get_product_sales_stats(p_limit INTEGER DEFAULT 20) RETURNS jsonb
 ```
 
 **Merged with:** MongoDB `events` (views, cart adds) in `getProductPerformance()` for the abandoned flag and conversion rate.
+
+**v3.2 note:** ProductAnalytics component now has sortable columns, abandoned filter chip, and color-coded conversion rate pills.
 
 ---
 
@@ -939,6 +967,8 @@ is_admin() RETURNS boolean
 | 429 | Rate limit exceeded |
 | 500 | MongoDB storage failure |
 
+**v3.2 note:** The `order_placed` event is now emitted on both COD and Stripe success paths (see `placeOrder` and `confirmPayment`).
+
 ---
 
 ### POST /api/cart/sync
@@ -1075,6 +1105,8 @@ is_admin() RETURNS boolean
 
 **v3.1 fix:** Throttle marker only set if `queueEmail` returned a valid `logId`. On QStash failure, the marker isn't set — user gets another chance next login.
 
+**v3.2 note:** Welcome-back email now uses the new editorial template (violet accent).
+
 ---
 
 ### POST /api/auth/welcome
@@ -1105,6 +1137,8 @@ is_admin() RETURNS boolean
 |--------|-------|
 | 400 | Invalid JSON or shape |
 | 429 | Rate limit exceeded |
+
+**v3.2 note:** Welcome email now uses the new editorial template (blue accent).
 
 ---
 
@@ -1143,6 +1177,8 @@ order_id,created_at,customer_email,status,payment_status,...
 | 401 | No session |
 | 403 | Not admin |
 | 500 | DB error |
+
+**v3.2 note:** For PDF print views, see [Print Routes](#print-routes-new-v32) below.
 
 ---
 
@@ -1242,6 +1278,8 @@ order_id,created_at,customer_email,status,payment_status,...
 
 **v3.1 fix:** Before queueing `payment-confirmed` email, checks `orders.payment_status`. If already `completed` (client-side `confirmPayment` won the race), skips the email — no more duplicates.
 
+**v3.2 note:** All emails sent by the webhook use the new editorial templates.
+
 **Response:** Always 200 on success (even if duplicate) so Stripe stops retrying.
 
 **Errors:**
@@ -1275,13 +1313,15 @@ order_id,created_at,customer_email,status,payment_status,...
 
 **Behavior:**
 1. Verify QStash signature
-2. Render React Email template
+2. Render React Email template (editorial style in v3.2)
 3. Send via Gmail SMTP
 4. Update MongoDB `email_logs` with `status: 'sent'` + `provider_message_id`
 
 **Retries:** Returns 500 on failure → QStash retries up to 3x with backoff.
 
 **Render errors:** Returns 200 (don't retry — deterministic failure).
+
+**v3.2 note:** All 10 templates redesigned with theme-matched editorial style. Same rendering pipeline, new visual output.
 
 ---
 
@@ -1300,15 +1340,118 @@ order_id,created_at,customer_email,status,payment_status,...
 ```json
 {
   "success": true,
-  "timestamp": "2026-10-14T09:00:00.000Z",
+  "timestamp": "2026-10-16T09:00:00.000Z",
   "lowStock": { "sent": true, "count": 3 },
   "abandonedCarts": { "processed": 5, "sent": 5, "failed": 0 }
 }
 ```
 
+**Throttled response:**
+
+```json
+{
+  "success": true,
+  "timestamp": "2026-10-16T09:11:52.066Z",
+  "lowStock": { "httpStatus": 200, "skipped": true, "reason": "throttled", "minutesSince": 11 },
+  "abandonedCarts": { "httpStatus": 200, "skipped": true, "reason": "throttled", "minutesSince": 11 }
+}
+```
+
+**v3.2 fixes:**
+- **Throttle on success only** — If `queueEmail` fails, the throttle key is **not** set. Next scheduled run retries automatically. Previously, a failed run still set the throttle — the alert never fired.
+- **Param order fixed** — `findAbandonedCarts(minAgeHours, maxReminders, limit)` — was passing args wrong, silently limiting reminders.
+
 **Individual cron endpoints** also exist:
 - `GET /api/cron/low-stock-alert`
 - `GET /api/cron/abandoned-carts`
+
+---
+
+### GET /api/cron/low-stock-alert
+
+**Purpose:** Send admin alert when products fall below stock threshold.
+
+**Auth:** `Authorization: Bearer ${CRON_SECRET}`
+
+**Throttle:** 12 hours (only set on real success — v3.2 fix)
+
+**Behavior:**
+1. Check throttle key `throttle:alert:low-stock`
+2. If throttled → return `{ skipped: true, reason: 'throttled', minutesSince: N }`
+3. Query products with `stock > 0 AND stock < 10`
+4. Queue `low-stock-alert` email to `ADMIN_EMAIL`
+5. If queue succeeds → set throttle key
+6. If queue fails → **do not set throttle** (retry next run)
+
+**Response:**
+
+```json
+{
+  "sent": true,
+  "count": 4,
+  "logId": "mongo-object-id"
+}
+```
+
+**Errors:**
+
+| Status | Cause |
+|--------|-------|
+| 401 | Missing or invalid CRON_SECRET |
+| 500 | `ADMIN_EMAIL` missing or queue failed |
+
+---
+
+### GET /api/cron/abandoned-carts
+
+**Purpose:** Send recovery emails for carts abandoned ≥2 hours.
+
+**Auth:** `Authorization: Bearer ${CRON_SECRET}`
+
+**Throttle:** 50 minutes (only set on real success — v3.2 fix)
+
+**Behavior:**
+1. Check throttle key `throttle:cron:abandoned-carts`
+2. If throttled → return `{ skipped: true, reason: 'throttled', minutesSince: N }`
+3. `ensureCartIndexes()` — idempotent
+4. `findAbandonedCarts(minAgeHours=2, maxReminders=3, limit=100)` — **v3.2 fixed param order**
+5. For each cart:
+   - Generate/lookup 5%-off coupon (idempotent)
+   - Queue `abandoned-cart` email
+   - If queued successfully → `markReminderSent(cartId, couponCode)`
+   - If queue failed → **do not mark as sent** (retry next run)
+6. If all succeeded → set throttle key
+
+**Response:**
+
+```json
+{
+  "processed": 1,
+  "sent": 1,
+  "failed": 0
+}
+```
+
+**Partial failure response:**
+
+```json
+{
+  "processed": 5,
+  "sent": 3,
+  "failed": 2,
+  "errors": [
+    "user1@example.com: queue failed",
+    "user2@example.com: queue failed"
+  ]
+}
+```
+
+**Criteria for eligible carts:**
+- `item_count > 0`
+- `recovered_at: null`
+- `updated_at <= now - 2 hours`
+- `recovery_email_count < 3`
+- Never reminded OR last reminder > 7 days ago
 
 ---
 
@@ -1327,7 +1470,7 @@ order_id,created_at,customer_email,status,payment_status,...
 
 ```json
 {
-  "timestamp": "2026-10-14T00:00:00.000Z",
+  "timestamp": "2026-10-16T00:00:00.000Z",
   "supabase": { "ok": true, "latencyMs": 45, "error": null },
   "mongodb": { "ok": true, "latencyMs": 120, "error": null }
 }
@@ -1336,6 +1479,109 @@ order_id,created_at,customer_email,status,payment_status,...
 **Triggered by:** GitHub Actions `keep-alive.yml` (twice daily).
 
 **Why:** Supabase Free pauses after 7 days of inactivity. MongoDB M0 pauses after 60 days.
+
+---
+
+## Print Routes (NEW v3.2)
+
+### GET /admin/exports/print/[type]
+
+**Purpose:** Print-optimized PDF-ready views for all 5 export types. **Zero external dependencies** — uses browser's native "Print → Save as PDF".
+
+**Type:** Server Component (not a JSON API — renders HTML)
+
+**Auth:** Admin session required (verified server-side; redirects to `/` if not admin)
+
+**Path params:**
+
+| Param | Values |
+|-------|--------|
+| `type` | `orders` \| `payments` \| `emails` \| `users` \| `audit` |
+
+**Query params (all optional, filter-aware):**
+
+| Param | Values |
+|-------|--------|
+| `fromDate` | ISO date |
+| `toDate` | ISO date |
+| `status` | status string |
+| `provider` | `cod` \| `stripe` |
+
+**Response:** HTML document rendered with print CSS:
+
+```css
+@page { size: A4 landscape; margin: 10mm }
+@media print {
+  body > * { visibility: hidden }
+  #export-print-area, #export-print-area * { visibility: visible }
+  thead { display: table-header-group }
+  tr { page-break-inside: avoid }
+}
+```
+
+**Behavior:**
+1. Verify admin session server-side
+2. Parse filters from URL params
+3. Fetch filtered data via `getOrdersForExport` / `getPaymentsForExport` / etc.
+4. Render `<ExportPrintView />` with columns, rows, filters
+5. Only `#export-print-area` visible during print
+
+**Available column schemas:**
+
+| Type | Columns |
+|------|---------|
+| **orders** | order_id, created_at, customer_email, status, payment_status, payment_provider, subtotal, shipping, total, items_count, shipping_city |
+| **payments** | order_id, created_at, provider, provider_txn_id, amount, currency, status, method |
+| **emails** | sent_at, template, recipient, status, message_id, error |
+| **users** | user_id, full_name, email, phone, role, city, state, created_at |
+| **audit** | timestamp, actor_email, action, target_type, target_id, ip_hash |
+
+**Format helpers:**
+- `format: 'date'` → "5 Oct 2026"
+- `format: 'currency'` → "₹18,999"
+- Empty / null → "—"
+
+**Example URL:**
+
+```
+/admin/exports/print/orders?fromDate=2026-10-01&toDate=2026-10-31&status=delivered
+```
+
+**Admin workflow:**
+1. Open `/admin/exports`
+2. Set filters (From / To / Status / Provider)
+3. Click **Print** on any card
+4. New tab opens with print-optimized view
+5. Click **Print / Save as PDF** button
+6. Browser's native print dialog → Save as PDF or send to printer
+
+**Why zero-dependency:**
+- **No Puppeteer** — 300MB Chromium binary, 3-8s cold start, not serverless-compatible
+- **No PDF library** (pdfkit, pdfmake, jspdf) — 200-500KB bundle, manual layout, encoding issues
+- **Browser-native print** is superior in every dimension:
+  - 0 bytes bundle
+  - 0s cold start
+  - Full CSS support
+  - WYSIWYG preview
+  - Custom paper size, margins, headers/footers
+  - High-DPI output
+  - Font embedding
+
+**Row limit:** 10,000 rows per export (same as CSV).
+
+**Files:**
+- `src/app/admin/exports/print/[type]/page.tsx` — Server component with admin verification
+- `src/components/admin/ExportPrintView.tsx` — Print-optimized render component
+
+**Errors:**
+
+| Behavior | Cause |
+|----------|-------|
+| Redirect to `/` | Not authenticated or not admin |
+| 404 | Invalid type param |
+| Empty table | No data matching filters |
+
+**See also:** [Architecture → PDF Print Export Pipeline](./architecture.md#pdf-print-export-pipeline) for the full design rationale.
 
 ---
 
@@ -1392,18 +1638,23 @@ Retry-After: 45
 | `/search`, `/api/search` | 30/min |
 | Everything else | 300/min |
 
+**v3.2 note:** Print routes (`/admin/exports/print/*`) fall under the `/admin` tier — 60 requests/min.
+
 ---
 
 ## Further Reading
 
-- [Architecture Deep Dive](./architecture.md)
+- [Architecture Deep Dive](./architecture.md) — Includes PDF Print Export Pipeline + Editorial Design System
 - [Security Deep Dive](./security.md)
 - [Database Schema](./database.md)
 - [Testing Strategy](./testing.md)
+- [Features](./features.md) — Feature-level documentation
 
 ---
 
 <p align="center">
-  <em>Last updated: 2026-10-14 · Maintained by <a href="https://github.com/zainshah3464">@zainshah3464</a></em>
+  <em>Last updated: 2026-10-16 · Maintained by <a href="https://github.com/zainshah3464">@zainshah3464</a></em>
 </p>
 ```
+
+---

@@ -77,7 +77,7 @@ export const metadata: Metadata = {
       "Hand‑crafted suits, coats, pants, and heritage Gurkha wear. Premium fabrics, timeless design.",
     images: [
       {
-        url: "/og-image.png",
+        url: "/og-image.jpg",
         width: 1200,
         height: 630,
         alt: "VESTIOR – Premium Tailored Fashion",
@@ -92,7 +92,7 @@ export const metadata: Metadata = {
     title: "VESTIOR – Premium Tailored Fashion",
     description:
       "Hand‑crafted suits, coats, pants, and heritage Gurkha wear. Premium fabrics, timeless design.",
-    images: ["/og-image.png"],
+    images: ["/og-image.jpg"],
   },
 
   icons: {

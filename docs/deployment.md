@@ -1,8 +1,10 @@
-# Deployment Guide
+# Deployment Guide (v3.2)
 
 > **Audience:** Anyone deploying VESTIOR to production — whether Vercel, Docker, or a VPS.
 >
 > **Goal:** Zero-downtime deployments with full monitoring and rollback capability.
+>
+> **Version:** This document reflects **v3.2.0** (Editorial redesign + PDF export + cron hardening).
 
 ---
 
@@ -24,6 +26,8 @@
 - [Rollback Procedure](#rollback-procedure)
 - [Post-Deploy Verification](#post-deploy-verification)
 - [Scaling Checklist](#scaling-checklist)
+- [What's New in v3.2](#whats-new-in-v32)
+- [Further Reading](#further-reading)
 
 ---
 
@@ -43,6 +47,7 @@ Before you push to production, verify these are done:
 - [ ] RLS verified on every table
 - [ ] Storage bucket `product-images` created and public
 - [ ] Realtime enabled on `orders` table
+- [ ] **v3.2:** Realtime enabled on `order_items` table (for real-time item updates)
 - [ ] Indexes created (auto-run in migrations)
 
 ### Services
@@ -58,6 +63,7 @@ Before you push to production, verify these are done:
 - [ ] Secrets generated with `openssl rand -hex 32` (never reused from dev)
 - [ ] `NEXT_PUBLIC_SITE_URL` set to production domain
 - [ ] Supabase redirect URLs updated with production domain
+- [ ] **v3.2:** Supabase redirect URLs include `/auth/reset-password` (for `token_hash` flow)
 - [ ] Stripe webhook endpoint points to production
 - [ ] Groq API key added to Vercel env vars
 
@@ -68,11 +74,22 @@ Before you push to production, verify these are done:
 - [ ] `.env.local` in `.gitignore`
 - [ ] Groq key is server-only (never exposed to client)
 
+### v3.2-specific
+- [ ] **No new migrations required** — v3.2 had no schema changes
+- [ ] **No new env vars required** — v3.2 reuses all v3.1 vars
+- [ ] **Cron throttle behavior verified** — throttle only set on real success
+- [ ] **PDF print export tested** — `/admin/exports/print/orders` renders correctly
+- [ ] **Editorial UI verified** — all pages use the new design system
+- [ ] **Password reset tested** — `token_hash` flow creates a session
+- [ ] **Stripe checkout tested** — `order_placed` event fires in MongoDB
+
 ---
 
 ## Environment Variables Reference
 
 Every variable with: purpose, where to get it, format, dev vs prod difference.
+
+**v3.2 note:** No new environment variables were added in v3.2. All v3.1 variables remain unchanged.
 
 ### Supabase
 
@@ -102,6 +119,8 @@ Every variable with: purpose, where to get it, format, dev vs prod difference.
 
 **Important:** Redis state doesn't matter much across envs (rate limits, caches). Same cluster can serve both.
 
+**v3.2 note:** Two new Redis keys used: `throttle:cron:abandoned-carts` and `throttle:alert:low-stock`. No config change needed — they're created automatically on first cron run.
+
 ### Upstash QStash
 
 | Variable | Notes |
@@ -122,6 +141,8 @@ Every variable with: purpose, where to get it, format, dev vs prod difference.
 **Why Gmail?** Sends to any recipient without domain verification. Free tier: 500/day.
 
 **Migration path:** Switch to Resend later by changing `mailer.ts`.
+
+**v3.2 note:** All 10 email templates redesigned with editorial style. No env var changes.
 
 ### AI (Groq)
 
@@ -213,6 +234,7 @@ Click **Deploy**. First build takes ~3 minutes.
 1. Note the deployment URL: `https://vestior-store-abc123.vercel.app`
 2. Configure custom domain (next section)
 3. Update Supabase + Stripe redirect URLs with the final domain
+4. **v3.2:** Verify password reset link works (redirects to `/auth/reset-password` with session)
 
 ### Step 5: Enable Vercel cron
 
@@ -243,14 +265,35 @@ The `/api/cron/daily` route calls both low-stock + abandoned-cart logic sequenti
 }
 ```
 
+**v3.2 note:** The combined cron now returns structured responses with **throttle info**:
+
+```json
+{
+  "success": true,
+  "timestamp": "2026-10-16T09:00:00.000Z",
+  "lowStock": { "sent": true, "count": 4 },
+  "abandonedCarts": { "processed": 1, "sent": 1, "failed": 0 }
+}
+```
+
+If a run is throttled:
+
+```json
+{
+  "lowStock": { "skipped": true, "reason": "throttled", "minutesSince": 11 }
+}
+```
+
 ### Step 6: Verify deployment
 
 - Open `https://your-domain.com` — homepage loads
 - Test signup + login
-- Test password reset flow
-- Place a test order
+- **v3.2:** Test password reset flow (session should be created)
+- Place a test order (COD + Stripe)
+- **v3.2:** Verify `order_placed` event fires in MongoDB for both paths
 - Test AI chatbot ("Show me suits under ₹25,000")
 - Test PWA install prompt (mobile browser)
+- **v3.2:** Test PDF print export (`/admin/exports` → click Print)
 - Check Vercel → Functions tab for real-time logs
 
 ---
@@ -281,6 +324,7 @@ Authentication → URL Configuration:
 - Redirect URLs:
   - https://vestior.com/auth/callback
   - https://www.vestior.com/auth/callback
+  - https://vestior.com/auth/reset-password   ← v3.2
 ```
 
 **Stripe:**
@@ -348,6 +392,8 @@ Copy each file from `supabase/migrations/` into SQL Editor and run **in this exa
 
 ⚠️ **Migration #13 is critical** — it replaces the original `place_order_atomic` with a v2 that combines stock, coupon, and payment provider in one transaction. If you're upgrading from an earlier deployment, you **must** run this.
 
+**v3.2 note:** No new migrations were required for v3.2. Migration #13 is the last migration.
+
 **Verify after all migrations:**
 ```sql
 SELECT tablename, rowsecurity FROM pg_tables WHERE schemaname = 'public';
@@ -373,10 +419,12 @@ Or via Supabase UI: **Storage → New Bucket → Name: `product-images` → Publ
 
 Add tables:
 - `orders` (required for admin notifications + customer tracking)
+- **v3.2:** `order_items` (for real-time item updates on customer order detail page)
 
 Or:
 ```sql
 ALTER PUBLICATION supabase_realtime ADD TABLE public.orders;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.order_items;
 ```
 
 ### 5. Configure auth
@@ -390,10 +438,11 @@ ALTER PUBLICATION supabase_realtime ADD TABLE public.orders;
 - Redirect URLs:
   - `https://vestior.com/auth/callback`
   - `https://www.vestior.com/auth/callback`
-  - `https://vestior.com/auth/reset-password` (for password reset flow)
+  - **v3.2:** `https://vestior.com/auth/reset-password` (for `token_hash` flow)
 
 **Authentication → Email Templates:**
 - Customize confirmation, recovery, magic link templates with VESTIOR branding (optional)
+- **v3.2:** Ensure the reset email link uses `{{ .TokenHash }}` (not legacy `{{ .ConfirmationURL }}`)
 
 ### 6. Add admin user
 
@@ -462,6 +511,7 @@ Copy the signing secret → `STRIPE_WEBHOOK_SECRET` in Vercel.
 - Verify order status = `completed`
 - Verify MongoDB has `payment_transactions` entry
 - Verify **only one** `payment-confirmed` email is sent (v3.1 fix)
+- **v3.2:** Verify `order_placed` event fires in MongoDB (check `events` collection)
 - Issue a test refund
 - Verify refund webhook + order status update
 
@@ -539,6 +589,7 @@ db.sessions.createIndex(
 // ─────────────────────────────────────────────
 db.email_logs.createIndex({ email: 1, created_at: -1 })
 db.email_logs.createIndex({ status: 1, created_at: -1 })
+db.email_logs.createIndex({ template: 1, created_at: -1 })  // v3.2
 
 // ─────────────────────────────────────────────
 // Payments
@@ -570,6 +621,8 @@ db.cart_snapshots.createIndex(
 ```
 
 **Note:** Application code (`ensureSessionIndexes()` and `ensureCartIndexes()`) creates most of these automatically on cold start. Manual creation via mongosh is only needed if you want to guarantee they exist *before* the first request.
+
+**v3.2 note:** The `template` index on `email_logs` was added in v3.2 (for the redesigned email dashboard filters).
 
 ### 4. Enable backups
 
@@ -632,6 +685,23 @@ curl -X POST https://qstash-us-east-1.upstash.io/v2/publish/https://example.com 
 ```
 
 If you get a success response, QStash is working.
+
+### 4. v3.2: Throttle keys
+
+v3.2 introduced two new Redis keys for cron throttling:
+- `throttle:cron:abandoned-carts`
+- `throttle:alert:low-stock`
+
+These are created automatically on the first successful cron run. No configuration needed.
+
+**Debug commands** (via Upstash console or redis-cli):
+```bash
+GET throttle:cron:abandoned-carts     # View timestamp
+DEL throttle:cron:abandoned-carts     # Force reset
+DEL throttle:alert:low-stock          # Force reset
+```
+
+**v3.2 pattern:** Throttle is set **only on real success**. Failed runs leave the throttle unset → next cron tick retries automatically.
 
 ---
 
@@ -742,9 +812,19 @@ curl -H "Authorization: Bearer $CRON_SECRET" \
 ```json
 {
   "success": true,
-  "timestamp": "2026-10-14T09:00:00.000Z",
+  "timestamp": "2026-10-16T09:00:00.000Z",
   "lowStock": { "sent": true, "count": 3 },
   "abandonedCarts": { "processed": 5, "sent": 5, "failed": 0 }
+}
+```
+
+**v3.2 throttled response:**
+```json
+{
+  "success": true,
+  "timestamp": "2026-10-16T09:11:52.066Z",
+  "lowStock": { "skipped": true, "reason": "throttled", "minutesSince": 11 },
+  "abandonedCarts": { "skipped": true, "reason": "throttled", "minutesSince": 11 }
 }
 ```
 
@@ -763,6 +843,47 @@ curl -H "Authorization: Bearer $CRON_SECRET" \
 curl -H "Authorization: Bearer $CRON_SECRET" \
   https://vestior.com/api/cron/keep-alive
 ```
+
+### v3.2: Force Reset Throttle
+
+If you need to force a cron to run immediately:
+
+```bash
+# Via Upstash console or redis-cli
+DEL throttle:cron:abandoned-carts
+DEL throttle:alert:low-stock
+```
+
+Then trigger the cron manually. Or programmatically:
+
+```typescript
+import { redis } from '@/lib/redis'
+await redis.del('throttle:cron:abandoned-carts')
+```
+
+**Security note:** Deleting throttle keys only allows the next cron run to execute immediately. It doesn't bypass auth or expose data.
+
+### v3.2: Throttle-on-Success Pattern
+
+The v3.2 cron pattern:
+
+```typescript
+const logId = await queueEmail(...)
+if (!logId) {
+  // Do NOT set throttle — v3.2 pattern
+  return NextResponse.json({ error: '...' }, { status: 500 })
+}
+await redis.set(THROTTLE_KEY, Date.now())  // ← Only on success
+```
+
+**Verify this works:**
+
+1. Temporarily break SMTP (e.g., wrong app password)
+2. Trigger cron → should return 500, throttle should NOT be set
+3. Fix SMTP
+4. Trigger cron again → should succeed, throttle should be set
+
+**Why it matters:** Failed runs auto-retry on next tick. No silent failures.
 
 ### External cron fallback (Hobby plan)
 
@@ -829,6 +950,8 @@ Set env vars in Railway dashboard. Railway auto-detects the Dockerfile.
 fly launch --dockerfile Dockerfile.vercel
 fly deploy
 ```
+
+**v3.2 note:** PDF print export uses browser-native rendering, so no Chromium dependency is needed in the Docker image. The `Dockerfile.vercel` is unchanged.
 
 ---
 
@@ -942,6 +1065,11 @@ crontab -e
 
 **AI-specific logs:** Search for `[chat]` in function logs to see AI chatbot activity.
 
+**v3.2 logs to watch:**
+- `[cron] throttled` — cron throttle skip
+- `[print] unauthorized redirect` — non-admin trying to access print routes
+- `[email] marked failed` — QStash publish failure
+
 ### Supabase
 
 - **Logs → Auth** — Login attempts, signups, failures
@@ -981,6 +1109,26 @@ crontab -e
 - **Upstash:** Enable quota alerts (80% usage)
 - **Stripe:** Enable fraud alerts
 - **Groq:** Monitor dashboard daily for the first week (free tier caps quietly)
+
+### v3.2 specific monitoring
+
+**Cron health:**
+- Watch for repeated `500` responses from `/api/cron/daily`
+- If a cron is failing repeatedly, throttle is NOT set (v3.2 pattern) — it will retry every tick
+- Check Vercel logs for `[cron] queue failed` messages
+
+**Print route health:**
+- Watch for `[print] unauthorized` — indicates an authorization issue
+- Check rate limit hits on `/admin` tier (60/min)
+
+**Editorial UI health:**
+- Check Lighthouse scores periodically (target: 97/91)
+- Watch for CLS regressions (target: 0)
+
+**Email delivery:**
+- Watch for `status: 'failed'` in `email_logs`
+- If failures spike, check Gmail app password validity
+- v3.2 templates are redesigned — verify no rendering errors in `[email] render failed` logs
 
 ---
 
@@ -1052,6 +1200,75 @@ If Groq is causing issues:
 3. `/api/chat` will return 503 ("AI chatbot is not configured")
 4. Rest of the site works normally
 
+### v3.2: Rollback editorial redesign
+
+**Short answer:** You can't easily. The redesign replaced 120 files in place.
+
+**Options:**
+
+1. **Revert commits** — `git revert <commit-hash>` for the redesign commit. May cause merge conflicts.
+2. **Fork from v3.1** — Check out the v3.1 tag. You'll lose v3.2 bug fixes.
+3. **Cherry-pick v3.2 fixes** — Revert the UI commit, then cherry-pick the cron/auth/checkout fixes.
+
+**Recommendation:** Don't roll back. The v3.2 redesign was tested, Lighthouse-audited (97/91), and 100+ admin actions verified. Bugs (if any) should be fixed forward.
+
+### v3.2: Rollback PDF print export
+
+If print routes cause issues:
+
+**Option A — Disable the feature:**
+1. Remove the Print buttons from `/admin/exports` (or comment them out)
+2. Redeploy
+3. The `/admin/exports/print/*` routes still exist but are unreachable
+
+**Option B — Block the routes:**
+Add a redirect in `next.config.ts`:
+
+```typescript
+async redirects() {
+  return [
+    {
+      path: '/admin/exports/print/:type',
+      destination: '/admin/exports',
+      permanent: false,
+    },
+  ]
+}
+```
+
+**Data safety note:** Print routes are read-only. They can't corrupt data. Rolling back is purely a UX concern.
+
+### v3.2: Rollback cron throttle-on-success
+
+If you need to revert to the v3.1 throttle behavior (set before work):
+
+**⚠️ Warning:** This reintroduces the silent failure bug. Only use as a temporary measure.
+
+Edit the cron endpoints:
+
+```typescript
+// Old (v3.1 — broken)
+await redis.set(THROTTLE_KEY, Date.now())
+const logId = await queueEmail(...)
+
+// Revert to (still broken):
+await redis.set(THROTTLE_KEY, Date.now())  // ← BEFORE work
+const logId = await queueEmail(...)
+```
+
+**Recommendation:** Don't roll back. The v3.2 pattern is correct. If crons are failing, fix the underlying issue (SMTP, QStash).
+
+### v3.2: Rollback token_hash auth flow
+
+If `token_hash` flow causes issues:
+
+1. Update `/auth/callback` to use `exchangeCodeForSession` instead of `verifyOtp`
+2. Update Supabase email templates to use `{{ .ConfirmationURL }}` instead of `{{ .TokenHash }}`
+
+**⚠️ Warning:** This reintroduces the session-loss bug. Only use as a temporary measure.
+
+**Recommendation:** Don't roll back. The `token_hash` flow is more reliable. If issues arise, verify Supabase URL config includes `/auth/reset-password`.
+
 ---
 
 ## Post-Deploy Verification
@@ -1086,6 +1303,10 @@ curl -s https://vestior.com/offline.html | grep -q "offline" && echo "✓ Offlin
 
 # 9. Cron (with secret)
 curl -s -H "Authorization: Bearer $CRON_SECRET" https://vestior.com/api/cron/keep-alive | grep -q '"ok":true' && echo "✓ Cron Auth"
+
+# 10. v3.2: Print route guard (should redirect for non-admin)
+curl -s -o /dev/null -w "%{http_code}" https://vestior.com/admin/exports/print/orders
+# Should redirect (3xx) → login
 ```
 
 ### Manual tests
@@ -1094,9 +1315,9 @@ curl -s -H "Authorization: Bearer $CRON_SECRET" https://vestior.com/api/cron/kee
 - [ ] Sign up → receive verification email
 - [ ] Verify email → login works
 - [ ] Google OAuth login
-- [ ] **Forgot password** → receive reset email → reset form works
-- [ ] **Password strength meter** shows correct level
-- [ ] **Existing email detection** shows friendly error
+- [ ] **v3.2:** Forgot password → receive reset email → click link → **session created** → reset form loads
+- [ ] Password strength meter shows correct level
+- [ ] Existing email detection shows friendly error
 
 **Storefront:**
 - [ ] Browse products, filter, sort
@@ -1104,12 +1325,17 @@ curl -s -H "Authorization: Bearer $CRON_SECRET" https://vestior.com/api/cron/kee
 - [ ] Wishlist toggle + navbar badge
 - [ ] Product search (navbar)
 - [ ] Product detail page with reviews
+- [ ] **v3.2:** Homepage uses new editorial design (parallax orbs, brand mark, bento category grid)
+- [ ] **v3.2:** Cart empty state shows rotating messages
+- [ ] **v3.2:** Cart page has sharp scroll boundaries (no edge fades)
 
 **Checkout:**
 - [ ] Checkout with COD
 - [ ] Checkout with Stripe test card
 - [ ] Coupon apply at checkout
 - [ ] Order confirmation email received (only once for Stripe)
+- [ ] **v3.2:** `order_placed` event fires in MongoDB for both COD and Stripe
+- [ ] **v3.2:** Checkout stepper shows animated checkmarks + pulse rings
 
 **Customer area:**
 - [ ] View orders, order detail
@@ -1145,6 +1371,38 @@ curl -s -H "Authorization: Bearer $CRON_SECRET" https://vestior.com/api/cron/kee
 - [ ] Visitors page shows sessions
 - [ ] Session drill-down loads
 - [ ] Audit log shows recent actions
+- [ ] **v3.2:** All admin pages use editorial design (bento cards, glass morphism, grouped sidebar)
+- [ ] **v3.2:** Admin notifications use editorial toast (left accent bar, View action)
+
+**v3.2 PDF Print Export:**
+- [ ] Go to `/admin/exports`
+- [ ] Set filters (From / To / Status / Provider)
+- [ ] Click **Print** on Orders card
+- [ ] New tab opens with print-optimized view
+- [ ] Verify white background (not dark theme)
+- [ ] Verify A4 landscape orientation
+- [ ] Verify column headers repeat on page 2+ (with 100+ rows)
+- [ ] Verify no rows split across pages
+- [ ] Verify currency symbols render correctly (₹)
+- [ ] Click **Print / Save as PDF**
+- [ ] Save PDF → verify it looks correct
+- [ ] Repeat for Payments, Emails, Users, Audit
+
+**v3.2 Cron:**
+- [ ] Trigger `/api/cron/daily` with curl
+- [ ] Verify response includes `timestamp` + `lowStock` + `abandonedCarts`
+- [ ] Wait 11 minutes, trigger again
+- [ ] Verify response shows `skipped: true, reason: 'throttled', minutesSince: 11`
+- [ ] Force reset throttle (DEL keys in Redis)
+- [ ] Trigger again → verify it runs
+
+**v3.2 Email Templates:**
+- [ ] Sign up → check welcome email (blue accent, editorial style)
+- [ ] Place order → check order-placed email (blue accent)
+- [ ] Complete payment → check payment-confirmed email (emerald accent)
+- [ ] Update order status to shipped → check order-shipped email (violet accent)
+- [ ] Update order status to delivered → check order-delivered email (emerald accent)
+- [ ] Abandon cart → check abandoned-cart email (violet accent with recovery coupon)
 
 ### Performance verification
 
@@ -1159,6 +1417,11 @@ Run Lighthouse on production URL:
 - Manifest has `name`, `short_name`, `icons`, `start_url`, `display`
 - All icon files exist (192x192, 512x512, maskable variants)
 - Service worker registers without console errors
+
+**v3.2 additions:**
+- Print routes should load in <1s (Server Component, no client hydration)
+- Editorial UI should have zero CLS (target: 0)
+- Bento cards should render without layout shifts
 
 ### SEO verification
 
@@ -1203,6 +1466,7 @@ As traffic grows, these are the levers to pull.
 - [ ] Split admin panel from storefront (separate deployment)
 - [ ] Background workers on dedicated queue (BullMQ, SQS)
 - [ ] Self-hosted AI inference (vLLM, Ollama)
+- [ ] Server-side PDF generation (Puppeteer-as-a-service) if emailing PDFs is needed
 
 ### Code changes required (minimal)
 
@@ -1211,15 +1475,155 @@ As traffic grows, these are the levers to pull.
 - Update Redis client if moving from Upstash to self-hosted
 - Add Sentry SDK initialization in `layout.tsx` and error handlers
 - Swap `getGroq()` in `src/lib/ai/groq.ts` for a self-hosted endpoint
+- Add `server-side PDF generation` if emailing PDFs (see Developer FAQ)
 
 **None of the core business logic changes.**
 
 ---
 
+## What's New in v3.2
+
+This section documents v3.2-specific deployment changes.
+
+### No New Migrations
+
+v3.2 was a **UI/UX + reliability release**, not a schema release. No new tables, columns, or indexes.
+
+### No New Env Vars
+
+v3.2 reuses all v3.1 environment variables. No configuration changes needed.
+
+### Database Changes
+
+| Change | Required Action |
+|--------|-----------------|
+| No new tables | None |
+| No new columns | None |
+| No new RPCs | None |
+| No new indexes | None |
+| **Realtime: `order_items`** | Run: `ALTER PUBLICATION supabase_realtime ADD TABLE public.order_items;` |
+
+### Redis Changes
+
+| Key | Purpose | Created By |
+|-----|---------|-----------|
+| `throttle:cron:abandoned-carts` | Cron throttle timestamp | Auto on first successful run |
+| `throttle:alert:low-stock` | Cron throttle timestamp | Auto on first successful run |
+
+### Cron Behavior Changes
+
+**v3.2 pattern:** Throttle is set **only on real success**. Failed runs leave the throttle unset → next cron tick retries automatically.
+
+**Impact on deployment:** None. The pattern is code-only. But verify after deploy:
+
+```bash
+# Trigger cron, should succeed and set throttle
+curl -H "Authorization: Bearer $CRON_SECRET" https://vestior.com/api/cron/daily
+
+# Trigger again, should be throttled
+curl -H "Authorization: Bearer $CRON_SECRET" https://vestior.com/api/cron/daily
+# → { "skipped": true, "reason": "throttled", "minutesSince": N }
+```
+
+### Auth Flow Changes
+
+**v3.2 pattern:** Password reset uses `token_hash` flow (was `code`).
+
+**Impact on deployment:**
+
+1. Add `/auth/reset-password` to Supabase redirect URLs:
+   ```
+   Authentication → URL Configuration → Redirect URLs:
+   - https://vestior.com/auth/reset-password
+   ```
+
+2. Verify Supabase email templates use `{{ .TokenHash }}`:
+   ```
+   Authentication → Email Templates → Reset Password:
+   - Use {{ .TokenHash }} instead of legacy {{ .ConfirmationURL }}
+   - Or ensure ConfirmationURL points to /auth/callback
+   ```
+
+3. Test password reset end-to-end:
+   - Forgot password → email → click link → **session created** → reset form loads
+
+### Editorial UI Changes
+
+**v3.2 pattern:** All pages redesigned with editorial design system.
+
+**Impact on deployment:**
+
+- No config changes
+- No database changes
+- Verify visually: all admin pages use bento cards, glass morphism, grouped sidebar
+- Verify performance: Lighthouse Desktop 97, Mobile 91 (unchanged)
+
+### PDF Print Export
+
+**New routes:** `/admin/exports/print/[type]`
+
+**Impact on deployment:**
+
+- No config changes
+- No new dependencies
+- Verify after deploy: `/admin/exports` → click Print on any card
+
+### Email Template Changes
+
+**v3.2 pattern:** All 10 templates redesigned with editorial style.
+
+**Impact on deployment:**
+
+- No config changes
+- No DB changes
+- Verify after deploy: trigger each email, check styling
+
+### Checkout Fix
+
+**v3.2 fix:** `order_placed` event now fires on both COD and Stripe success paths.
+
+**Impact on deployment:**
+
+- No config changes
+- Verify after deploy: place COD order → check MongoDB `events`; place Stripe order → check MongoDB `events`
+
+### Rollback Procedures
+
+**v3.2-specific rollbacks:**
+
+| Feature | Rollback Method |
+|---------|-----------------|
+| Editorial redesign | `git revert` (may conflict); or don't roll back |
+| PDF print export | Comment out Print buttons; or add redirect in `next.config.ts` |
+| Cron throttle-on-success | Revert code (⚠️ reintroduces bug) |
+| Token_hash auth flow | Revert to `exchangeCodeForSession` (⚠️ reintroduces bug) |
+
+**See [Rollback Procedure](#rollback-procedure) for details.**
+
+### Verification Checklist (v3.2-specific)
+
+After deploying v3.2:
+
+- [ ] Password reset works (session created)
+- [ ] PDF print export works (all 5 types)
+- [ ] Cron throttle only sets on success
+- [ ] `order_placed` event fires on both COD + Stripe
+- [ ] All 10 email templates render with new design
+- [ ] Editorial UI visible on all admin pages
+- [ ] Admin notifications use editorial toast
+- [ ] Cart empty state shows rotating messages
+- [ ] Homepage has parallax orbs + bento categories
+- [ ] No layout shifts (CLS = 0)
+
+---
+
 ## Further Reading
 
-- [Architecture Deep Dive](./architecture.md)
-- [Security Deep Dive](./security.md)
+- [Architecture Deep Dive](./architecture.md) — Includes PDF Print Export Pipeline + Editorial Design System
+- [Security Deep Dive](./security.md) — Includes Print Route Security + Cron Job Security
+- [API Reference](./api-reference.md) — Includes Print Routes section
+- [Database Design](./database.md) — Includes Redis Keys section
+- [Developer FAQ](./faq-developer.md) — Includes Print Export & Editorial UI section
 - [Vercel deployment docs](https://vercel.com/docs/deployments/overview)
 - [Supabase production guide](https://supabase.com/docs/guides/platform/going-into-prod)
 - [Stripe production checklist](https://stripe.com/docs/development/checklist)
@@ -1229,6 +1633,7 @@ As traffic grows, these are the levers to pull.
 ---
 
 <p align="center">
-  <em>Last updated: 2026-10-14 · Maintained by <a href="https://github.com/zainshah3464">@zainshah3464</a></em>
+  <em>Last updated: 2026-10-16 · Maintained by <a href="https://github.com/zainshah3464">@zainshah3464</a></em>
 </p>
-```
+
+---

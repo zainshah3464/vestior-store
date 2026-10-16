@@ -3,6 +3,8 @@
 > **Audience:** Product managers, QA, and anyone exploring what VESTIOR can do.
 >
 > **Structure:** Each feature has a use case, technical implementation, and edge cases.
+>
+> **Version:** This document reflects **v3.2.0** (Editorial redesign + PDF export + cron hardening).
 
 ---
 
@@ -39,7 +41,7 @@
   - [Reports](#reports)
   - [Emails](#emails)
   - [Audit Logs](#audit-logs)
-  - [Exports](#exports)
+  - [Exports (CSV + PDF Print)](#exports-csv--pdf-print)
   - [Users](#users)
 - [Marketing Features](#marketing-features)
   - [Recommendations](#recommendations)
@@ -49,6 +51,8 @@
   - [SEO](#seo)
   - [Analytics Tracking](#analytics-tracking)
   - [Session Tracking](#session-tracking)
+- [Design System (v3.2)](#design-system-v32)
+- [Email Templates](#email-templates)
 
 ---
 
@@ -59,20 +63,30 @@
 **Use case:** First impression. Showcase brand, guide discovery, drive conversion.
 
 **Sections:**
-1. **Hero** — Full-screen, image background, animated heading ("ART OF ELEGANCE"), CTA buttons
-2. **Category grid** — 8 categories with hover animations
-3. **Featured collection** — Curated products, horizontal scroll
+1. **Hero** — Full-screen editorial with adaptive imagery (mobile vs desktop)
+2. **Category grid** — 8 categories with bento layout + hover "Shop Now" pill
+3. **Featured collection** — Curated products, horizontal scroll with arrow navigation
 4. **New arrivals** — Latest products, horizontal scroll
 5. **Trending now** — Computed from tracking events
+
+**Editorial design (v3.2):**
+- **Ambient parallax orbs** — mouse-tracked depth on two orbs (opposite directions)
+- **Editorial corner crosshair marks** — top-left, bottom-right (desktop only)
+- **Vertical brand mark** — "VESTIOR · EST. 1968" on large screens (vertical writing mode)
+- **Refined scroll indicator** — mouse outline with bouncing dot + "SCROLL" label
+- **Bento category grid** — icon, hover "Shop Now" pill, animated gradient underline
+- **Sharp scroll rows** — removed edge fade gradients for clean cut-off (v3.2)
+- **Editorial section headers** — eyebrow pill + gradient-tinted headline + description
 
 **Technical:**
 - Server Component with `revalidate: 300`
 - `Promise.all` for parallel data fetching (featured, new arrivals, trending)
 - Hero images use `next/image` with `priority` + `sizes` for responsive
 - Below-fold sections lazy-loaded with `RecommendedRow`
+- LCP-critical elements have no entrance animation (h1, p)
 
 **Edge cases:**
-- Empty catalog → shows friendly "No products" message
+- Empty catalog → shows branded empty state with CTA
 - Trending fallback → newest products if no events
 - Slow network → ISR serves cached version
 
@@ -92,11 +106,13 @@
 - Streaming responses (word-by-word via SSE)
 - Typing indicator (three bouncing dots)
 - Suggested prompts on empty state
-- Simple markdown rendering (bold, lists)
+- Simple markdown rendering (bold, lists, code)
 - Clear conversation button
 - Auto-scroll to latest message
 - ESC to close
 - Session-scoped history (sessionStorage — cleared when tab closes)
+- Body scroll lock with scrollbar-width compensation
+- Full-screen on mobile, floating panel on desktop
 
 **Capabilities (via tools):**
 
@@ -149,6 +165,7 @@
 **Search:**
 - Debounced input (300ms) — no hammering
 - Matches product names via Postgres `ILIKE` (case-insensitive)
+- **Plural/singular variants** — "shirts" also matches "shirt" (v3.1)
 - Recent searches saved in localStorage (last 5)
 - Popular searches as quick-pick chips
 - Results show thumbnail + name + price + badges
@@ -161,6 +178,12 @@
 - **Sort** — Newest, Price ↓, Price ↑, Top Rated, Most Popular
 - **Active chips** — Remove each filter individually
 - **Mobile drawer** — Bottom sheet with all filters
+
+**Editorial design (v3.2):**
+- **Editorial header** — Eyebrow pill + bold title + live product count
+- **Active filter chips** — Removable pills with X icon
+- **Mobile filter drawer** — Spring-animated bottom sheet with drag handle
+- **Empty state** — Icon tile + halo glow + "Clear filters" CTA
 
 **Technical:**
 - Filters parsed from URL search params (`parseFilters`)
@@ -186,13 +209,22 @@
 2. **Info** — Name, category, price, compare price, discount %
 3. **Size selector** — XS through 3XL + Custom
 4. **Quantity picker** — 1 to available stock
-5. **Stock indicator** — Green "X in stock" or red "Out of stock"
-6. **Add to cart** — Large CTA
+5. **Stock indicator** — Green "In stock" / Amber "Only X left" / Red "Out of stock"
+6. **Add to cart** — Large CTA with "Added" flash state
 7. **Actions** — Wishlist toggle, Copy link, WhatsApp share
 8. **Description**
 9. **Trust badges** — Free shipping, Secure payment, Easy returns
 10. **Reviews section** — Average rating, breakdown, list, submit form
 11. **Recommendations** — "You May Also Like" + "Related Products" + "Recently Viewed"
+
+**Editorial design (v3.2):**
+- **Editorial breadcrumb** — Chevron separators, truncated current item
+- **Refined image gallery** — Nav arrows on hover, counter "1 / 5", badges for discount/NEW
+- **Size selector** — Active checkmark badge with `layoutId` animation
+- **Add to cart button** — States: default → "Added to Cart" (with checkmark) → default
+- **Wishlist heart** — Spring animation on toggle
+- **Copy link** — "Copy Link" → "Copied" flash state with checkmark
+- **Trust badges** — 3-column grid with icons + subtext
 
 **Technical:**
 - `generateMetadata` for dynamic OG images
@@ -205,7 +237,7 @@
 **Edge cases:**
 - Product deleted mid-session → `notFound()` (404)
 - Single image → arrows hidden
-- Out of stock → "Add to Cart" disabled
+- Out of stock → "Add to Cart" disabled, "Sold Out" overlay
 - Unauthenticated user writes review → prompt to sign in
 - User already reviewed → form pre-fills with existing (editing)
 
@@ -220,10 +252,27 @@
 - Quantity adjust (with stock clamp)
 - Remove individual items
 - Clear entire cart
-- **Coupon hint** — "Have a coupon? Apply it at checkout" (see [Coupon System](#coupon-system))
-- Order summary: subtotal, shipping, total
-- Free-shipping progress bar (add ₹X more for free shipping)
-- Empty state with CTA
+- **Order summary** — Subtotal, shipping, total
+- **Free-shipping progress bar** — "Add ₹X more for free shipping" with animated fill
+- **Savings callout** — "You're saving ₹X today" (if discounts)
+- **Trust strip** — Free Delivery, Secure Payment, 14-Day Returns
+
+**Editorial design (v3.2):**
+
+**Playful empty state (new in v3.2):**
+- **Rotating messages** — Every 3.5s: "Your cart is feeling a little lonely" → "Every great outfit starts with one click" → etc. (5 messages)
+- **Floating mini-icons** — Sparkles, Heart, Gift, Package with parallax drift
+- **Animated shopping bag** — Breathing motion, sparkle accent, pulsing halo
+- **Marketing benefits strip** — Free Shipping, 14-Day Returns, Secure Payment with icons
+- **Primary CTA** — "Start Shopping" with shine sweep
+- **Secondary link** — "Or explore new arrivals"
+
+**Active cart design:**
+- **Bento item cards** — Gradient background, hover border lift
+- **Quantity stepper** — Inline controls with stock clamping
+- **Savings indicator** — Per-item "You save ₹X on this item" note
+- **Mobile summary card** — Top summary before items (sticky feel)
+- **Desktop sticky sidebar** — 5-column summary with free shipping progress
 
 **Technical:**
 - Cart state in localStorage
@@ -233,7 +282,7 @@
 - Server sends order with only `{ product_id, quantity }` — server recalculates prices
 - `CartTracker` syncs cart to MongoDB (debounced 2s) for abandoned-cart recovery
 
-**Note (v3.1):** Cart page no longer handles coupon application. All coupons are validated server-side at checkout via the `validate_coupon` RPC. This prevents client-side coupon abuse.
+**Note (v3.1+):** Cart page no longer handles coupon application. All coupons are validated server-side at checkout via the `validate_coupon` RPC. This prevents client-side coupon abuse.
 
 **Edge cases:**
 - Product deleted while in cart → cart page shows placeholder
@@ -252,13 +301,21 @@
 3. **Payment** — COD (immediate) or Stripe Elements (card)
 
 **Features:**
-- **Progress tracker** — Visual step indicator
-- **Payment method** — COD / Card (extensible)
-- **Coupon** — Validated server-side via `validate_coupon` RPC
+- **Animated 2-step stepper** — Icons + checkmarks + pulse rings on active step
+- **Payment method selector** — COD / Card (extensible)
+- **Coupon field** — Validated server-side via `validate_coupon` RPC
 - **Order summary** — Sticky sidebar on desktop, top card on mobile
 - **Card payment** — Stripe Elements with night theme
 
-**Technical (v3.1 — atomic order placement):**
+**Editorial design (v3.2):**
+- **Animated stepper** — Rounded icon circles with checkmarks, connecting gradient bars
+- **Shipping form** — Editorial fields with eyebrow labels, staggered entrance
+- **Payment option cards** — Radio indicator with checkmark, active state with glow
+- **Coupon field** — Applied state shows emerald card with code + description + remove button
+- **Stripe Elements** — Custom variables (indigo primary, dark background, rounded)
+- **CTA buttons** — Shine sweep, semantic color per step (indigo → emerald)
+
+**Technical (v3.1+ — atomic order placement):**
 - Server Action `placeOrder` validates all inputs with Zod
 - **Single atomic transaction** (`place_order_atomic` v2) handles:
   - Stock lock + decrement
@@ -276,6 +333,9 @@
 **v3.1 Fixes:**
 - **No more partial state** — v1 split order + coupon + provider into 3 separate operations. v2 combines them into 1 transaction.
 - **No duplicate payment emails** — Webhook checks `payment_status` before queueing `payment-confirmed` email.
+
+**v3.2 Fix:**
+- **`order_placed` event now tracked on Stripe success** — COD path already tracked; Stripe path was missing the tracking call. Now both paths emit `order_placed` with the correct `paymentMethod`, `couponCode`, and `discountAmount`.
 
 **Edge cases:**
 - Not logged in → redirect to login
@@ -295,11 +355,20 @@
 **Features:**
 - **Order list** — All orders, newest first
 - **Real-time status** — Updates without refresh (Supabase Realtime)
-- **Filter tabs** — All / Pending / Processing / Shipped / Delivered / Cancelled
-- **Order card** — ID, date, status, items preview, total
+- **Filter tabs** — All / Pending / Processing / Shipped / Delivered / Cancelled (with counts)
+- **Order card** — ID, date, status, items preview (expandable), total
 - **Order detail** — Progress tracker, items, address, payment info
 - **Invoice** — Printable view with print-optimized CSS
 - **Refresh button** — Manual refresh for impatient users
+
+**Editorial design (v3.2):**
+- **Order card** — Status-tinted ambient glow, expandable items, payment info row
+- **Order detail progress tracker** — Animated steps with pulse rings on current, checkmarks on complete
+- **Timeline card** — Items with thumbnails, per-line totals, subtotal/shipping/total breakdown
+- **Shipping address card** — Icon-led fields (User, Phone, MapPin)
+- **Payment card** — Method, status pill, "Paid on" date
+- **Empty state** — Animated package icon with halo glow + "Start Shopping" CTA
+- **Filter tabs** — Sticky with count badges, active glow
 
 **Technical:**
 - `OrdersRealtime` subscribes to Supabase changes on `orders` table
@@ -329,6 +398,13 @@
 - **Verified badge** — For users with purchase history
 - **Moderation note** — "Pending approval" message after submit
 
+**Editorial design (v3.2):**
+- **Big average rating** — 6xl number with star row + review count
+- **Histogram** — Animated bars with star labels
+- **Stats sidebar** — Sticky on desktop with CTA
+- **Review cards** — Avatar + name + verified badge + star row + title + comment + date
+- **Submit form** — Interactive star rating (30px), live rating label, character progress bar
+
 **Technical:**
 - One review per user per product (UNIQUE constraint)
 - Rating 1-5, comment 10-2000 chars
@@ -354,8 +430,14 @@
 - **Guest mode** — localStorage-based
 - **Login merge** — Guest wishlist auto-merged on login
 - **Wishlist page** — Grid with "Add to Cart" + "Remove"
-- **Navbar badge** — Live count
+- **Navbar badge** — Live count with pulse
 - **Optimistic UI** — Instant feedback, rollback on error
+
+**Editorial design (v3.2):**
+- **Heart toggle on cards** — Red accent when active, spring animation
+- **Empty state** — Animated heart tile with sparkle accent + halo glow + "Browse Products" CTA
+- **Wishlist grid** — 2-column mobile → 4-column desktop, hover scale on image, discount badge
+- **Remove button** — Red tinted with trash icon, hover brightening
 
 **Technical:**
 - Supabase `wishlists` table (user_id, product_id, created_at)
@@ -365,7 +447,7 @@
 
 **Edge cases:**
 - Empty wishlist → friendly message with "Browse Products" CTA
-- Product out of stock → still in wishlist, "Out of Stock" badge
+- Product out of stock → still in wishlist, "Sold Out" overlay
 - Same product added twice → deduped server-side
 - Rapid toggle clicks → debounced client-side (best-effort)
 
@@ -379,6 +461,14 @@
 - Name, phone, address (line1, line2, city, state, pincode)
 - Save button with loading state
 - Profile auto-fills checkout address
+- Quick links to Orders, Wishlist, Shop
+
+**Editorial design (v3.2):**
+- **Banner card** — Gradient indigo/violet banner with subtle grid pattern
+- **Avatar** — Floating 2xl avatar with online dot, offset below banner
+- **Quick links row** — 3-column grid with icon + label (Orders, Wishlist, Shop)
+- **Form sections** — Grouped with eyebrow labels, staggered field entrance
+- **Skeleton loader** — Matching card shapes for loading state
 
 **Technical:**
 - Supabase `profiles` table (RLS: user sees own)
@@ -403,7 +493,13 @@
 - **Google OAuth** — One-click
 - **Logout** — Clears session
 - **Password reset** — Full flow (see below)
-- **Existing email detection** — v3.1 — Signup shows "account exists" instead of silently failing
+- **Existing email detection** — Signup shows "account exists" instead of silently failing
+
+**Editorial design (v3.2):**
+- **Login/Signup pages** — 3-column ambient background orbs + gradient icon tile + shimmer CTA
+- **Password input** — Show/hide toggle with spring animation
+- **Strength meter** — 4-segment animated bar + checklist + status footer
+- **Google button** — Full-width with proper SVG logo
 
 **Technical:**
 - Supabase Auth with HTTP-only cookies
@@ -425,20 +521,22 @@
 
 **Use case:** Customer forgot password, needs to regain access without contacting support.
 
-**Flow:**
+**Flow (v3.2 — `token_hash` flow):**
 1. **`/auth/forgot-password`** — User enters email
-2. **Supabase** — Sends reset link with one-time code
-3. **`/auth/reset-password?code=...`** — User clicks link from email
-4. **Server-side** — Exchange code for session
-5. **Form** — User sets new password
-6. **Redirect** — Auto-redirect to home (user is signed in)
+2. **Supabase** — Sends reset link with `token_hash` + `type=recovery`
+3. **`/auth/callback?token_hash=...&type=recovery`** — User clicks link from email
+4. **Server-side** — `verifyOtp({ token_hash, type })` creates a **real session**
+5. **Redirect** — Server redirects to `/auth/reset-password`
+6. **Form** — User sets new password (session is active)
+7. **Update** — `supabase.auth.updateUser({ password })`
+8. **Redirect** — Auto-redirect to home (user is signed in)
 
 **Features:**
 - **Show/hide password toggle** — On both reset pages
 - **Password strength meter** — Visual feedback (Very Weak → Very Strong)
 - **Real-time validation** — Length, lowercase, uppercase, number
 - **Match confirmation** — Real-time "Passwords match" indicator
-- **Existing session detection** — If code is invalid/expired, redirects to forgot-password with error
+- **Existing session detection** — If no session after callback, redirects to forgot-password with error
 
 **Password requirements:**
 - Minimum 8 characters
@@ -449,22 +547,28 @@
 
 **Technical:**
 - **`/auth/forgot-password`** — Client page, calls `supabase.auth.resetPasswordForEmail()`
-- **`/auth/reset-password`** — Server page, exchanges `code` for session via `exchangeCodeForSession()`
+- **`/auth/callback`** — Handles both flows:
+  - `token_hash` + `type` → password reset + email confirm (v3.2 preferred)
+  - `code` → OAuth Google login (legacy, still supported)
+- **`/auth/reset-password`** — Server page, verifies session exists, renders form
 - **`ResetPasswordForm.tsx`** — Client component, calls `supabase.auth.updateUser({ password })`
 - **`checkPasswordStrength()`** — Pure function in `lib/password.ts`
 - **`PasswordInput`** — Reusable show/hide component
 - **`PasswordStrengthMeter`** — Visual feedback with checklist
 
+**v3.2 Fix:**
+- **Session missing bug** — The old `code`-based flow was leaving users without a session after clicking the email link. Users saw "session expired" when trying to reset. Fixed by switching to `token_hash` flow which creates a real session in one atomic call.
+
 **Edge cases:**
-- Invalid/expired code → redirect to forgot-password with error
+- Invalid/expired `token_hash` → redirect to forgot-password with error
 - Code already used → redirect to forgot-password
-- No session after exchange → redirect to forgot-password
+- No session after callback → redirect to forgot-password
 - Password doesn't meet requirements → submit disabled
 - Passwords don't match → submit disabled
 - Update fails → toast error, form stays
 
 **Security:**
-- Code never exposed to client JS (server-side exchange)
+- `token_hash` never exposed to client JS (server-side exchange)
 - One-time use (Supabase-managed TTL)
 - HTTP-only cookies for session
 - Rate-limited by Supabase
@@ -482,6 +586,7 @@
 - **30-day dismissal cooldown** — After "Not now", silent for 30 days
 - **Hidden in standalone mode** — No prompt if already installed
 - **iOS instructions** — "Add to Home Screen" via Safari share menu
+- **Editorial design (v3.2)** — Glass morphism card with app icon, benefits strip (Fast, Offline), Install/Not now buttons
 
 **Offline Support:**
 - **Service worker** — Caches pages, images, and static assets
@@ -510,6 +615,7 @@
   - Images → Stale-while-revalidate
   - HTML pages → Network-first with cache fallback
   - `/admin/*`, `/api/*`, `/auth/*` → Skip (always live)
+  - `/admin/exports/print/*` → Skip (print views must be fresh) (v3.2)
 - **Cache versioning:** Bump `CACHE_VERSION` to invalidate old caches on deploy
 - **Updates:** Hourly check for new service worker
 - **Offline page:** Pre-cached on SW install
@@ -556,13 +662,21 @@
 
 **Recent Activity:**
 - **Recent Orders** — Last 5 orders with customer, amount, status
-- **Recent Activity Timeline** — Last 8 admin actions with actor
+- **Recent Activity Timeline** — Last 8 admin actions with actor + action label
+
+**Editorial design (v3.2):**
+- **Bento stat cards** — Left accent bar + ambient glow + icon tile + eyebrow + trend badge
+- **Business health cards** — Icon in tinted tile + link with hover translate
+- **Animated background shapes** — Subtle floating orbs (blur-60px)
+- **Command Center eyebrow** — `Activity` icon + tracking-widest label
+- **Recent orders table** — Status pills, monospace order IDs, tabular totals
+- **Activity timeline** — Dots + connecting lines, action labels mapped to human text
 
 **Technical:**
 - Single RPC call (`get_dashboard_stats`) for base aggregates
 - Parallel data fetch with `Promise.all`
 - Recharts loaded dynamically (admin-only chunk)
-- `getDashboardSummary()` — new comprehensive summary
+- `getDashboardSummary()` — comprehensive summary
 - `getRecentActivity(8)` — audit log highlights
 
 **Edge cases:**
@@ -587,16 +701,13 @@
 | **Low Stock** | `products.stock < 10` | → `/admin/products` |
 | **Failed Emails** | `email_logs.status = 'failed'` today | → `/admin/emails?status=failed` |
 
-**Visual:**
-- Count badge (large number)
-- Icon (color-coded by urgency)
-- Hint text ("awaiting approval", "3 items at risk")
-- Hover: arrow icon appears
-
-**If all clear:**
-- Shows "✓ All caught up" message
-- Cards show `0` in muted gray
-- Border removed
+**Editorial design (v3.2):**
+- **Count badges** — Large tabular numerals
+- **Color-coded icons** — Semantic accent per card type
+- **Pulse indicator** — Animated dot when items are pending
+- **Hint text** — "awaiting approval", "3 items at risk"
+- **Hover arrow** — Slides in on hover
+- **All-clear state** — Green checkmark chip + "All caught up" message
 
 **Technical:**
 - Data from `getDashboardSummary()`
@@ -618,6 +729,13 @@
 - **Create** — Multi-image upload, all fields
 - **Edit** — Same as create + existing image management
 - **Delete** — (Not exposed; use `is_active = false`)
+
+**Editorial design (v3.2):**
+- **Stats row** — 4 bento cards (Total, Active, Low Stock, Out of Stock)
+- **Search + filter bar** — Search input + category dropdown
+- **Product table** — Thumbnail + name + external link, category, price, stock with badge, active status, edit link
+- **Stock badges** — "Low" (amber) / "Out" (red)
+- **Empty state** — Icon + "Add Product" CTA
 
 **Technical:**
 - Images uploaded to Supabase Storage → public URLs
@@ -646,6 +764,11 @@
 - **Audit trail** — Shows every admin action on this order
 - **Payment timeline** — Webhook events from MongoDB
 
+**Editorial design (v3.2):**
+- **Order table** — Monospace IDs, status pills, payment dot indicators
+- **Order status updater** — Custom select with chevron/loader
+- **Order detail page** — Progress tracker + items + shipping + payment + admin actions
+
 **Technical:**
 - Status updates trigger customer emails automatically
 - Refund calls Stripe, then updates order status
@@ -667,6 +790,12 @@
 - **Filters** — Provider, status, date range, search
 - **Detail modal** — Shows webhook timeline from MongoDB
 - **Refund** — Direct from modal
+
+**Editorial design (v3.2):**
+- **Stats row** — 4 bento cards (Total Revenue, Today, Success Rate, Stripe Revenue)
+- **Payment table** — Provider icons (Card/Banknote), amount, status pill
+- **Detail modal** — Provider hero + amount hero + webhook event timeline
+- **Refund button** — Red accent with confirmation
 
 **Technical:**
 - Data merged from Supabase (order info) + MongoDB (webhook events)
@@ -690,6 +819,11 @@
 - **Reject** — Hides from storefront
 - **Delete** — Removes permanently
 
+**Editorial design (v3.2):**
+- **Stats row** — 4 bento cards with star accent on Total
+- **Tab chips** — Icon + label + count badge
+- **Review cards** — Avatar + name + verified badge + star row + comment + status pill + actions
+
 **Technical:**
 - Approving triggers `revalidatePath('/products/[id]')`
 - Schema.org markup updates automatically
@@ -708,6 +842,12 @@
 - **Copy code** — One-click
 - **Delete** — Removes permanently
 - **Stats** — Total, active, expired, discount given
+
+**Editorial design (v3.2):**
+- **Stats row** — 4 bento cards (Total, Active, Expired, Discount Given)
+- **Coupon modal** — Full-screen on mobile, centered on desktop with spring animation
+- **Coupon table** — Monospace codes, copy button, discount type icon (Percent/IndianRupee), usage bars, expiry, status pill, actions
+- **Toggle button** — Power icon, semantic color
 
 **Technical:**
 - Percent discounts capped at 100%
@@ -733,6 +873,16 @@
 - **Coupon** — Shows auto-generated code if sent
 - **Recovered link** — Deep-links to recovered order
 
+**Editorial design (v3.2):**
+- **Stats row** — 4 bento cards (Abandoned, Recovered, Lost Value, Reminders Sent)
+- **Cart cards** — Avatar + user info + subtotal hero + metrics grid (Abandoned, Emails Sent, Last Reminder, Coupon)
+- **Item chips** — Horizontal scroll of product names with quantities
+- **Recovered badge** — Emerald tinted with checkmark
+
+**v3.2 Cron fixes:**
+- **Param order corrected** — `findAbandonedCarts(minAgeHours, maxReminders, limit)` — was passing args wrong, silently limiting reminders.
+- **Throttle only set on success** — Failed runs leave the throttle unset, so the next cron retries automatically.
+
 **Technical:**
 - Cart snapshots synced from client (debounced 2s)
 - Cron runs hourly to find carts 2+ hours old
@@ -754,6 +904,15 @@
 - **Devices** — Desktop / mobile / tablet breakdown
 - **Traffic sources** — Referrer domains
 - **Date range toggle** — Last 7d / 30d / 90d
+
+**Editorial design (v3.2):**
+- **Date range pills** — Segmented control with active glow
+- **Stats row** — 4 bento cards (Live Users, Page Views, Orders Today, Conversion Rate)
+- **Funnel** — Animated bars with counts + percentages
+- **Top products** — Rank badges (gold/silver/bronze) + view/add/order stats
+- **Devices breakdown** — Animated progress bars with device icons
+- **Traffic sources** — Animated bars with referrer names
+- **Live users widget** — Auto-refresh with pulse dot + viewer list
 
 **Technical:**
 - Events in MongoDB `events` collection
@@ -791,6 +950,14 @@
 - Units sold, order count, revenue
 - Limited to shipped + delivered orders
 
+**Editorial design (v3.2):**
+- **Section header** — Rose-tinted icon tile + title + description
+- **Sortable headers** — Arrow up/down icon, active glow, direction indicator
+- **Abandoned filter chip** — Amber tinted with pulse dot count
+- **Conversion rate pills** — Color-coded (green > 5%, amber 1-5%, red < 1%)
+- **Abandoned row highlight** — Amber bg with pulse dot before product name
+- **Rank badges** — Top 3 gold/silver/bronze styling
+
 **Technical:**
 - Merged data: MongoDB `events` + Supabase `order_items`
 - `getProductEventMetrics()` — views, cart adds, orders from events
@@ -822,6 +989,12 @@
   - Duration
   - Last seen (relative time)
 - **Details link** → Session drill-down
+
+**Editorial design (v3.2):**
+- **Stats row** — 6 bento cards (Live Now, Guests, Users, New, Returning, Orders)
+- **Visitor type tabs** — Icon + label + color-coded active state
+- **Search bar** — Full-width with clear button
+- **Visitor table** — Avatar + name/email, activity icons with counts, device icon, duration, relative last seen
 
 **Technical:**
 - MongoDB `sessions` collection
@@ -883,6 +1056,15 @@
 **Orders Placed:**
 - Grid of order IDs (clickable → admin order detail)
 
+**Editorial design (v3.2):**
+- **Back link** — Chevron + "Back to Visitors"
+- **Session header hero** — Large avatar with online dot + name + type badge + session ID
+- **6 stat cards** — Bento style with semantic accent colors
+- **Timeline card** — First seen, last seen, duration, ended_with badge
+- **Device card** — Device icon + OS + browser + country + city
+- **Referrer card** — Source badge + raw URL in monospace
+- **Paths/Products/Orders** — Numbered lists + grid chips
+
 **Technical:**
 - MongoDB `sessions` collection
 - Query by `session_id`
@@ -924,6 +1106,12 @@
 - Referrer source
 - Order count + revenue
 - Paths visited (first 5)
+
+**Editorial design (v3.2):**
+- **Back link** — Chevron + "Back to Users"
+- **Profile header** — Large avatar with online dot + name + contact row + role badge
+- **6 aggregate stats** — Bento cards with icon tiles
+- **Session history list** — Chronological list with device icon, ended_with badge, returning badge, meta row
 
 **Technical:**
 - MongoDB `sessions` collection
@@ -967,6 +1155,14 @@
 - Ranked table
 - Units sold, order count, revenue
 
+**Editorial design (v3.2):**
+- **Range pills** — Segmented control with active glow
+- **4 stat cards** — Trend badges with up/down arrows + tabular numbers
+- **Revenue chart** — Area chart with emerald gradient fill
+- **Category chart** — Bar chart with multi-color palette
+- **Provider breakdown** — Progress bars with gradient fills
+- **Status grid** — 5 columns with semantic color per status
+
 **Technical:**
 - Single RPC call (`get_sales_report`) for all aggregations
 - Only `shipped` and `delivered` orders count toward revenue
@@ -988,6 +1184,12 @@
 - **Stats** — Total, sent, failed, queued
 - **Table** — Template, recipient, status, sent time, message ID
 - **Filters** — By template, status, search
+- **All 10 templates redesigned (v3.2)** with editorial style
+
+**Editorial design (v3.2):**
+- **Stats row** — 4 bento cards (Total, Sent, Failed, Queued)
+- **Filter bar** — Search + template dropdown + status dropdown
+- **Email table** — Blue icon tile + monospace template, recipient email, status pill with icon, timestamp, message ID with copy button
 
 **Technical:**
 - Logs stored in MongoDB `email_logs`
@@ -996,6 +1198,9 @@
 
 **v3.1 fixes:**
 - **Stuck queued emails** — QStash failures now mark logs as `failed` with the error message
+
+**v3.2 redesign:**
+- All 10 templates redesigned with theme-matched editorial style (see [Email Templates](#email-templates) below)
 
 ---
 
@@ -1015,6 +1220,12 @@
 - `product.create`, `product.update`, `product.delete`
 - `review.approved`, `review.rejected`, `review.delete`
 
+**Editorial design (v3.2):**
+- **Stats row** — 3 bento cards (Total Logs, Last 24h, Top Actor)
+- **Action pills** — Monospace with colored dot per action type
+- **Audit table** — Action pill, actor avatar + email, target type + ID, timestamp
+- **Filter bar** — Search + action dropdown + target type dropdown
+
 **Technical:**
 - MongoDB `audit_logs` collection
 - No TTL (kept forever)
@@ -1023,23 +1234,62 @@
 
 ---
 
-### Exports
+### Exports (CSV + PDF Print)
 
-**Use case:** Get data for accounting, marketing, backups.
+**Use case:** Get data for accounting, marketing, backups — as CSV or PDF.
 
 **Features:**
+
+**CSV Export:**
 - **Orders CSV** — Filterable by date, status, provider
 - **Payments CSV** — All payment transactions
 - **Emails CSV** — Delivery history
 - **Users CSV** — All profiles
 - **Audit CSV** — Admin actions
 
+**PDF Print Export (v3.2 — NEW):**
+- **Dedicated print routes** — `/admin/exports/print/[type]`
+- **5 export types** — Orders, Payments, Emails, Users, Audit
+- **A4 landscape** — Optimized for wide tables
+- **Auto-repeating headers** — `thead { display: table-header-group }`
+- **Row-level page-break** — `tr { page-break-inside: avoid }`
+- **Filter-aware** — Date range, status, provider preserved
+- **Zero dependencies** — Uses browser's native "Print → Save as PDF"
+
+**Editorial design (v3.2):**
+- **Filter panel** — 4-column grid (From, To, Status, Provider) with active filter chips
+- **Export cards** — 5 cards with left accent bar + icon tile + description + Download CSV + Print buttons
+- **Info banner** — "10,000 row limit" with icon
+- **Print view** — White A4-optimized document with VESTIOR brand header, filter chips, data table, record count footer
+
 **Technical:**
+
+**CSV Export:**
 - Server-side CSV builder (no dependencies)
 - UTF-8 BOM for Excel compatibility
 - 10,000 row limit per export
 - Filterable by date range
 - Admin-only (checked server-side)
+
+**PDF Print Export:**
+- Server Component with admin verification
+- Print-optimized CSS (`@media print`)
+- `@page { size: A4 landscape; margin: 10mm }`
+- Only `#export-print-area` visible during print
+- Table headers auto-repeat on page breaks
+- Rows don't split across pages
+- Filter state preserved via URL params
+
+**Why zero-dependency PDF:**
+- No Puppeteer (300MB Chromium binary, 3-8s cold start, not serverless-compatible)
+- No PDF library (200-500KB bundle, manual layout)
+- Browser's native print dialog is the most powerful PDF generator available
+- Admin gets full control (paper size, margins, headers, footers)
+
+**Edge cases:**
+- No data in range → empty state with icon
+- Filter chips clear button → resets filters
+- Print route direct access → server redirects if not admin
 
 ---
 
@@ -1054,6 +1304,14 @@
 - **Role badge** — Admin / Customer / Super Admin
 - **Change role** — (super-admin only) Promote/demote via dropdown
 - **Activity link** → User activity timeline
+
+**Editorial design (v3.2):**
+- **User table** — Avatar with online dot + name/email, role badge, join date, actions
+- **Detail modal** — Full-screen on mobile, centered on desktop with spring animation
+- **Modal hero** — Large avatar with online dot, name, email, role badge
+- **Info blocks** — Icon + label + value rows
+- **Address section** — Icon header + address lines
+- **Role dropdown** — Only for super admins, disabled for self/other super admins
 
 **Technical:**
 - Reads from `profiles` table
@@ -1079,6 +1337,12 @@
 3. **Trending Now** — Top-viewed in last 7 days
 4. **Recently Viewed** — User's own history (localStorage)
 
+**Editorial design (v3.2):**
+- **Section header** — Bold title + subtitle + arrow navigation on hover
+- **Scroll rows** — Arrow nav buttons on both sides, progress indicator bar
+- **Sharp boundaries** — Removed edge fade gradients (v3.2)
+- **Product cards** — Same as grid cards
+
 **Technical:**
 - Related: DB query with category + price filters
 - Also-like: DB query excluding current category
@@ -1089,6 +1353,8 @@
 - Product has no category → skips related, still shows also-like
 - User just arrived → no recently viewed row (hidden)
 - No trending yet → fallback to newest products
+
+**v3.2 Note:** Edge fade gradients removed from all scrollable rows (HomeProductSection, ProductRow, RecommendedRow) for consistent sharp cut-off.
 
 ---
 
@@ -1111,6 +1377,10 @@
 - Auto-coupon is idempotent (one per user)
 - **Max 3 reminders**, 7 days apart
 
+**v3.2 Fixes:**
+- **Param order corrected** — `findAbandonedCarts(minAgeHours, maxReminders, limit)` — was passing args wrong.
+- **Throttle only set on success** — Failed runs leave the throttle unset, so the next cron retries automatically.
+
 **Performance:**
 - Typical recovery rate: 5-15%
 - Average recovered order: ~₹2,000
@@ -1132,7 +1402,7 @@
 - **Active toggle** — Instant enable/disable
 - **Auto-generated** — For cart recovery
 
-**Technical (v3.1 — atomic):**
+**Technical (v3.1+ — atomic):**
 - Validation via `validate_coupon` RPC
 - **Redemption happens inside `place_order_atomic` v2** — single transaction with stock lock, order insert, coupon usage increment, and redemption record
 - No more partial state (v1 had coupon consumed but discount missing)
@@ -1159,6 +1429,7 @@
 - Last order ID (if any)
 - "Shop New Arrivals" CTA
 - "Browse All Products" CTA
+- **Editorial design (v3.2)** — Violet accent theme
 
 **Technical:**
 - Triggered by `/api/auth/login-success` (called after successful login)
@@ -1238,6 +1509,9 @@
 - `navigator.sendBeacon` on page unload (survives navigation)
 - Fallback to fetch if beacon unsupported
 
+**v3.2 Fix:**
+- **`order_placed` event now tracked on Stripe success** — COD path already tracked; Stripe path was missing the tracking call.
+
 ---
 
 ### Session Tracking
@@ -1292,6 +1566,98 @@
 
 ---
 
+## Design System (v3.2)
+
+**Use case:** Cohesive, maintainable, brand-aligned UI across 120+ files.
+
+**Design tokens:**
+
+**Surfaces:**
+- Background: `#0A0A0A`
+- Card gradient: `#131313 → #0E0E0E`
+- Border: `rgba(255,255,255,0.06)`
+- Border hover: `rgba(255,255,255,0.12)`
+
+**Text hierarchy:**
+- Headlines: `text-white font-bold tracking-[-0.02em]`
+- Body: `text-gray-300 / text-gray-400`
+- Muted: `text-gray-500 / text-gray-600`
+- Eyebrow: `text-[10px] tracking-[0.18em] uppercase font-semibold`
+- Numbers: `tabular-nums`
+- IDs: `ui-monospace tabular-nums`
+
+**Semantic accents:**
+| Purpose | Color |
+|---------|-------|
+| Primary | Indigo `#6366F1` |
+| Success | Emerald `#10B981` |
+| Warning | Amber `#F59E0B` |
+| Danger | Red `#EF4444` |
+| Info | Violet `#8B5CF6` |
+| Secondary | Teal `#14B8A6` |
+| Neutral | Gray `#6B7280` |
+
+**Motion curves:**
+- Easing: `[0.22, 1, 0.36, 1]`
+- Stagger children: `0.06s`
+- Duration: fast 0.2s / normal 0.4s / slow 0.6s
+
+**Signature patterns:**
+- **Bento stat cards** — left accent bar + ambient glow + icon tile + eyebrow + big number + subtitle
+- **Grouped sidebar navigation** — Overview / Commerce / Audience / Operations
+- **Empty states** — icon tile + halo glow + title + description + CTA
+- **Status pills** — dot + icon + label, semantic color
+- **Eyebrow pills** — `text-[10px] tracking-[0.18em] uppercase`
+- **Shine sweeps** — animated highlight on primary CTAs
+- **Skeleton loaders** — matching content shape with `animate-pulse`
+- **Ambient orbs** — `blur-[70px]` accent-colored background glow
+- **Timeline dots** — pulse-ping for live, solid for past
+
+**Why a formal design system:**
+- **Consistency** — Every admin page feels like the same product
+- **Maintainability** — Change one token, update 120+ files
+- **Accessibility** — Semantic colors have tested contrast ratios
+- **Onboarding** — New contributors productive in a day
+- **Performance** — Pure CSS, zero runtime overhead
+
+---
+
+## Email Templates
+
+All 10 templates redesigned in v3.2 with **theme-matched editorial style:**
+
+| Template | Accent Color | Purpose |
+|----------|-------------|---------|
+| `welcome` | Blue | On signup |
+| `welcome-back` | Violet | Returning user (throttled) |
+| `order-placed` | Blue | On order creation |
+| `payment-confirmed` | Emerald | On payment success |
+| `payment-failed` | Red | On payment failure |
+| `order-shipped` | Violet | On status update (with timeline) |
+| `order-delivered` | Emerald | On delivery |
+| `order-cancelled` | Red | On cancellation |
+| `low-stock-alert` | Amber | Admin notification |
+| `abandoned-cart` | Violet | Recovery email with coupon |
+
+**Common editorial structure:**
+- Dark `#0A0A0A` background
+- Brand masthead with accent-colored dot (`● VESTIOR`)
+- Accent eyebrow badge (uppercase, tracking-widest)
+- Semantic accent color per template
+- Hairline accent dividers (`rgba(accent, 0.25)`)
+- Gradient CTA buttons with box-shadow
+- Trust footer with email reply prompt
+- Auto-computed copyright year
+- Preview text (inbox subject line)
+
+**Rendering pipeline:**
+- React Email components → HTML via `@react-email/render`
+- QStash queue → `/api/jobs/send-email` → Gmail SMTP
+- Dev mode: direct send (bypasses QStash)
+- Logs stored in MongoDB `email_logs`
+
+---
+
 ## Further Reading
 
 - [Architecture Deep Dive](./architecture.md)
@@ -1303,6 +1669,8 @@
 ---
 
 <p align="center">
-  <em>Last updated: 2026-10-14 · Maintained by <a href="https://github.com/zainshah3464">@zainshah3464</a></em>
+  <em>Last updated: 2026-10-16 · Maintained by <a href="https://github.com/zainshah3464">@zainshah3464</a></em>
 </p>
 ```
+
+---

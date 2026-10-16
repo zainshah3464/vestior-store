@@ -3,6 +3,8 @@
 > **Audience:** Security engineers, hiring managers, and anyone evaluating VESTIOR for production use.
 >
 > **Scope:** Threat model, defense layers, implementation details, and incident response.
+>
+> **Version:** This document reflects **v3.2.0** (Editorial redesign + PDF export + cron hardening).
 
 ---
 
@@ -14,6 +16,7 @@
 - [Authorization](#authorization)
 - [Row-Level Security (RLS)](#row-level-security-rls)
 - [Server Action Security](#server-action-security)
+- [Print Route Security (NEW v3.2)](#print-route-security-new-v32)
 - [AI Chatbot Security](#ai-chatbot-security)
 - [Session Tracking Privacy](#session-tracking-privacy)
 - [PWA Security](#pwa-security)
@@ -22,6 +25,7 @@
 - [Immutability Guards](#immutability-guards)
 - [Rate Limiting](#rate-limiting)
 - [Idempotency](#idempotency)
+- [Cron Job Security (v3.2)](#cron-job-security-v32)
 - [Webhook Security](#webhook-security)
 - [Secret Management](#secret-management)
 - [Privacy: IP Hashing](#privacy-ip-hashing)
@@ -48,6 +52,8 @@
 | Session data | Medium | MongoDB `sessions` |
 | AI inference quota | Low | Groq (1K req/day free tier) |
 | Customer chat history | Medium | Client `sessionStorage` (never server-stored) |
+| **Admin reports (v3.2)** | **High** | **Print routes — orders, payments, users, audit** |
+| **Audit trail (v3.2)** | **High** | **MongoDB `audit_logs` (compliance)** |
 
 ### Threat Actors
 
@@ -70,6 +76,7 @@
 - **Cron endpoints** — low-stock, abandoned carts, daily, keep-alive
 - **API routes** — track, export, cart sync, recommendations
 - **PWA service worker** — cached pages and assets
+- **Print routes (v3.2)** — `/admin/exports/print/[type]` — PDF-ready exports of sensitive data
 
 ### Risk Register
 
@@ -94,6 +101,10 @@
 | **Snapshot tampering** | Low | High | Postgres trigger blocks UPDATE |
 | **Role migration data loss** | Low | High | Whitelist + backup table + atomic |
 | **PWA cache poisoning** | Low | Medium | Same-origin only, skip auth routes |
+| **Print route exposure (v3.2)** | Low | High | Server-side admin verification before render |
+| **CSV/PDF data leak (v3.2)** | Low | High | Admin-only routes, 10K row cap |
+| **Cron repeated failure (v3.2)** | Medium | Low | Throttle-on-success prevents infinite retries |
+| **Password reset session loss (v3.2)** | Medium | Medium | `token_hash` flow — fixed in v3.2 |
 
 ---
 
@@ -111,6 +122,10 @@ flowchart TB
     H --> I[Layer 8: Immutability Guard — Trigger]
     I --> J[Layer 9: Audit Logging]
     J --> K[Layer 10: Response]
+    
+    L[Print Route Guard — v3.2] --> M[Admin Verify Before Fetch]
+    M --> N[Filter-Aware Data Fetch]
+    N --> O[Print-Optimized Render]
 ```
 
 **Principle:** No single layer is trusted. If Layer N fails, Layer N+1 must catch it.
@@ -166,6 +181,47 @@ ERROR: orders.items is an immutable snapshot (order <order-id>)
 ```
 
 **Result:** The update is rejected at the DB level. No code change can bypass this.
+
+### Example 4 — Print route exposure (v3.2)
+
+A non-admin user attempts to access a print view:
+
+```bash
+curl https://vestior.vercel.app/admin/exports/print/orders
+```
+
+**Layer 3 (Route Authorization)** — the print route is a **Server Component** that verifies the caller's role **before** any data is fetched:
+
+```typescript
+const { data: { user } } = await supabase.auth.getUser()
+if (!user) redirect('/auth/login')
+
+const { data: profile } = await supabaseAdmin
+  .from('profiles')
+  .select('role')
+  .eq('id', user.id)
+  .single()
+
+if (profile?.role !== 'admin') redirect('/')
+```
+
+**Result:** The attacker is redirected to `/` before any order data loads. No sensitive data reaches the browser.
+
+### Example 5 — Cron failure loop (v3.2)
+
+A previous version had a subtle bug: if `queueEmail` failed inside the cron, the throttle was still set — the alert would never fire.
+
+**Layer 7 (Idempotency)** — the throttle key is now set **only on real success**:
+
+```typescript
+const logId = await queueEmail(...)
+if (!logId) {
+  return NextResponse.json({ error: 'queue failed' }, { status: 500 })
+}
+await redis.set(THROTTLE_KEY, Date.now())
+```
+
+**Result:** Failed runs leave the throttle unset → next cron tick retries. Automatic, idempotent recovery.
 
 ---
 
@@ -225,16 +281,46 @@ For Google login, we use PKCE (Proof Key for Code Exchange):
 - Verification link includes a one-time code with short TTL.
 - **Existing-email detection** (v3.1): Signup detects when Supabase returns a user with empty `identities` array. This prevents silent account creation for existing emails. The user is told to sign in or reset instead.
 
-### Password reset flow
+### Password reset flow (v3.2 — `token_hash`)
+
+**The v3.1 bug:** The old `code`-based flow was leaving users without a session after clicking the email link. Users saw "session expired" when trying to reset.
+
+**The v3.2 fix:** Switched to the `token_hash` flow which creates a session in one atomic call.
+
+**Flow:**
 
 1. User enters email at `/auth/forgot-password`.
-2. Supabase sends reset link with one-time `code`.
-3. User clicks link → `/auth/reset-password?code=...`.
-4. Server-side: `exchangeCodeForSession(code)` → sets session cookie.
-5. User sets new password with `updateUser({ password })`.
-6. Strong password enforced (8+ chars, mixed case, number).
+2. Supabase sends reset link with `token_hash` + `type=recovery`.
+3. User clicks link → `/auth/callback?token_hash=...&type=recovery`.
+4. Server-side: `verifyOtp({ token_hash, type })` → **creates a real session**.
+5. Server redirects to `/auth/reset-password`.
+6. User sets new password with `updateUser({ password })`.
+7. Strong password enforced (8+ chars, mixed case, number).
 
-**Why server-side exchange?** The code is sensitive. Never expose it to the client's JS bundle. Server-side exchange also prevents the code from being intercepted by browser extensions.
+**Callback handles both flows:**
+
+```typescript
+// token_hash flow (reset + signup confirm) — v3.2 preferred
+if (token_hash && type) {
+  const { error } = await supabase.auth.verifyOtp({ token_hash, type })
+  if (error) {
+    return NextResponse.redirect(
+      new URL('/auth/forgot-password?error=invalid_or_expired_link', origin)
+    )
+  }
+  return response
+}
+
+// code flow (OAuth Google login) — legacy but still supported
+if (code) {
+  const { error } = await supabase.auth.exchangeCodeForSession(code)
+  // ...
+}
+```
+
+**Why server-side exchange?** The token is sensitive. Never expose it to the client's JS bundle. Server-side exchange also prevents the token from being intercepted by browser extensions.
+
+**Why `verifyOtp` over `exchangeCodeForSession`?** Because `verifyOtp` combines "verify this link" and "create a session" in one atomic call. The older flow required two separate operations with a race condition.
 
 ---
 
@@ -243,7 +329,7 @@ For Google login, we use PKCE (Proof Key for Code Exchange):
 ### Three layers
 
 1. **Middleware** (`src/proxy.ts`) — Fast rejection, runs on Edge
-2. **Server Action** — Re-verifies on every call
+2. **Server Action / Server Component** — Re-verifies on every call
 3. **RLS** — Last line of defense in Postgres
 
 **Why three?** Because middleware can be bypassed (misconfigured matcher, edge outage). Server Actions are the real gate. RLS is the final guarantee.
@@ -264,7 +350,7 @@ if (pathname.startsWith('/admin')) {
 }
 ```
 
-**Note:** This is a *first-pass* check. It's fast (Edge runtime) but not authoritative. The real check happens in each Server Action.
+**Note:** This is a *first-pass* check. It's fast (Edge runtime) but not authoritative. The real check happens in each Server Action or Server Component.
 
 ### Server Action authorization
 
@@ -285,6 +371,44 @@ if (profile?.role !== 'admin') throw new Error('Forbidden')
 ```
 
 **Why against `profiles`, not JWT claims?** Because JWT claims can be stale (role changed after token issuance) and can't be revoked. Reading from the DB is authoritative and instantly reflects role changes.
+
+### Server Component authorization (v3.2)
+
+Print routes use the same pattern, but as **Server Components** (not Server Actions):
+
+```typescript
+// src/app/admin/exports/print/[type]/page.tsx
+export default async function ExportPrintPage({ params, searchParams }) {
+  const { type } = await params
+  const sp = await searchParams
+
+  // 1. Validate type
+  if (!VALID_TYPES.includes(type as ExportType)) notFound()
+
+  // 2. Auth check — server-side, before any data fetch
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect('/auth/login')
+
+  // 3. Authorization — server-side admin check
+  const { data: profile } = await supabaseAdmin
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single()
+
+  if (profile?.role !== 'admin') redirect('/')
+
+  // 4. Only NOW fetch data
+  const filters = { fromDate: sp.fromDate, toDate: sp.toDate, ... }
+  const rows = await getOrdersForExport(filters)
+  // ...
+}
+```
+
+**Key principle:** Auth and authorization checks run **before** any data fetch. No sensitive data is loaded into memory if the caller isn't an admin.
+
+**Why Server Components instead of Server Actions?** Print routes render HTML (not JSON). A Server Component is the correct tool. Authorization logic is identical.
 
 ### Super Admin tier
 
@@ -386,6 +510,7 @@ CREATE POLICY "Users insert own reviews"
 - **Raw SQL migrations** run as superuser. Not a runtime concern.
 - **RPC functions** with `SECURITY DEFINER` — must audit carefully.
 - **AI chatbot tools** — `getMyOrders` uses the *user's session client* (not service-role) specifically so RLS applies. See [AI Chatbot Security](#ai-chatbot-security).
+- **Print route data** — the print route uses `supabaseAdmin` to fetch data (bypassing RLS), but **only after verifying the caller is an admin**. The admin check is the authorization layer; RLS doesn't apply here. See [Print Route Security](#print-route-security-new-v32).
 
 ---
 
@@ -441,6 +566,119 @@ export async function updateOrderStatus(orderId: string, newStatus: string) {
 ```
 
 **6 distinct security checks.** Any one failing rejects the request.
+
+---
+
+## Print Route Security (NEW v3.2)
+
+### Overview
+
+The v3.2 release introduced **PDF print export** at `/admin/exports/print/[type]`. These routes render sensitive data (orders, payments, users, audit logs) as print-optimized HTML. Security is critical.
+
+### Threat Model
+
+| Threat | Mitigation |
+|--------|-----------|
+| **Unauthenticated access** | Server-side `getUser()` check → redirect to login |
+| **Non-admin access** | Server-side role check → redirect to `/` |
+| **Data leak via URL** | Filters preserved, but no sensitive data in URL |
+| **Type injection** | `VALID_TYPES` whitelist — invalid types → 404 |
+| **Row count explosion** | 10,000 row cap (same as CSV export) |
+| **PII in browser cache** | Print routes are Server Components — no client cache |
+| **XSS via template data** | React escapes all interpolated values |
+| **CSRF** | Server Components are GET-only; no mutation |
+| **Rate limit bypass** | Falls under `/admin` tier (60/min) |
+| **Service worker caching** | Print routes explicitly skipped in `sw.js` |
+
+### Implementation
+
+**Server-side admin verification before any data fetch:**
+
+```typescript
+export default async function ExportPrintPage({ params, searchParams }) {
+  const { type } = await params
+
+  // 1. Type whitelist
+  if (!VALID_TYPES.includes(type as ExportType)) notFound()
+
+  // 2. Auth check — before any data fetch
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect('/auth/login')
+
+  // 3. Authorization check — before any data fetch
+  const { data: profile } = await supabaseAdmin
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single()
+
+  if (profile?.role !== 'admin') redirect('/')
+
+  // 4. Only NOW fetch sensitive data
+  const rows = await getOrdersForExport(filters)
+  // ...
+}
+```
+
+**Why this ordering matters:** No sensitive data is fetched, loaded into memory, or serialized to HTML until the caller is verified as admin. If the check fails, the redirect happens before any DB query.
+
+### Service Worker Exclusion
+
+The PWA service worker explicitly skips print routes:
+
+```javascript
+// public/sw.js
+if (
+  url.pathname.startsWith('/admin') ||
+  url.pathname.startsWith('/api') ||
+  url.pathname.startsWith('/auth')
+  // /admin/exports/print/* is covered by /admin prefix
+) {
+  return
+}
+```
+
+**Why:** Print routes must always render fresh data. Caching them would show stale orders or leak data across users if the browser shared cache incorrectly.
+
+### No Client-Side Data
+
+Print routes render HTML server-side. The only client-side JS is the print button (`window.print()` — one line). No data is passed to client components via props.
+
+**Result:** Even if an attacker could execute JS in the print page context (they can't), there's no data to steal — the DOM is rendered server-side.
+
+### Row Limit
+
+Same as CSV export: **10,000 rows max**. Prevents:
+- Memory blowup in the Server Component
+- Browser hangs on huge tables
+- Accidental DoS via print
+
+### Audit Logging
+
+Print routes are **not** audit logged (they're read-only, no mutations). However, admin actions *that lead to print* (like filter changes) can be tracked via the general `/admin` rate limit metrics if needed.
+
+**Consideration for v3.3:** Add a `print.generated` audit event for compliance-sensitive industries. Not needed for MVP.
+
+### What We Don't Do
+
+- ❌ **No client-side PDF generation** — would expose data to client JS
+- ❌ **No Puppeteer/headless browser** — 300MB binary, not serverless-compatible
+- ❌ **No external PDF service** — data would leave our infrastructure
+- ❌ **No third-party PDF library** — bundle size + manual layout
+- ❌ **No signed URLs** — print routes are session-authenticated, not URL-authenticated
+
+### Why Zero Dependencies Is Secure
+
+The v3.2 print pipeline uses the browser's native print dialog. From a security perspective:
+
+- **No data leaves our infrastructure** — the browser renders locally
+- **No external API calls** — no PDF service to trust
+- **No new dependencies** — no supply chain risk
+- **No serialization bugs** — the DOM is the source of truth
+- **Smaller attack surface** — no PDF parsing library to exploit
+
+**See:** [Architecture → PDF Print Export Pipeline](./architecture.md#pdf-print-export-pipeline) for the full design rationale.
 
 ---
 
@@ -612,6 +850,9 @@ Flags: SameSite=Lax, Secure (prod), httpOnly=false
 | Session ID cookie | Browser | 24 hours |
 | Referrer source (classified) | MongoDB `sessions` | 90 days |
 | IP hash | MongoDB `sessions` | 90 days |
+| **Print exports (v3.2)** | **Browser (ephemeral)** | **Never stored server-side** |
+
+**v3.2 note:** PDF print exports are rendered server-side but never persisted. The HTML is streamed to the browser, printed/cached by the browser, and forgotten by the server. No PDF files are stored in S3, Cloudinary, or any other storage.
 
 ---
 
@@ -627,10 +868,20 @@ The service worker (`public/sw.js`) is registered with `scope: '/'`. It can inte
 - HTML pages — network-first with cache fallback
 
 **What it never touches:**
-- `/admin/*` — must always be live
+- `/admin/*` — must always be live (includes v3.2 print routes)
 - `/api/*` — must always be live
 - `/auth/*` — must always be live (no cached login pages)
 - Cross-origin requests — pass through untouched
+
+### Print Route Exclusion (v3.2)
+
+The `/admin/exports/print/*` routes are covered by the `/admin` prefix exclusion. This means:
+
+- Print views are **never cached** by the service worker.
+- Print data is always fresh from the server.
+- No risk of stale order data or cross-session data leak via SW cache.
+
+**Why this matters:** Print exports contain sensitive business data. Caching them client-side (even temporarily) would create a data-leak vector if the browser shared cache across sessions.
 
 ### Cache poisoning prevention
 
@@ -676,6 +927,7 @@ The install prompt (`beforeinstallprompt`) is browser-mediated. We never see the
 | Stale cache serving old prices | HTML is network-first; JS/CSS hashes change on deploy |
 | Auth route caching | Explicitly skipped in SW |
 | Cookie leak via cached response | No cached responses contain auth headers |
+| **Print route caching (v3.2)** | **Explicitly skipped via `/admin` prefix** |
 
 ---
 
@@ -717,6 +969,16 @@ const chatRequestSchema = z.object({
 
 **Why 20 messages?** Prevents context-window abuse (billable tokens) and DoS.
 
+**Example: Print route params (v3.2)**
+```typescript
+const VALID_TYPES = ['orders', 'payments', 'emails', 'users', 'audit'] as const
+type ExportType = (typeof VALID_TYPES)[number]
+
+if (!VALID_TYPES.includes(type as ExportType)) notFound()
+```
+
+**Why a whitelist?** Prevents path traversal (`../`) and unauthorized access to unplanned export types. Any type not in the whitelist returns 404.
+
 ### Defense against common attacks
 
 | Attack | Zod rule |
@@ -730,6 +992,7 @@ const chatRequestSchema = z.object({
 | Prompt injection via role | `z.enum(['user', 'assistant'])` blocks `system` |
 | DoS via huge message | `.max(2000)` on content |
 | DoS via many messages | `.max(20)` on array |
+| **Path traversal in print route (v3.2)** | **`VALID_TYPES` whitelist** |
 
 ### What Zod *doesn't* protect against
 
@@ -951,13 +1214,15 @@ Different route groups get different limits, based on abuse potential:
 | Tier | Route prefix | Limit | Rationale |
 |------|-------------|-------|-----------|
 | **auth** | `/auth` | 10/min | Login brute-force prevention |
-| **admin** | `/admin` | 60/min | Legitimate admin work is slow |
+| **admin** | `/admin` | 60/min | Legitimate admin work is slow. **Print routes fall here.** |
 | **orders** | `/checkout`, `/api/orders` | 20/min | Prevents scripted orders |
 | **cart** | `/cart`, `/api/cart` | 30/min | Stateful but user-friendly |
 | **track** | `/api/track` | 100/min | Allows batching, blocks spamming |
 | **chat** | `/api/chat` | 20/min | AI cost protection |
 | **search** | `/search`, `/api/search` | 30/min | DB query protection |
 | **general** | Everything else | 300/min | Generous for browsing |
+
+**v3.2 note:** Print routes (`/admin/exports/print/*`) fall under the `/admin` tier (60/min). A single admin generating 60 PDFs per minute is well within normal usage.
 
 ### Sliding window algorithm
 
@@ -1000,6 +1265,8 @@ try {
 **Why fail-open?** If Redis is down, we don't want the entire site down. Better to allow some abuse than deny all legitimate users.
 
 **Trade-off:** If Redis is persistently down, we lose rate limiting. This is *acceptable* — the site still works. Rate limiting is defense in depth, not a hard requirement.
+
+**v3.2 note:** If Redis is down, cron throttle keys also fail. Cron jobs then run every tick (no throttle). This is intentional — better to over-run than under-run.
 
 ---
 
@@ -1138,6 +1405,136 @@ if (!alreadyCompleted) {
 
 ---
 
+## Cron Job Security (v3.2)
+
+### Overview
+
+Cron jobs run server-side on a schedule. They can send emails, update DB state, and trigger side effects. Security and reliability both matter.
+
+### Authentication
+
+Every cron endpoint requires a bearer token:
+
+```typescript
+export async function GET(req: NextRequest) {
+  const auth = req.headers.get('authorization')
+  if (auth !== `Bearer ${env.CRON_SECRET}`) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+  // ...
+}
+```
+
+**Why not IP allow-list?**
+- Vercel cron IPs change.
+- External cron services (cron-job.org, GitHub Actions) have varied IPs.
+- A bearer token is portable and rotatable.
+
+**Why not `user-agent`?**
+- User-agents are easily spoofed.
+- A bearer token is a shared secret.
+
+**`CRON_SECRET` requirements:**
+- Minimum 16 chars (Zod validation).
+- Recommend 32+ chars (`openssl rand -hex 32`).
+- Different per environment (dev vs prod).
+
+### v3.2: Throttle on Success Only
+
+**The v3.1 bug:** The throttle key was set *before* running the job. If the job failed (SMTP down, QStash quota exceeded), the throttle was already set — the next cron run would skip, and the alert would never fire.
+
+**The v3.2 fix:** Throttle is only set on **real success**:
+
+```typescript
+const logId = await queueEmail(...)
+if (!logId) {
+  // Email queue failed — don't throttle; try again next run
+  return NextResponse.json({ error: 'Failed to queue email' }, { status: 500 })
+}
+await redis.set(THROTTLE_KEY, Date.now())
+```
+
+**Security implications:**
+
+- **Availability:** Failed crons auto-retry on next tick. No silent failure.
+- **DoS surface:** A permanently failing cron (e.g., SMTP hard-rejects) would retry every hour. This is intentional — better to spam logs than silently skip.
+- **Rate limit:** External triggers can still hit the endpoint only if they have `CRON_SECRET`.
+
+### v3.2: Parameter Order Fix
+
+**The v3.1 bug:** `findAbandonedCarts(minAgeHours, maxReminders, limit)` — the cron was passing args in the wrong order, silently limiting reminders.
+
+**Security implications:**
+
+- **Compliance:** If a cart should have received 3 reminders but only got 1, the behavior was inconsistent with the marketing promise.
+- **Not a security issue per se** — just a correctness bug. But correctness bugs can become security issues if they lead to unintended behavior (e.g., skipping a critical alert).
+
+**The fix:** Correct order with a code comment.
+
+### Cron Failure Handling
+
+**Partial batch failure:**
+
+```typescript
+const errors: string[] = []
+for (const cart of carts) {
+  try {
+    // ... process cart
+  } catch (err) {
+    errors.push(`${cart.user_email}: ${err.message}`)
+  }
+}
+
+return NextResponse.json({
+  processed: carts.length,
+  sent,
+  failed,
+  ...(errors.length > 0 ? { errors: errors.slice(0, 5) } : {}),
+})
+```
+
+**Why partial:** One bad cart shouldn't prevent 99 other reminders.
+
+**Why errors are truncated:** Response size is capped. Full errors go to logs.
+
+### Cron Observability
+
+Every cron response includes:
+
+```json
+{
+  "success": true,
+  "timestamp": "2026-10-16T09:00:00.000Z",
+  "lowStock": { "sent": true, "count": 4 },
+  "abandonedCarts": { "processed": 1, "sent": 1, "failed": 0 }
+}
+```
+
+**Why structured:** Greppable in logs, parseable by monitoring tools, human-readable.
+
+**Why timestamp:** Confirms the run happened *now*, not from a cached response.
+
+### Force Reset Throttle
+
+If a cron mis-fires and you need to reset state:
+
+```bash
+# Via Upstash console or redis-cli
+DEL throttle:cron:abandoned-carts
+DEL throttle:alert:low-stock
+```
+
+Or programmatically:
+
+```typescript
+import { redis } from '@/lib/redis'
+await redis.del('throttle:cron:abandoned-carts')
+```
+
+**Security note:** Deleting throttle keys only allows the next cron run to execute immediately. It doesn't bypass auth or expose data.
+
+---
+
 ## Webhook Security
 
 ### Stripe webhooks
@@ -1195,6 +1592,12 @@ See [Idempotency](#idempotency) above. The general pattern:
 
 **Note:** We return 200 for duplicates (not 400 or 429). Stripe stops retrying on 2xx. Returning 4xx would make Stripe retry forever.
 
+### v3.2 Webhook Updates
+
+- **Emails** sent by the webhook (payment-confirmed, payment-failed) use the new **editorial templates**.
+- **`order_placed` tracking** now fires on both COD and Stripe success paths.
+- No changes to signature verification or idempotency logic.
+
 ---
 
 ## Secret Management
@@ -1233,6 +1636,8 @@ import 'server-only'
 - `lib/qstash/verify.ts`
 - All `queries.ts` files
 - All Server Actions
+
+**v3.2 note:** `ExportPrintView.tsx` is a **Client Component** (for the print button), but it receives data as **props from a Server Component**. The data is already fetched server-side and passed to the client only for rendering. No secrets, no DB access from the client.
 
 ### Environment validation
 
@@ -1310,6 +1715,7 @@ const ipHash = createHash('sha256')
 | `lib/audit.ts` | Audit log | ✅ `ip_hash` |
 | Session upsert | Visitor classification | ✅ `ip_hash` |
 | Rate limiter | Per-client limit | ❌ (uses raw IP, ephemeral) |
+| **Print routes (v3.2)** | **N/A (no tracking)** | **N/A** |
 
 **Note on rate limiter:** The rate limiter uses the raw IP because it needs a stable key *now*, and Redis keys expire fast. Raw IPs are never persisted to disk.
 
@@ -1363,6 +1769,7 @@ await logAudit({
 - **Passwords** — never touched
 - **AI chat content** — client-only
 - **Session paths with PII** — paths are relative, no query params
+- **Print exports (v3.2)** — not logged (read-only, no mutations)
 
 ### Actions currently logged
 
@@ -1392,6 +1799,8 @@ Audit logs in MongoDB have **no TTL**. They're kept indefinitely for compliance.
 - Top actor (email + count)
 
 **Why it matters:** If an admin's account is compromised, the audit trail reveals the attack pattern. If a customer claims "I never got refunded," the log shows whether the refund was issued.
+
+**v3.2 note:** The `/admin/audit` page has been redesigned with editorial style (monospace action pills, actor avatars, filter chips).
 
 ---
 
@@ -1425,11 +1834,13 @@ frame-ancestors 'none';
 upgrade-insecure-requests;
 ```
 
-**Note the additional directives for v3.1:**
+**Note the additional directives for v3.1+:**
 - `worker-src 'self'` — allows service worker
 - `manifest-src 'self'` — allows PWA manifest
 - `connect-src ... https://api.groq.com` — allows AI chat calls
 - `img-src ... https://placehold.co` — allows placeholder images
+
+**v3.2 note:** Print routes are Server Components and don't need any additional CSP directives. The only client-side JS is the `window.print()` call, which is covered by `script-src 'self'`.
 
 ### Why CSP matters
 
@@ -1438,7 +1849,7 @@ Even if an attacker injects `<script>` into a review body:
 - `script-src 'self'` → can't load external scripts.
 - `connect-src` allowlist → can't exfiltrate data to arbitrary servers.
 
-**Note:** `unsafe-inline` is required for Next.js inline scripts. Removing it requires nonces — planned for v3.2.
+**Note:** `unsafe-inline` is required for Next.js inline scripts. Removing it requires nonces — planned for a future version.
 
 ### Service worker headers
 
@@ -1539,6 +1950,36 @@ Service-Worker-Allowed: /
 5. Which MongoDB user had access?
 6. Were raw IPs ever stored? (Should be hashed only.)
 
+### If the print route is misused (v3.2)
+
+**Immediate:**
+1. Check access logs for `/admin/exports/print/*` requests from non-admin sessions.
+2. Verify the admin check logic in `src/app/admin/exports/print/[type]/page.tsx`.
+3. If compromised, rotate the admin user's credentials.
+
+**Investigation:**
+4. Was the redirect logic bypassed? (Check Vercel function logs.)
+5. Was `role` fetched from `profiles` or from a stale source? (Should be fresh from DB.)
+6. Was the row limit respected? (Check `LIMIT 10_000` in queries.)
+
+**Prevention:**
+7. Add more granular audit logging (e.g., `print.generated` event) if compliance requires.
+8. Consider adding IP allow-listing for admin routes.
+
+### If the cron is failing repeatedly (v3.2)
+
+**Immediate:**
+1. Check cron response body for error details.
+2. Verify SMTP credentials (Gmail app password).
+3. Verify QStash token and signing keys.
+4. Check MongoDB connectivity.
+
+**Investigation:**
+5. Why is the queue failing? (Gmail quota exceeded? QStash quota exceeded?)
+6. Is the throttle being set? (Check `redis.get('throttle:cron:abandoned-carts')`.)
+
+**Note:** If a cron is failing repeatedly, the throttle is NOT set (v3.2 fix). This means it will retry every tick. If the root cause isn't fixed, this creates noisy logs but not a security issue.
+
 ---
 
 ## Security Checklist
@@ -1548,14 +1989,15 @@ Use this when reviewing code changes.
 ### Authentication
 - [ ] All new routes with user data call `auth.getUser()`.
 - [ ] OAuth callbacks validate `next` param.
-- [ ] Password reset flow uses Supabase's built-in (no custom).
+- [ ] Password reset flow uses `token_hash` (v3.2) or `code` (legacy).
 - [ ] New signup fields validated with Zod.
 
 ### Authorization
-- [ ] New admin routes call `is_admin()` in Server Action.
+- [ ] New admin routes call `is_admin()` in Server Action **or** verify `role === 'admin'` in Server Component.
 - [ ] New super-admin actions call `admin_change_user_role` RPC.
 - [ ] New tables have RLS policies.
 - [ ] Admin queries use `supabaseAdmin`, not client.
+- [ ] **v3.2:** Print routes verify admin **before** fetching data.
 
 ### Input validation
 - [ ] Every Server Action validates arguments with Zod.
@@ -1563,6 +2005,7 @@ Use this when reviewing code changes.
 - [ ] Arrays have `.max(N)` limits.
 - [ ] Numbers have min/max constraints.
 - [ ] Enums are explicit (`z.enum([...])`, not `z.string()`).
+- [ ] **v3.2:** Print route type param uses a whitelist.
 
 ### AI Chatbot
 - [ ] Chat input schema rejects `system` role.
@@ -1589,6 +2032,7 @@ Use this when reviewing code changes.
 - [ ] New public routes have a limiter tier.
 - [ ] Limiters fail-open (Redis outage tolerant).
 - [ ] AI chat has its own tier (`chat`).
+- [ ] **v3.2:** Print routes fall under the `/admin` tier.
 
 ### Idempotency
 - [ ] Webhooks check idempotency key.
@@ -1601,6 +2045,7 @@ Use this when reviewing code changes.
 - [ ] QStash webhooks verify signature with `Receiver`.
 - [ ] Cron endpoints check `Bearer ${CRON_SECRET}`.
 - [ ] Duplicate side-effects prevented (status checks + idempotency).
+- [ ] **v3.2:** Cron throttle set **only on success**.
 
 ### Secrets
 - [ ] New server-only modules import `server-only`.
@@ -1613,6 +2058,7 @@ Use this when reviewing code changes.
 - [ ] New admin actions call `logAudit`.
 - [ ] Audit includes before/after state.
 - [ ] Audit captures `target_type` and `target_id` consistently.
+- [ ] **v3.2:** Print route access is not audit-logged (read-only) — acceptable for MVP.
 
 ### Privacy
 - [ ] No raw IPs stored.
@@ -1620,12 +2066,30 @@ Use this when reviewing code changes.
 - [ ] Sensitive data hashed before storage (IPs, tokens).
 - [ ] Chat content never leaves the client.
 - [ ] Session cookies have a TTL (24h).
+- [ ] **v3.2:** Print exports are never persisted server-side.
 
 ### PWA
 - [ ] Service worker only caches same-origin requests.
 - [ ] Auth/admin/api routes are excluded from caching.
 - [ ] `CACHE_VERSION` is bumped when caching logic changes.
 - [ ] CSP includes `worker-src` and `manifest-src`.
+- [ ] **v3.2:** Print routes excluded via `/admin` prefix.
+
+### Print Routes (v3.2)
+- [ ] Server-side admin check before any data fetch.
+- [ ] Type param validated against whitelist.
+- [ ] Row limit enforced (10,000).
+- [ ] Redirect to `/` for non-admin.
+- [ ] Redirect to `/auth/login` for unauthenticated.
+- [ ] No client-side data exposure.
+- [ ] Service worker skip verified.
+
+### Cron (v3.2)
+- [ ] `CRON_SECRET` checked on every cron endpoint.
+- [ ] Throttle set **only on real success**.
+- [ ] Failed runs return 500 (retry on next tick).
+- [ ] Partial failures return structured response with `errors[]`.
+- [ ] Idempotent (safe to run multiple times in a row).
 
 ---
 
@@ -1639,12 +2103,16 @@ Use this when reviewing code changes.
 - [Redis Lua Scripting](https://redis.io/docs/manual/programmability/eval-intro/)
 - [Service Worker Security](https://web.dev/service-worker-security/)
 - [Groq Security](https://groq.com/security/)
+- [CSS `@media print` security considerations (MDN)](https://developer.mozilla.org/en-US/docs/Web/CSS/@media)
 - [Architecture Deep Dive](./architecture.md)
 - [Deployment Guide](./deployment.md)
+- [Database Design](./database.md)
 
 ---
 
 <p align="center">
-  <em>Last updated: 2026-10-14 · Maintained by <a href="https://github.com/zainshah3464">@zainshah3464</a></em>
+  <em>Last updated: 2026-10-16 · Maintained by <a href="https://github.com/zainshah3464">@zainshah3464</a></em>
 </p>
 ```
+
+---

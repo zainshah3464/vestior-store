@@ -3,6 +3,8 @@
 > **Audience:** Users, contributors, and anyone curious about VESTIOR's future.
 >
 > **Promise:** This roadmap is honest. It reflects what we plan to build, what we'll prioritize, and what we're deliberately not doing.
+>
+> **Version:** This document reflects the state after **v3.2.0** (Editorial redesign + PDF export + cron hardening).
 
 ---
 
@@ -20,25 +22,28 @@
 
 ## Current State
 
-VESTIOR is at **v3.1.0** — production-ready with AI-powered features and PWA capabilities.
+VESTIOR is at **v3.2.0** — production-ready with an **editorial design system**, **PDF print export**, AI chatbot, PWA, and hardened cron/email pipelines.
 
 ### What's shipped
 
 | Category | Status |
 |----------|--------|
 | **Core commerce** | Browse → cart → checkout → orders — complete |
-| **Payments** | COD + Stripe live, refunds, webhooks, idempotency, atomic order placement |
-| **Admin panel** | 16+ pages covering products, orders, payments, users, analytics, reviews, coupons, carts, audit, exports, visitors, sessions, reports, activity |
-| **Email** | Gmail SMTP + QStash queue, 10 templates, delivery tracking, welcome-back throttling |
+| **Payments** | COD + Stripe live, refunds, webhooks, idempotency, atomic order placement (v2) |
+| **Admin panel** | 19 pages covering products, orders, payments, users, analytics, reviews, coupons, carts, audit, exports, visitors, sessions, reports, activity |
+| **Email** | Gmail SMTP + QStash queue, 10 templates (editorial redesign), delivery tracking, welcome-back throttling |
 | **Analytics** | Self-hosted event tracking + session tracking + product analytics + funnel + live users + new vs returning |
 | **AI** | Groq-powered shopping assistant with tool-calling, streaming, session-scoped history |
 | **PWA** | Installable, offline mode, service worker, app shortcuts, 30-day dismissal cooldown |
 | **Growth** | Coupons (atomic), reviews, wishlist, abandoned cart recovery, recommendations, welcome-back emails |
-| **Auth** | Email/password, Google OAuth, password reset flow, strength meter, existing-email detection |
+| **Auth** | Email/password, Google OAuth, password reset flow (`token_hash` — v3.2 fix), strength meter, existing-email detection |
+| **Editorial UI/UX** | Full redesign across 120+ files — bento cards, glass morphism, motion-first micro-interactions, design system tokens (v3.2) |
+| **Data export** | CSV (5 types) + **PDF print views** (5 types, A4-optimized, zero-dependency) (v3.2) |
+| **Cron** | Hourly abandoned-cart, 12h low-stock, daily combined, keep-alive — with **throttle-on-success** (v3.2 fix) |
 | **Security** | RLS, atomic operations, idempotency (Lua), rate limiting, audit logs, immutability guards |
 | **Testing** | 53 unit + 21 E2E tests, GitHub Actions CI (4 jobs) |
 | **Performance** | 97/100 Lighthouse desktop, 91/100 mobile |
-| **Docs** | 11 deep-dive files + README |
+| **Docs** | 11 deep-dive files + README (~10,000 lines total) |
 
 ### What's next
 
@@ -70,11 +75,15 @@ A feature without docs doesn't exist. Every release updates the relevant `docs/`
 
 No feature ships without a security review. RLS, input validation, rate limiting — non-negotiable.
 
+### 6. Design system first
+
+Every new UI element must use existing tokens and patterns. If a pattern doesn't exist, we add it to the design system before using it. (New principle in v3.2.)
+
 ---
 
 ## Short Term — Next 3 Months
 
-### Q4 2026 (Oct–Dec)
+### Q4 2026 – Q1 2027 (Nov 2026 – Jan 2027)
 
 #### 🎯 Multi-currency support
 
@@ -85,12 +94,52 @@ No feature ships without a security review. RLS, input validation, rate limiting
 - Real-time conversion based on daily exchange rates
 - User selects currency (auto-detected by IP)
 - Persisted in cookie
-- All displays (product cards, cart, checkout, invoices, emails) convert
+- All displays (product cards, cart, checkout, invoices, **PDF exports**, emails) convert
 - Admin sets currency markup (e.g., +5% for USD)
 
 **Effort:** ~2 weeks
 
 **Blockers:** Need FX rate provider (exchangerate.host or similar — free tier).
+
+**Priority:** High — immediate revenue impact for international customers.
+
+---
+
+#### 🎯 Sentry error tracking
+
+**Why:** Currently, errors go to Vercel logs. We can't see them without manual review.
+
+**What:**
+- Sign up for Sentry free tier (5K errors/month)
+- Install `@sentry/nextjs`
+- Capture client + server errors
+- Source maps uploaded
+- Alerts on new issues
+- Filter by route, user, release
+
+**Effort:** ~3 days
+
+**Blockers:** None.
+
+**Priority:** High — observability gap.
+
+---
+
+#### 🎯 Codecov integration
+
+**Why:** Coverage reports currently upload as CI artifacts. Codecov shows trends.
+
+**What:**
+- Connect Codecov to GitHub repo
+- Update CI to upload coverage
+- Add coverage badge to README
+- Fail PR if coverage drops > 1%
+
+**Effort:** ~2 hours
+
+**Blockers:** None.
+
+**Priority:** Medium — quality-of-life for contributors.
 
 ---
 
@@ -109,38 +158,7 @@ No feature ships without a security review. RLS, input validation, rate limiting
 
 **Blockers:** Both couriers have API access, but rate-limited on free tier. Negotiation needed.
 
----
-
-#### 🎯 Sentry error tracking
-
-**Why:** Currently, errors go to Vercel logs. We can't see them without manual review.
-
-**What:**
-- Sign up for Sentry free tier (5K errors/month)
-- Install `@sentry/nextjs`
-- Capture client + server errors
-- Source maps uploaded
-- Alerts on new issues
-
-**Effort:** ~3 days
-
-**Blockers:** None.
-
----
-
-#### 🎯 Codecov integration
-
-**Why:** Coverage reports currently upload as CI artifacts. Codecov shows trends.
-
-**What:**
-- Connect Codecov to GitHub repo
-- Update CI to upload coverage
-- Add coverage badge to README
-- Fail PR if coverage drops > 1%
-
-**Effort:** ~2 hours
-
-**Blockers:** None.
+**Priority:** High — directly reduces customer support load.
 
 ---
 
@@ -158,11 +176,13 @@ No feature ships without a security review. RLS, input validation, rate limiting
 
 **Blockers:** None. Cost decision when usage justifies.
 
+**Priority:** Reactive — upgrade only when needed.
+
 ---
 
 ## Medium Term — Next 6 Months
 
-### Q1–Q2 2027
+### Q2–Q3 2027 (Feb – Jul 2027)
 
 #### 🎯 Multi-language (i18n)
 
@@ -174,8 +194,10 @@ No feature ships without a security review. RLS, input validation, rate limiting
 - RTL layout for Urdu
 - All UI strings externalized
 - Emails in recipient's language
+- **PDF export headers** in selected language
 - DB stores language preference on profile
 - **AI chatbot** responds in the user's language
+- Number/date/currency formatting per locale
 
 **Effort:** ~4 weeks
 
@@ -196,10 +218,13 @@ No feature ships without a security review. RLS, input validation, rate limiting
 - Tier perks: free shipping, early access, birthday discount
 - Admin panel to view/adjust points
 - Email notifications on tier upgrades
+- Dashboard widget showing tier distribution
 
 **Effort:** ~3 weeks
 
 **Blockers:** None technical.
+
+**Priority:** High — retention multiplier.
 
 ---
 
@@ -217,7 +242,9 @@ No feature ships without a security review. RLS, input validation, rate limiting
 
 **Effort:** ~2 weeks
 
-**Blockers:** Requires new table `gift_cards` + `gift_card_transactions`. Similar pattern to coupons.
+**Blockers:** Requires new tables `gift_cards` + `gift_card_transactions`. Similar pattern to coupons.
+
+**Priority:** Medium — nice-to-have for holiday seasons.
 
 ---
 
@@ -230,10 +257,13 @@ No feature ships without a security review. RLS, input validation, rate limiting
 - After order, send email with "track your order" link
 - Link contains signed token, expires in 30 days
 - Page shows order status, tracking, invoice
+- **PDF invoice download** for guests
 
 **Effort:** ~2 weeks
 
 **Blockers:** Requires refactoring `orders` to allow `user_id = null`. Alternative: create shadow account.
+
+**Priority:** Medium — reduces friction for one-time buyers.
 
 ---
 
@@ -247,10 +277,13 @@ No feature ships without a security review. RLS, input validation, rate limiting
 - Repeat purchase rate
 - Product affinity (customers who bought X also bought Y)
 - Search analytics (what users search, what they don't find)
+- **PDF export for reports** (leverages v3.2 print pipeline)
 
 **Effort:** ~3 weeks
 
 **Blockers:** Requires pre-aggregation cron to keep dashboards fast.
+
+**Priority:** Medium — decision-making tool for admins.
 
 ---
 
@@ -264,16 +297,19 @@ No feature ships without a security review. RLS, input validation, rate limiting
 - **Auto-generated product descriptions** — for new products
 - **Customer support chatbot** — with FAQs + order lookup
 - **Multi-turn context** — "show me that in blue" after seeing a suit
+- **Voice input** via browser Web Speech API (progressive enhancement)
 
 **Effort:** ~4 weeks
 
 **Blockers:** Needs vector embeddings (Voyage, OpenAI, or self-hosted) + cost analysis. Trade-off: semantic search requires an embedding store.
 
+**Priority:** Medium — nice-to-have, current tools work well.
+
 ---
 
 ## Long Term — 12+ Months
 
-### 2027+
+### 2027+ and beyond
 
 #### 🎯 Mobile app (React Native)
 
@@ -286,10 +322,13 @@ No feature ships without a security review. RLS, input validation, rate limiting
 - Push notifications
 - Deep linking
 - **AI chatbot** integrated natively
+- **Offline-first** with local SQLite sync
 
 **Effort:** ~3 months
 
 **Blockers:** Significant investment. Only if user base justifies it.
+
+**Priority:** Low — web PWA covers mobile UX well.
 
 ---
 
@@ -304,10 +343,11 @@ No feature ships without a security review. RLS, input validation, rate limiting
 - Split payments (Stripe Connect)
 - Vendor-specific fulfillment
 - Buyer reviews of vendors
+- Per-vendor PDF reports
 
 **Effort:** ~6 months
 
-**Blockers:** This is a different product. Would be a v4.0 or a fork.
+**Blockers:** This is a different product. Would be a v5.0 or a fork.
 
 **Status:** Not planned unless there's strong demand.
 
@@ -323,10 +363,13 @@ No feature ships without a security review. RLS, input validation, rate limiting
 - Product affinity (customers who bought X also bought Y)
 - Cohort retention analysis
 - **AI-generated product descriptions** based on attributes
+- **Search ranking** based on click-through data
 
 **Effort:** ~2 months
 
 **Blockers:** Needs data volume (10K+ orders) and ML infrastructure. Also: cost vs benefit at our scale.
+
+**Priority:** Low — rule-based recs work well for now.
 
 ---
 
@@ -339,10 +382,13 @@ No feature ships without a security review. RLS, input validation, rate limiting
 - Click-and-collect (buy online, pickup in store)
 - Inventory sync across channels
 - Unified customer profiles
+- Unified order history (online + in-store)
 
 **Effort:** ~4 months
 
 **Blockers:** Requires physical store presence. Not applicable if purely online.
+
+**Priority:** Depends on business expansion.
 
 ---
 
@@ -359,6 +405,30 @@ No feature ships without a security review. RLS, input validation, rate limiting
 **Effort:** ~1 week (integration)
 
 **Blockers:** Cost analysis. Only worth it at high volume (>50K AI requests/month).
+
+**Priority:** Reactive — evaluate if Groq usage grows.
+
+---
+
+#### 🎯 Server-side PDF generation (if needed)
+
+**Why:** Current PDF export uses browser's native print (client-side). If we need to **email PDFs as attachments**, we'll need server-side generation.
+
+**What:**
+- Add Puppeteer-as-a-service (Browserless.io, PDFShift) OR
+- Self-hosted Puppeteer Lambda on AWS
+- Reuse existing `ExportPrintView` component (same interface)
+- Same print CSS (already A4-optimized)
+- New API route: `/api/admin/pdf/[type]` returns PDF bytes
+- Attach to emails (e.g., invoice attached to `order-delivered`)
+
+**Effort:** ~1 week
+
+**Blockers:** None technical. Decision depends on whether the feature is needed.
+
+**Why we haven't done this yet:** Browser-native print is superior for admin use (full control, WYSIWYG). Only switch if automated delivery is required.
+
+**Priority:** Low — admin use case is well-served by current implementation.
 
 ---
 
@@ -390,10 +460,6 @@ Some things we've deliberately not built. Reasons below.
 
 **Why not:** Requires 3D models of products (which we don't have) + AR SDKs + device compatibility. Not worth the cost at our scale. Revisit if demand justifies.
 
-### ❌ Loyalty program with subscriptions
-
-**Why not:** (See "subscription model" above.)
-
 ### ❌ Buying in bulk discount
 
 **Why not:** Our products are premium, single-quantity purchases. Bulk discount would cannibalize margins.
@@ -404,7 +470,7 @@ Some things we've deliberately not built. Reasons below.
 
 ### ❌ Admin mobile app
 
-**Why not:** Admin panel is already mobile-responsive. A native app adds ~6 months of work for marginal benefit.
+**Why not:** Admin panel is already mobile-responsive (with editorial redesign). A native app adds ~6 months of work for marginal benefit.
 
 ### ❌ Dark mode toggle (light mode)
 
@@ -440,6 +506,59 @@ Some things we've deliberately not built. Reasons below.
 
 **When we'd revisit:** At 100K+ monthly visitors, we'd add PostHog Experiments or GrowthBook.
 
+### ❌ Puppeteer for PDF generation (v3.2 decision)
+
+**Why not:** 
+- 300MB+ Chromium binary
+- Not serverless-compatible (Vercel Function limits)
+- Cold start 3-8s per render
+- $20+/month for hosted alternative
+
+Browser-native print (v3.2) is superior for admin use. See [Server-side PDF generation](#-server-side-pdf-generation-if-needed) for the one scenario where we'd add it.
+
+**When we'd revisit:** If we need to email PDFs as attachments (server-side generation required).
+
+### ❌ PDF library (pdfkit, pdfmake, jspdf) (v3.2 decision)
+
+**Why not:**
+- 200-500KB bundle size
+- Manual layout (x/y coordinates, not CSS)
+- Manual table drawing
+- Manual page breaks
+- Encoding issues with currency symbols
+
+Browser-native print handles all of this natively. See [PDF Print Export Pipeline](./architecture.md#pdf-print-export-pipeline).
+
+### ❌ CSS-in-JS (styled-components, Emotion) (v3.2 decision)
+
+**Why not:**
+- Runtime cost (styles generated in JS)
+- No RSC compatibility
+- Larger bundle
+- Conflicts with Next.js App Router streaming
+
+Tailwind v4 + design tokens (v3.2) covers 100% of our needs at 0 runtime cost.
+
+### ❌ Design system library (shadcn/ui, Radix) (v3.2 decision)
+
+**Why not:**
+- We'd be building on someone else's tokens
+- Adds 50-100KB for patterns we can build in 100 lines
+- Our aesthetic (dark editorial) doesn't match their defaults
+- Every customization = fighting the library
+
+Our design system (v3.2) is documented, tested, and fully under our control.
+
+### ❌ Component library (Chakra, MUI, Ant Design) (v3.2 decision)
+
+**Why not:**
+- 100-500KB bundle size
+- Opinionated visual style
+- Hard to customize without overriding everything
+- Doesn't fit our editorial dark theme
+
+Built 30 tiny components with Tailwind. Total ~10KB. Full control.
+
 ---
 
 ## How to Influence the Roadmap
@@ -460,12 +579,14 @@ Before opening an issue, ask yourself:
 2. **Is it aligned with VESTIOR's focus** (premium men's fashion, single-vendor)?
 3. **Would I use it** if it existed?
 4. **Can it be built in <4 weeks** (or split into smaller features)?
+5. **Does it fit the design system?** (If not, does it justify adding a new pattern?)
 
-If yes to all four, open an issue with:
+If yes to all five, open an issue with:
 - **Problem statement** — What problem does it solve?
 - **Proposed solution** — How should it work?
 - **Alternatives considered** — What else did you think of?
 - **Success criteria** — How do we know it worked?
+- **Design mockup** — Rough sketch or wireframe (optional but helpful)
 
 ### Contribute code
 
@@ -494,9 +615,45 @@ VESTIOR is free, open-source, and run by a solo maintainer. If you'd like to spo
 | v2.0.0 | Security + performance | ✅ Shipped |
 | v3.0.0 | Enterprise features | ✅ Shipped |
 | v3.1.0 | AI chatbot + PWA + auth polish | ✅ Shipped |
-| v3.2.0 | Multi-currency + Sentry | 🚧 Planned |
-| v3.3.0 | Order tracking + i18n | 📅 Planned |
-| v4.0.0 | Loyalty + gift cards | 🔮 Future |
+| v3.2.0 | Editorial redesign + PDF export + cron hardening | ✅ Shipped |
+| v3.3.0 | Multi-currency + Sentry | 🚧 In progress |
+| v3.4.0 | Order tracking + i18n | 📅 Planned |
+| v4.0.0 | Loyalty + gift cards + advanced analytics | 🔮 Future |
+| v5.0.0 | Mobile app / Marketplace | 🔮 Speculative |
+
+---
+
+## What Changed in This Update (v3.2)
+
+**Shipped in v3.2:**
+- ✅ Editorial UI/UX redesign (120+ files)
+- ✅ PDF print export (5 types, zero-dependency)
+- ✅ Cron hardening (throttle-on-success, param order fix)
+- ✅ Auth fix (`token_hash` password reset flow)
+- ✅ Checkout fix (`order_placed` event on Stripe)
+- ✅ All 10 email templates redesigned
+- ✅ Organized screenshot structure
+
+**Reordered priorities:**
+- **Sentry** moved up — critical observability gap
+- **Multi-currency** stays top priority — highest revenue impact
+- **Order tracking via couriers** moved up — reduces support load
+- **Multi-language (i18n)** stays medium — depends on user base
+- **Advanced analytics** now includes PDF export (leverages v3.2 pipeline)
+
+**Removed from "planned":**
+- ~~Puppeteer for PDF~~ → Deliberately not doing (browser-native is better)
+- ~~PDF library~~ → Deliberately not doing (same reason)
+
+**Added to "What we're not doing":**
+- Puppeteer for PDF generation
+- PDF library (pdfkit, pdfmake, jspdf)
+- CSS-in-JS (styled-components, Emotion)
+- Design system library (shadcn/ui, Radix)
+- Component library (Chakra, MUI, Ant Design)
+
+**Added as conditional future:**
+- **Server-side PDF generation** — Only if we need to email PDFs as attachments
 
 ---
 
@@ -513,6 +670,8 @@ I genuinely read every response. Your feedback shapes this project.
 ---
 
 <p align="center">
-  <em>Last updated: 2026-10-14 · Review quarterly · Maintained by <a href="https://github.com/zainshah3464">@zainshah3464</a></em>
+  <em>Last updated: 2026-10-16 · Review quarterly · Maintained by <a href="https://github.com/zainshah3464">@zainshah3464</a></em>
 </p>
 ```
+
+---

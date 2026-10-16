@@ -1,8 +1,10 @@
-# Database Design
+# Database Design (v3.2)
 
 > **Audience:** Engineers extending the schema, writing migrations, or debugging data issues.
 >
 > **Scope:** Every table, RPC, and collection with relationships and design rationale.
+>
+> **Version:** This document reflects **v3.2.0** (Editorial redesign + PDF export + cron hardening).
 
 ---
 
@@ -14,10 +16,13 @@
 - [Supabase RPCs](#supabase-rpcs)
 - [Supabase Triggers](#supabase-triggers)
 - [MongoDB Collections](#mongodb-collections)
+- [Redis Keys](#redis-keys)
 - [Migration Workflow](#migration-workflow)
 - [Data Integrity Rules](#data-integrity-rules)
 - [Index Strategy](#index-strategy)
 - [Backup & Retention](#backup--retention)
+- [What's New in v3.2](#whats-new-in-v32)
+- [Further Reading](#further-reading)
 
 ---
 
@@ -30,7 +35,7 @@ VESTIOR uses **two databases** with clearly separated responsibilities:
 | **Supabase (PostgreSQL)** | Products, orders, users, reviews, wishlists, coupons | ACID transactions, RLS, low-volume |
 | **MongoDB Atlas** | Events, sessions, email logs, payments, audit, carts | Append-only, high-volume, analytics |
 
-Plus **Upstash Redis** for ephemeral state (rate limits, idempotency, cache).
+Plus **Upstash Redis** for ephemeral state (rate limits, idempotency, cache, cron throttles).
 
 See [Architecture → Dual-Database Rationale](./architecture.md#dual-database-rationale) for why.
 
@@ -248,6 +253,8 @@ Order headers. Denormalizes `user_email` for query speed.
 - `idx_orders_payment_provider` — For payments dashboard
 - `idx_orders_payment_status` — Partial: `WHERE payment_status != 'completed'`
 
+**v3.2 note:** No schema changes. The `order_placed` tracking event is now emitted on both COD and Stripe success paths (see `placeOrder` and `confirmPayment`), but this is a MongoDB event, not a schema change.
+
 ---
 
 ### `order_items`
@@ -274,6 +281,8 @@ Line items. Denormalizes product name + price at order time.
 **Indexes:**
 - `idx_order_items_order` — Join by order
 - `idx_order_items_product` — Reverse lookup
+
+**Realtime:** ✅ Enabled (v3.2 — for real-time item updates on the customer order detail page).
 
 ---
 
@@ -556,6 +565,8 @@ get_sales_report(
 
 **Category aggregation:** Joins `order_items` → `products` to group by `category_main`.
 
+**v3.2 note:** The reports page that consumes this RPC was redesigned with editorial styling (trend badges, animated charts). No RPC signature changes.
+
 ### `get_product_sales_stats`
 
 **Signature:**
@@ -569,6 +580,8 @@ get_product_sales_stats(p_limit INTEGER DEFAULT 20) RETURNS jsonb
 - `global` — total units, total revenue, avg units per order
 
 **Used by:** `src/lib/analytics/product-queries.ts` → `ProductAnalytics` admin dashboard component.
+
+**v3.2 note:** The ProductAnalytics component was enhanced with sortable columns, abandoned filter chip, and color-coded conversion rate pills. No RPC changes.
 
 ### Writing New RPCs
 
@@ -724,6 +737,8 @@ db.events.aggregate([
 ])
 ```
 
+**v3.2 note:** The `order_placed` event is now emitted on both COD and Stripe success paths. Previously, only COD tracked the event — Stripe orders were invisible in product analytics. No schema changes.
+
 ---
 
 ### `sessions`
@@ -830,6 +845,7 @@ Every email attempted.
 **Indexes:**
 - `{ email: 1, created_at: -1 }`
 - `{ status: 1, created_at: -1 }`
+- `{ template: 1, created_at: -1 }`
 
 **Lifecycle:**
 
@@ -841,6 +857,8 @@ queued → failed (if QStash publish throws — v3.1 fix)
 ```
 
 **v3.1 fix:** If `qstash.publishJSON` throws (network error, invalid URL, token expired), the log is updated to `status: 'failed'` with the error message. Previously it stayed `queued` forever.
+
+**v3.2 note:** All 10 templates redesigned (editorial style). No schema changes — the `template` field just maps to new `.tsx` files.
 
 ---
 
@@ -916,6 +934,8 @@ Admin actions timeline.
 **Actions logged:**
 `payment.refund`, `coupon.create`, `coupon.update`, `coupon.delete`, `user.change_role`, `product.create`, `product.update`, `product.delete`, `review.approved`, `review.rejected`, `review.delete`.
 
+**v3.2 note:** The `/admin/audit` page was redesigned with editorial style. No schema changes.
+
 ---
 
 ### `cart_snapshots`
@@ -979,6 +999,8 @@ db.cart_snapshots.find({
 3. Cron runs hourly → finds eligible carts → sends recovery email + 5% coupon
 4. Order placed → `markCartRecovered` sets `recovered_at`, `recovered_order_id`
 
+**v3.2 fix:** The cron parameter order (`findAbandonedCarts(minAgeHours, maxReminders, limit)`) was corrected. Previously, args were passed in the wrong order, silently limiting reminders. Also, throttle is now set **only on success**, so failed runs auto-retry on the next tick. No schema changes.
+
 ---
 
 ### `analytics_daily`
@@ -1015,6 +1037,65 @@ Pre-aggregated metrics (cron-generated).
 
 ---
 
+## Redis Keys
+
+Redis (Upstash) stores ephemeral state. No schema, but the **key naming conventions** matter for debugging and operational clarity.
+
+### Rate limit keys
+
+```
+rl:{tier}:{clientKey}
+```
+
+| Example | Purpose |
+|---------|---------|
+| `rl:auth:ip:203.0.113.42` | Auth tier, per-IP |
+| `rl:admin:user:550e8400-...` | Admin tier, per-user |
+| `rl:chat:ip:203.0.113.42` | Chat tier, per-IP |
+| `rl:track:ip:203.0.113.42` | Track tier, per-IP |
+
+**TTL:** Matches the sliding window (1 minute for most tiers).
+
+**Fail-open:** If Redis is down, requests are allowed through. Rate limiting is defense-in-depth, not a hard requirement.
+
+### Idempotency keys
+
+```
+idem:{scope}:{key}          → lock (24h TTL)
+idem:result:{scope}:{key}   → cached result (24h TTL)
+```
+
+| Scope | Key | Used by |
+|-------|-----|---------|
+| `stripe-webhook` | `event.id` | Webhook handler |
+| `stripe-confirm` | `paymentIntentId` | Client-side confirmPayment |
+| `order-placed-email` | `orderId` | Email queue |
+
+**Release:** Atomic Lua script (compare-and-delete). See [Security → Idempotency](./security.md#idempotency).
+
+### Cron throttle keys
+
+```
+throttle:cron:abandoned-carts    → timestamp (epoch ms)
+throttle:alert:low-stock         → timestamp (epoch ms)
+```
+
+**v3.2 change:** Throttle is set **only on real success**. If `queueEmail` fails, the throttle is NOT set → next cron tick retries automatically.
+
+**Debugging:** To force a cron to run immediately:
+```bash
+DEL throttle:cron:abandoned-carts
+DEL throttle:alert:low-stock
+```
+
+### Cache keys (informational)
+
+No active caching in v3.2. Reserved for future product query caching.
+
+**Retention:** All keys expire per their TTL. Redis is ephemeral — no backup needed.
+
+---
+
 ## Migration Workflow
 
 ### Migration Files
@@ -1036,6 +1117,8 @@ Current migrations in `supabase/migrations/` (in order):
 | 11 | `20261017_sales_report_rpc.sql` | `get_sales_report` RPC |
 | 12 | `20261018_product_analytics_rpc.sql` | `get_product_sales_stats` RPC |
 | 13 | `20261019_place_order_atomic_v2.sql` | Enhanced `place_order_atomic` (coupon + provider in one transaction) |
+
+**v3.2 note:** No new migrations were required for v3.2. The release was focused on UI/UX redesign, PDF print export, and bug fixes — none of which changed the database schema.
 
 ### Adding a Migration
 
@@ -1146,6 +1229,7 @@ WHERE p.id = b.id;
 | Valid user role | `CHECK (role IN ('customer', 'admin'))` |
 | Valid payment provider | `CHECK (payment_provider IN ('cod', 'stripe', 'paypal'))` |
 | Immutable order items/address | Trigger `trg_orders_snapshot_immutable` |
+| Print export row cap | Application logic (10,000 rows, v3.2) |
 
 ### Constraints enforced at the app
 
@@ -1159,6 +1243,7 @@ WHERE p.id = b.id;
 | Chat message length 2000 | Zod in `/api/chat` |
 | Chat message count ≤ 20 | Zod in `/api/chat` |
 | Chat role ∈ {user, assistant} | Zod in `/api/chat` |
+| Print route type whitelist | Server Component in `[type]/page.tsx` (v3.2) |
 
 ### Application vs DB constraints
 
@@ -1258,6 +1343,7 @@ db.sessions.createIndex({ last_seen_at: 1 }, { expireAfterSeconds: 7776000 })
 **`email_logs`:**
 - `{ email: 1, created_at: -1 }`
 - `{ status: 1, created_at: -1 }`
+- `{ template: 1, created_at: -1 }`
 
 **`payment_transactions`:**
 - `{ provider_txn_id: 1 }` UNIQUE
@@ -1306,7 +1392,7 @@ supabase db dump --db-url $DATABASE_URL > backup.sql
 
 ### Redis (Upstash)
 
-Redis is ephemeral. **No backup needed.** Rate limits reset, caches rebuild, idempotency keys expire.
+Redis is ephemeral. **No backup needed.** Rate limits reset, caches rebuild, idempotency keys expire, cron throttles reset.
 
 If you need durable Redis: upgrade to Upstash Pro with persistence, but this changes the operational model (need to manage replica failures).
 
@@ -1329,27 +1415,96 @@ If you need durable Redis: upgrade to Upstash Pro with persistence, but this cha
 | Cart snapshots | MongoDB | Forever (recovered carts can be pruned) |
 | Rate limits | Redis | Expire per window |
 | Idempotency | Redis | 24 hours |
+| Cron throttles | Redis | Per-throttle window (12h / 50min) |
 
 ### Compliance Notes
 
 - **IP hashing:** Raw IPs are never stored. All references use SHA-256 + salt.
 - **PII deletion:** Deleting a user cascades through `profiles`, `orders`, `reviews`, `wishlists`, `coupon_redemptions`. MongoDB entries (events, sessions) retain `user_id` but the reference becomes dangling. Audit logs preserve the historical record.
 - **Right to export:** A user's data lives across Supabase (`profiles`, `orders`) and MongoDB (`events`, `sessions`, `cart_snapshots`). A full export would query all of these by `user_id`.
+- **Print exports (v3.2):** PDF print views render server-side but are **never persisted**. No files stored in S3, Cloudinary, or any storage. Browser handles the print/cache lifecycle.
+
+---
+
+## What's New in v3.2
+
+This section documents v3.2-specific database changes. **TL;DR: No schema changes required.**
+
+### No New Migrations
+
+v3.2 was a **UI/UX + reliability release**, not a schema release. No new tables, columns, or indexes.
+
+### Database-Relevant Fixes
+
+| Fix | Impact | Where |
+|-----|--------|-------|
+| **Cron param order** | Correct `findAbandonedCarts(minAgeHours, maxReminders, limit)` — was silently limiting reminders | `src/lib/carts/queries.ts` |
+| **Cron throttle-on-success** | Throttle key only set after `queueEmail` succeeds. Failed runs auto-retry. | Cron endpoints |
+| **Email queue hardening** | `qstash.publishJSON` failure marks log as `failed` (was stuck `queued` forever) | `src/lib/email/queue.ts` |
+| **`order_placed` event** | Now fires on both COD and Stripe success paths | `placeOrder`, `confirmPayment` |
+| **`token_hash` auth flow** | Password reset creates a session (was losing it) | `/auth/callback` |
+
+### Database-Relevant Non-Changes
+
+| Feature | Why No DB Change |
+|---------|------------------|
+| **Editorial UI redesign** | Pure presentation. 120 files changed, but no schema impact. |
+| **PDF print export** | Server Component reads existing data. No new tables. 10K row cap enforced in app code. |
+| **Email template redesign** | `.tsx` files only. No `email_logs` schema changes. |
+| **Admin notifications redesign** | Client-side component. No DB. |
+| **Screenshot reorganization** | `public/images/` structure. No DB. |
+
+### Redis Key Additions
+
+v3.2 introduced two new **throttle keys**:
+
+```
+throttle:cron:abandoned-carts
+throttle:alert:low-stock
+```
+
+Both store epoch-ms timestamps. Both use the success-only write pattern.
+
+**Debug commands:**
+```bash
+DEL throttle:cron:abandoned-carts
+DEL throttle:alert:low-stock
+```
+
+### Index Additions
+
+None.
+
+### Constraint Additions
+
+None.
+
+### Realtime Additions
+
+`order_items` table was added to the `supabase_realtime` publication for real-time item updates on customer order detail pages.
+
+```sql
+ALTER PUBLICATION supabase_realtime ADD TABLE public.order_items;
+```
 
 ---
 
 ## Further Reading
 
-- [Architecture Deep Dive](./architecture.md)
-- [Security Deep Dive](./security.md)
-- [API Reference](./api-reference.md)
+- [Architecture Deep Dive](./architecture.md) — Includes PDF Print Export Pipeline + Editorial Design System
+- [Security Deep Dive](./security.md) — Includes Print Route Security + Cron Job Security
+- [API Reference](./api-reference.md) — Includes Print Routes section
+- [Features](./features.md) — Feature-level documentation
 - [Supabase docs](https://supabase.com/docs/guides/database)
 - [MongoDB schema design best practices](https://www.mongodb.com/docs/manual/data-modeling/)
 - [Postgres explicit locking](https://www.postgresql.org/docs/current/explicit-locking.html)
 - [MongoDB TTL indexes](https://www.mongodb.com/docs/manual/core/index-ttl/)
+- [Redis Lua scripting](https://redis.io/docs/manual/programmability/eval-intro/)
 
 ---
 
 <p align="center">
-  <em>Last updated: 2026-10-14 · Maintained by <a href="https://github.com/zainshah3464">@zainshah3464</a></em>
+  <em>Last updated: 2026-10-16 · Maintained by <a href="https://github.com/zainshah3464">@zainshah3464</a></em>
 </p>
+
+---

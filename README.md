@@ -17,7 +17,8 @@
 [![Vercel](https://img.shields.io/badge/Deployed_on-Vercel-000000?style=for-the-badge&logo=vercel&logoColor=white)](https://vercel.com)
 [![License](https://img.shields.io/badge/License-MIT-blue?style=for-the-badge)](./LICENSE.txt)
 
-[![Documentation](https://img.shields.io/badge/docs-12_files_·_8000_lines-blue?style=flat-square)](./docs/)
+[![Documentation](https://img.shields.io/badge/docs-11_files_·_10000+_lines-blue?style=flat-square)](./docs/)
+[![Version](https://img.shields.io/badge/version-3.2.0-success?style=flat-square)](#-changelog)
 
 <br />
 
@@ -48,6 +49,7 @@
 <summary><strong>Click to expand full navigation</strong></summary>
 
 - [Overview](#-overview)
+- [What's New in v3.2](#-whats-new-in-v32)
 - [What's New in v3.1](#-whats-new-in-v31)
 - [Lighthouse Scores](#-lighthouse-scores)
 - [Key Features](#-key-features)
@@ -68,7 +70,12 @@
   - [Admin Real-Time Notifications](#admin-real-time-notifications)
   - [AI Chatbot Architecture](#ai-chatbot-architecture)
   - [Product Analytics Engine](#product-analytics-engine)
+  - [PDF Print Export Pipeline](#pdf-print-export-pipeline)
+  - [Editorial UI Design System](#editorial-ui-design-system)
 - [Screenshots](#-screenshots)
+  - [Customer-Facing Pages](#customer-facing-pages)
+  - [Admin Pages](#admin-pages)
+  - [Email Templates](#email-templates)
 - [Getting Started](#-getting-started)
   - [Prerequisites](#prerequisites)
   - [Installation](#1-clone--install)
@@ -126,7 +133,7 @@ Deep dives for engineers and evaluators:
 
 ## Overview
 
-**VESTIOR** is a **production-grade, single-vendor e-commerce platform** built for premium men's fashion (suits, coats, pants, waistcoats, Gurkha, two-piece and three-piece sets). It goes far beyond a standard storefront — it integrates payment abstraction, self-hosted analytics, queue-based background processing, coupon economics, cart recovery, product recommendations, AI-powered shopping assistance, and full admin tooling into one cohesive system.
+**VESTIOR** is a **production-grade, single-vendor e-commerce platform** built for premium men's fashion (suits, coats, pants, waistcoats, Gurkha, two-piece and three-piece sets). It goes far beyond a standard storefront — it integrates payment abstraction, self-hosted analytics, queue-based background processing, coupon economics, cart recovery, product recommendations, AI-powered shopping assistance, PDF export, and full admin tooling into one cohesive system.
 
 The project demonstrates **senior-level engineering decisions**:
 
@@ -139,12 +146,162 @@ The project demonstrates **senior-level engineering decisions**:
 - **Defense in depth** — Server-side validation, RLS policies, middleware guards, rate limiting, webhook signature verification — layered.
 - **AI-powered discovery** — Groq LPU inference with tool-calling for real-time product search and order tracking.
 - **Progressive Web App** — Installable, offline-capable, with service worker caching.
+- **Editorial UI/UX** — Full redesign with dark editorial theme, bento-style layouts, glass morphism, motion-first micro-interactions.
+- **Data portability** — CSV export for every entity + PDF print views for archival & compliance.
+
+---
+
+## What's New in v3.2
+
+**v3.2** is the **largest UI/UX overhaul + feature hardening release** since v3.0. It brings the entire app to a coherent **editorial design language**, adds **PDF print export**, hardens the **cron + email pipeline**, and fixes critical bugs across auth, checkout, and notifications.
+
+<table>
+<tr>
+<td width="50%" valign="top">
+
+### 🎨 Editorial UI/UX Redesign (Massive)
+
+The entire application was redesigned around a **cohesive editorial design system** — 120 files changed, ~24,000 lines added, ~8,500 removed.
+
+**Design principles:**
+- **Bento-style stat cards** — left accent bar, ambient glow, tabular numerals, mono type for values
+- **Glass morphism** — `backdrop-blur-xl`, layered opacity, subtle borders
+- **Grouped sidebar navigation** — Overview / Commerce / Audience / Operations
+- **Editorial typography** — tracking-tight headlines, `[0.15em]` uppercase eyebrows, `tabular-nums` for all numbers
+- **Motion-first micro-interactions** — hover lifts, staggered children, shine sweeps on CTAs
+- **Ambient glow orbs** — context-matched color per page section
+- **Consistent empty states** — every list, table, and grid has a branded empty state
+- **Status pills everywhere** — dot + icon + label, color-coded by semantic meaning
+- **Sharp scroll boundaries** — removed edge fade gradients for consistent cut-off
+- **Responsive-first** — every component tested at 320px → 2xl breakpoint
+
+**Pages redesigned:**
+- Homepage (Hero + CategorySection + HomeProductSection + RecommendedRow)
+- Products listing + Product detail + Reviews section
+- Cart (with playful rotating empty-state messages)
+- Checkout (2-step with animated stepper)
+- Orders list + Order detail + Invoice
+- Wishlist + WishlistGrid
+- Profile
+- Auth pages (login, signup, forgot, reset, verify)
+- Legal pages (privacy, terms, refund)
+- **All 16 admin pages** — dashboard, analytics, orders, payments, products, users, reviews, coupons, abandoned carts, visitors, sessions, reports, emails, audit, exports, activity
+- **All 10 email templates** — welcome, order-placed, payment-confirmed, payment-failed, order-shipped, order-delivered, order-cancelled, low-stock-alert, abandoned-cart, welcome-back
+
+</td>
+<td width="50%" valign="top">
+
+### 🖨️ PDF Print Export (New)
+
+`/admin/exports/print/[type]` — dedicated print-optimized views for all 5 export types.
+
+**Features:**
+- **Print-optimized CSS** — `@media print` with `visibility: hidden` on chrome, only the print area visible
+- **A4 landscape** for tables (`@page { size: A4 landscape }`)
+- **UTF-8 BOM** — currency symbols (₹) render correctly
+- **Banded rows** — `thead { display: table-header-group }` for multi-page tables
+- **Row-level page-break** — `tr { page-break-inside: avoid }`
+- **Filter chips** displayed in header
+- **Record count + generated date**
+- **Available types:** Orders, Payments, Emails, Users, Audit logs
+- **Zero external dependencies** — uses browser's native "Print → Save as PDF"
+
+**Why this matters:** Admins can now archive exports as PDFs, print physical copies for accounting, or attach reports to email threads — all with one click.
+
+### 🐛 Critical Bug Fixes
+
+**Cron + Email pipeline (4 fixes):**
+
+1. **Low-stock throttle on failure** — Throttle key is only set on **real success**. Previously, a failed queueEmail call still set the throttle — the next cron run was skipped, and the alert never fired.
+
+2. **Abandoned-cart parameter order** — `findAbandonedCarts(minAgeHours, maxReminders, limit)` — the cron was passing args in the wrong order (`maxAgeHours` instead of `maxReminders`), silently limiting reminders to wrong values.
+
+3. **Abandoned-cart window** — Correct throttle window (50 minutes) + correct 2-hour cart age threshold. Verified via curl test — 4 low-stock alerts + 1 abandoned cart sent successfully.
+
+4. **Email queue hardening** — If `qstash.publishJSON` throws, the email log is now marked `status: 'failed'` with the error message. Previously it stayed `status: 'queued'` forever — invisible to admins.
+
+**Auth (1 fix):**
+
+5. **Password reset / email confirm session missing** — Switched to `token_hash` flow in `/auth/callback`. The previous `code`-based flow was leaving users without a session after clicking the email link. Now uses `supabase.auth.verifyOtp({ token_hash, type })`.
+
+**Checkout (1 fix):**
+
+6. **`order_placed` event not tracked on Stripe success** — COD flow tracked the event correctly, but the Stripe success path called `handlePaymentSuccess` without tracking. Now both paths emit `order_placed` with the correct `paymentMethod`, `couponCode`, and `discountAmount`.
+
+**UI polish (1 refactor):**
+
+7. **Edge fade gradients removed** — Scrollable rows (HomeProductSection, ProductRow, RecommendedRow) had edge fade gradients that created inconsistent visual cut-off. Removed for sharp, clean boundaries.
+
+</td>
+</tr>
+</table>
+
+### 📸 New Organized Screenshot Structure
+
+Screenshots are now organized by context in `public/images/`:
+
+```
+public/images/
+├── admin_pages-images/          (10 admin screenshots)
+│   ├── admin-dashboard.jpg
+│   ├── admin-analytics-page.jpg
+│   ├── admin-product-management-page.jpg
+│   ├── admin-order-management-page.jpg
+│   ├── admin-payment-managemet-page.jpg
+│   ├── admin-coupon-management-page.jpg
+│   ├── admin-abandoned-cart-management-page.jpg
+│   ├── admin-review-approvel-page.jpg
+│   ├── admin-report-page.jpg
+│   └── admin-export-center-page.jpg
+├── customer_facing-images/      (9 customer screenshots)
+│   ├── home-page.jpg
+│   ├── home-category-page.jpg
+│   ├── product-page.jpg
+│   ├── product-id-page-quickview.jpg
+│   ├── cart-page.jpg
+│   ├── checkout-page.jpg
+│   ├── customer-order-page.jpg
+│   ├── customer-order-id-page.jpg
+│   └── customer-order-id-invoice.jpg
+└── email_template_images/       (7 email screenshots)
+    ├── abandoned-card-email.jpg
+    ├── cancelled-email.jpg
+    ├── delivered.jpg
+    ├── order-confirmed-email.jpg
+    ├── payment-succes.jpg
+    ├── reset-email-template.jpg
+    └── shipped-email.jpg
+```
+
+### 🔄 Version History Update
+
+| Version | Date | Focus | Lighthouse (Desktop) |
+|---------|------|-------|---------------------|
+| **v3.2.0** | **2026-10-16** | **Editorial redesign + PDF export + bug fixes** | **97/100/100/100** |
+| v3.1.0 | 2026-10-13 | AI + PWA + Auth polish | 97/100/100/100 |
+| v3.0.0 | 2026-10-12 | Enterprise features | 98/100/100/100 |
+| v2.0.0 | 2026-10-05 | Security + perf | 87/85/100/100 |
+| v1.0.0 | 2026-10-01 | Initial release | — |
+
+### 📦 Commit Trail (v3.1 → v3.2)
+
+Chronological list of the commits that shaped this release:
+
+- `feat(ui): redesign entire app with editorial theme + responsive fixes` (120 files, +23,657 / −8,498)
+- `feat(email): redesign all email templates with theme-matched editorial style`
+- `fix(ui): polish row shadows, navbar scroll lock, and category page redesign`
+- `fix(cron): low-stock throttle on failure + abandoned-cart window + email queue hardening`
+- `fix(cron): correct param order in findAbandonedCarts (maxReminders, not maxAgeHours)`
+- `fix(checkout): track order_placed event on COD and Stripe success`
+- `fix(auth): use token_hash flow for reset/confirm email — fixes session missing`
+- `refactor(ui): remove edge fade gradients from scrollable rows for consistent sharp cut-off`
+- `feat(admin): add PDF print export + fix test suite + lint errors`
 
 ---
 
 ## What's New in v3.1
 
-This release introduces **AI-powered shopping assistance**, **PWA capabilities**, and **comprehensive auth improvements**:
+This release introduced **AI-powered shopping assistance**, **PWA capabilities**, and **comprehensive auth improvements**:
 
 <table>
 <tr>
@@ -250,6 +407,11 @@ Audited with **Google Lighthouse 13.5.0** on a **production build** with **mobil
 - ✅ Groq-powered AI chatbot
 - ✅ Password reset flow with strength meter
 - ✅ Privacy Policy, Terms, Refund pages
+- ✅ **Editorial redesign** — cohesive design language across 120+ files
+- ✅ **PDF print export** — zero-dependency, print-optimized
+- ✅ **Grouped admin sidebar** — Overview / Commerce / Audience / Operations
+- ✅ **Bento-style stat cards** — consistent across every admin page
+- ✅ **Sharp scroll boundaries** — no edge fade gradients
 
 ---
 
@@ -277,12 +439,13 @@ Audited with **Google Lighthouse 13.5.0** on a **production build** with **mobil
 
 - **Email + Password** with strong password validation (8+ chars, mixed case, number)
 - **Password strength meter** (visual feedback: Very Weak → Very Strong)
-- **Forgot / Reset password flow** (email link → secure reset form)
+- **Forgot / Reset password flow** (email link → secure reset form via `token_hash` flow)
 - **Google OAuth** with PKCE
 - **Show / hide password** toggle
 - **Verify email** required before login
 - **Session-aware redirects** with cookie preservation
 - **Existing email detection** — prevents silent account creation
+- **Editorial auth pages** — animated 3-column backgrounds, gradient icon tiles, shimmer CTAs
 
 </details>
 
@@ -303,25 +466,32 @@ Audited with **Google Lighthouse 13.5.0** on a **production build** with **mobil
 <details open>
 <summary><strong>Storefront & Discovery</strong></summary>
 
-- **Elegant homepage** — Hero with adaptive imagery (mobile vs desktop), animated stats, category grid, featured + new-arrivals scroll rows, trending products row
+- **Editorial homepage** — Hero with adaptive imagery (mobile vs desktop), animated stats, category grid, featured + new-arrivals scroll rows, trending products row
+  - **Ambient parallax orbs** — mouse-tracked depth
+  - **Corner crosshair marks** for editorial feel
+  - **Vertical brand mark** on large screens ("VESTIOR · EST. 1968")
+  - **Refined scroll indicator** with mouse outline + bouncing dot
+  - **Bento category grid** — icon, hover "Shop Now" pill, animated underline
+  - **Sharp scroll rows** — no edge fade, arrow navigation, progress bar
 - **Advanced product discovery**
   - Debounced live search (300ms) with recent search history
+  - **Plural/singular variants** — "shirts" also matches "shirt"
   - Category filtering
   - **Price range filter** (min/max)
   - **Sort**: Newest, Price ↓, Price ↑, Top Rated, Most Popular
   - **In-stock only** toggle
   - Active filter chips (removable)
   - Shareable/bookmarkable URLs
-  - Mobile filter drawer
+  - Mobile filter drawer (bottom sheet)
 - **Product detail**
-  - Multi-image gallery with prev/next
-  - Image thumbnails
+  - Multi-image gallery with prev/next + thumbnails
   - Size selector (XS–3XL + Custom)
-  - Live stock indicator
+  - Live stock indicator (green / amber / red)
   - Discount % badge
   - Wishlist toggle
   - Copy link + WhatsApp share
   - Dynamic OG metadata + JSON-LD
+  - **Recommended rows** — Related, You May Also Like, Recently Viewed
 
 </details>
 
@@ -331,14 +501,17 @@ Audited with **Google Lighthouse 13.5.0** on a **production build** with **mobil
 - **localStorage cart** with deduplication and stock clamping
 - Real-time cart count in navbar
 - Quantity update, remove item, clear cart
+- **Playful empty state** — rotating messages ("Every great outfit starts with one click"), floating mini-icons, marketing benefits strip
 - **Secure server-validated checkout** (client prices ignored)
 - **Payment method selector**:
   - Cash on Delivery (COD)
   - Card via Stripe Elements
-- **Coupon field** with server-side validation
+- **Coupon field** with server-side validation (both desktop sidebar + mobile)
 - Auto-fill of shipping address from profile
-- Stripe Elements with night theme
+- **Animated 2-step stepper** with checkmarks and pulse rings
+- Stripe Elements with night theme + custom variables
 - Order confirmation with email
+- **Trust strip** — Free Delivery / Secure Payment / 14-Day Returns
 
 </details>
 
@@ -350,10 +523,11 @@ Audited with **Google Lighthouse 13.5.0** on a **production build** with **mobil
 - PKCE-safe callback handling
 - Profile management (name, phone, address)
 - Order history with **real-time status updates** (Supabase Realtime)
-- **Order detail page** with progress tracker
+- **Order detail page** with progress tracker (animated steps + pulse rings)
 - **Invoice download** (print-optimized HTML → Save as PDF)
 - **Wishlist** page (backend-synced, guest merge on login)
 - **Product reviews** (verified purchase badges, moderation)
+- **Editorial empty states** for orders, wishlist, cart
 
 </details>
 
@@ -364,7 +538,8 @@ Audited with **Google Lighthouse 13.5.0** on a **production build** with **mobil
 - **"Related Products"** — same category, similar price
 - **"Trending Now"** — from tracked events (last 7 days)
 - **"Recently Viewed"** — localStorage-backed carousel
-- All rows are scrollable with arrow navigation
+- All rows scrollable with arrow navigation + progress bar
+- **Sharp boundaries** — no edge fade gradients
 
 </details>
 
@@ -372,7 +547,7 @@ Audited with **Google Lighthouse 13.5.0** on a **production build** with **mobil
 
 ### 🎛️ Admin Panel
 
-16 dedicated pages, all dark-themed with glass-morphism UI:
+**19 dedicated pages**, all dark-themed with **editorial glass-morphism UI**:
 
 | Page | Purpose |
 |------|---------|
@@ -392,7 +567,8 @@ Audited with **Google Lighthouse 13.5.0** on a **production build** with **mobil
 | **`/admin/sessions`** | Session drill-down with paths, products, orders |
 | **`/admin/emails`** | Email delivery logs with filters |
 | **`/admin/audit`** | Every admin action, timestamped |
-| **`/admin/exports`** | CSV export center (orders, payments, emails, users, audit) |
+| **`/admin/exports`** | CSV export center + **PDF print views** (NEW) |
+| **`/admin/exports/print/[type]`** | **Print-optimized PDF-ready views** (NEW) |
 | **`/admin/users`** | User table with search, role filter, detail modal |
 | **`/admin/users/[id]/activity`** | User activity timeline with session history |
 | **`/admin/reports`** | Sales reports with revenue, categories, top products, trends |
@@ -402,20 +578,33 @@ Audited with **Google Lighthouse 13.5.0** on a **production build** with **mobil
 - **Audit logging** — Every privileged action timestamped with actor, target, before/after state
 - **Payment refunds** — Stripe refund API + order status update
 - **CSV exports** — Orders, payments, emails, users, audit logs (with date filters)
+- **PDF print exports** — Dedicated print routes, A4-optimized, filter-aware
 - **Printable invoices** — Customer + admin access, A4-optimized
 - **Coupon management** — CRUD + atomic redemption + usage tracking
 - **Review moderation** — Approve / reject / delete
 - **Abandoned cart recovery** — View + track recovery emails
 - **Product Analytics** — Views, cart adds, orders, conversion rate per product
 - **Visitor tracking** — Session-level analytics with device, location, referrer
+- **Grouped sidebar navigation** — Overview / Commerce / Audience / Operations
+- **Bento-style stat cards** — left accent bar, ambient glow, tabular numerals
+- **Consistent status pills** — dot + icon + label, color-coded
 
 **Real-time admin notifications:**
 - Web Audio API chime (no file needed)
-- Custom toast with "View" action
+- Custom toast with "View" action + shine sweep
 - Browser native notification
-- Bell icon with unread badge
+- Bell icon with unread badge + pulse
 - localStorage persistence
 - Triggered by: `order INSERT` and `payment_status → completed`
+
+**Editorial design system (all admin pages):**
+- **Card layout** — `bg-gradient-to-b from-[#131313] to-[#0e0e0e] border-white/[0.06]`
+- **Left accent bar** — `w-[3px] h-10 rounded-r-full` in semantic color
+- **Ambient glow orbs** — `blur-[70px]` behind each stat
+- **Eyebrow pills** — `text-[10px] tracking-[0.18em] uppercase`
+- **Empty states** — icon tile + title + description + clear CTA
+- **Grouped tables** — hover states, header tracking, `tabular-nums`
+- **Motion-first** — staggered children, hover lifts, shine sweeps
 
 ---
 
@@ -448,6 +637,7 @@ Audited with **Google Lighthouse 13.5.0** on a **production build** with **mobil
 - **Cooldown** — max 3 reminders, 7 days apart
 - **Throttle** — 1 cron run per hour
 - Admin dashboard with stats (recovery rate, lost value)
+- **v3.2 fixes:** Correct param order in `findAbandonedCarts`, correct age window, throttle only set on success
 
 </details>
 
@@ -462,6 +652,7 @@ Audited with **Google Lighthouse 13.5.0** on a **production build** with **mobil
 - **Schema.org Review markup** — Google stars in search results
 - Average rating + breakdown on product page
 - Star rating on product cards
+- **Editorial review cards** with star accent + status badge
 
 </details>
 
@@ -475,6 +666,7 @@ Audited with **Google Lighthouse 13.5.0** on a **production build** with **mobil
 - **Navbar badge** with live count
 - Dedicated `/wishlist` page with add-to-cart
 - Optimistic updates with rollback on error
+- **Editorial empty state** — animated heart tile + sparkle accent
 
 </details>
 
@@ -482,11 +674,35 @@ Audited with **Google Lighthouse 13.5.0** on a **production build** with **mobil
 <summary><strong>Product Analytics</strong></summary>
 
 - **Per-product performance** — views, cart adds, orders, revenue, conversion rate
-- **Abandoned detection** — products with high views but zero orders highlighted
+- **Abandoned detection** — products with high views but zero orders highlighted (amber pulse dot)
 - **Category breakdown** — revenue and units sold per category
-- **Top products** — by revenue, units sold, order count
+- **Top products** — by revenue, units sold, order count (rank badges for top 3)
 - **Date range filtering** — 7d, 30d, 90d
-- **Sortable table** — click column headers to sort
+- **Sortable table** — click column headers to sort, direction indicators
+- **Abandoned filter** — one-click to show only abandoned products
+
+</details>
+
+<details>
+<summary><strong>PDF Print Export (v3.2)</strong></summary>
+
+- **Dedicated print routes** — `/admin/exports/print/[type]`
+- **5 export types:**
+  - Orders — order ID, customer, status, items, totals, shipping
+  - Payments — provider, txn ID, amount, status, method
+  - Emails — template, recipient, status, message ID
+  - Users — name, email, phone, role, city, state
+  - Audit — timestamp, actor, action, target, IP hash
+- **Print-optimized CSS:**
+  - `@page { size: A4 landscape; margin: 10mm }`
+  - `thead { display: table-header-group }` — repeat headers on page breaks
+  - `tr { page-break-inside: avoid }` — no split rows
+  - `visibility: hidden` on all chrome, only `#export-print-area` visible
+- **Filter-aware** — date range, status, provider preserved in print
+- **Active filter chips** displayed in document header
+- **Record count + generation date** in header
+- **Zero external dependencies** — uses browser's native print → Save as PDF
+- **UTF-8 rendering** — currency symbols (₹) preserved
 
 </details>
 
@@ -507,11 +723,22 @@ Audited with **Google Lighthouse 13.5.0** on a **production build** with **mobil
 9. **Abandoned cart** (with recovery coupon)
 10. **Welcome back** (returning users, throttled to once per week)
 
+**All 10 templates redesigned in v3.2** with **theme-matched editorial style:**
+- Dark `#0A0A0A` background
+- Brand masthead with accent-colored dot (`● VESTIOR`)
+- Accent eyebrow badge (uppercase, tracking-widest)
+- Semantic accent color per template (blue for orders, emerald for success, red for failures, amber for warnings, violet for shipped/abandoned)
+- Hairline accent dividers (`rgba(accent, 0.25)`)
+- Gradient CTA buttons with box-shadow
+- Trust footer with email reply prompt
+- Copyright year auto-computed
+
 **Admin notifications:**
 - Real-time toast + sound + browser notification
-- Bell icon with count
+- Bell icon with count badge + pulse
 - Dropdown with last 30 notifications
 - Deep-link to order detail
+- **v3.2 polish:** Editorial toast design with left accent bar + icon tile + "View" action
 
 ---
 
@@ -528,8 +755,15 @@ Audited with **Google Lighthouse 13.5.0** on a **production build** with **mobil
 - **Structured error logging**
 - **Environment validation at startup**
 - **Audit logging on every privileged action**
+- **Editorial design system** — consistent tokens across 120+ files
+- **Zero-dependency CSV builder** — handles escapes, quotes, newlines, BOM
+- **Zero-dependency PDF print** — uses browser native print
 
 ---
+
+<div align="center">
+📌 End of Part 1 — Continue to Part 2 for Tech Stack, Architecture (with PDF Print + Editorial UI diagrams), Screenshots (new paths), Getting Started, Supabase/MongoDB/Upstash/Stripe/Gmail/Groq setup, First Admin, Seed Data, Project Structure
+</div>
 
 ## Tech Stack
 
@@ -543,9 +777,9 @@ Audited with **Google Lighthouse 13.5.0** on a **production build** with **mobil
 - **TypeScript 5** (strict)
 - **Tailwind CSS v4**
 - **Framer Motion 12**
-- **Lucide React**
-- **Recharts** (admin only)
-- **react-hot-toast**
+- **Lucide React** (tree-shaken)
+- **Recharts** (admin only, lazy-loaded)
+- **react-hot-toast** (custom editorial theme)
 
 </td>
 <td width="33%" valign="top">
@@ -586,6 +820,14 @@ Audited with **Google Lighthouse 13.5.0** on a **production build** with **mobil
 - **GitHub Actions**
 - **Codecov** ready
 - **AI SDK v5** — Vercel AI SDK
+
+### UI/UX Stack (v3.2)
+- **Editorial design system**
+- **Glass morphism** (`backdrop-blur-xl`)
+- **Framer Motion** micro-interactions
+- **Custom editorial tokens** — dark theme
+- **Recharts** — Area, Bar, Pie, Legend
+- **Web Audio API** — notification chime
 
 </td>
 </tr>
@@ -667,16 +909,17 @@ flowchart TB
 - Open redirect protection on OAuth callback `next` param
 - Rate limiting on every route tier with fail-open behavior
 - AI chatbot: system prompt server-side only, tools are read-only
+- PDF print routes: server-side admin verification before rendering
 
 ---
 
-### Order Placement Flow (Atomic)
+### Order Placement Flow (Atomic v2)
 
 ```mermaid
 sequenceDiagram
     participant U as Customer
     participant SA as Server Action
-    participant RPC as PostgreSQL RPC
+    participant RPC as PostgreSQL RPC v2
     participant DB as Supabase
     participant Q as QStash
     participant M as MongoDB
@@ -685,26 +928,27 @@ sequenceDiagram
     SA->>SA: Validate input shape (Zod)
     SA->>SA: Authenticate caller
     SA->>SA: Merge duplicate product IDs
-    SA->>RPC: place_order_atomic(...)
+    SA->>RPC: place_order_atomic(...) ← ONE transaction
     RPC->>DB: BEGIN
-    RPC->>DB: FOR each item: SELECT FOR UPDATE
+    RPC->>DB: FOR each item: SELECT FOR UPDATE (sorted by id ASC)
     RPC->>DB: Verify stock >= qty
     RPC->>DB: UPDATE stock -= qty
-    RPC->>DB: INSERT order + order_items
-    RPC->>DB: COMMIT
-    RPC-->>SA: { order_id, subtotal, shipping, total }
-    SA->>RPC: redeem_coupon_atomic(...) (if coupon)
-    RPC->>DB: Re-validate + FOR UPDATE lock
+    RPC->>DB: Lock coupon row (if provided)
+    RPC->>DB: Re-validate expiry / usage / min order / per-user
     RPC->>DB: Increment times_used + INSERT redemption
-    RPC-->>SA: { discount_amount }
-    SA->>DB: UPDATE order (coupon_code, discount_amount)
+    RPC->>DB: INSERT order (with coupon + provider fields)
+    RPC->>DB: INSERT order_items
+    RPC->>DB: COMMIT
+    RPC-->>SA: { order_id, subtotal, shipping, discount_amount, coupon_code, total }
     SA->>Q: queueEmail('order-placed')
     Q-->>M: Log 'queued'
     SA->>M: markCartRecovered()
     SA-->>U: { success, orderId, total }
 ```
 
-**Concurrency guarantee:** Under simultaneous orders on the same product, `FOR UPDATE` serializes access. **Oversell is impossible.**
+**v2 atomicity guarantee:** In v1, order creation, coupon redemption, and payment provider tagging were **3 separate operations**. Any failure left inconsistent state. In v2, all four concerns live in **one transaction**. If any step fails, everything rolls back. **No retry logic. No compensating RPC.**
+
+**Concurrency guarantee:** Under simultaneous orders on the same product, `FOR UPDATE` (with canonical lock ordering by `product_id ASC`) serializes access. **Oversell is impossible. Deadlocks are impossible.**
 
 ---
 
@@ -717,6 +961,7 @@ sequenceDiagram
     participant DB as Supabase
     participant SP as Stripe
     participant WH as Webhook
+    participant M as MongoDB
 
     U->>SA: Checkout with card
     SA->>DB: Create order (payment_status: pending)
@@ -729,19 +974,24 @@ sequenceDiagram
     SA->>SP: paymentIntents.retrieve()
     SP-->>SA: { status: 'succeeded' }
     SA->>DB: UPDATE order (payment_status: completed)
+    SA->>M: INSERT payment_transactions (if not exists)
+    SA->>QStash: queueEmail('payment-confirmed')
     par Webhook (production)
         SP->>WH: payment_intent.succeeded
         WH->>WH: Verify signature
-        WH->>WH: Check idempotency (Redis)
-        WH->>WH: Check if already completed (duplicate guard)
+        WH->>WH: Check idempotency (Redis SETNX + Lua)
+        WH->>DB: Check if already completed (duplicate guard)
         WH->>DB: UPDATE order
-        WH->>Mongo: INSERT payment_transactions
-    and Email
-        SA->>QStash: queueEmail('payment-confirmed')
+        WH->>M: INSERT payment_transactions
+        WH->>WH: Skip email if already completed
     end
 ```
 
-**Dual confirmation:** Webhook + client-side verify. Both idempotent. Race-safe. Webhook checks if order is already completed to prevent duplicate emails.
+**Dual confirmation:** Webhook + client-side verify. Both idempotent. Race-safe.
+
+**v3.1 fix:** Webhook now checks `payment_status` before queuing the email — prevents duplicate "payment-confirmed" emails when both paths run.
+
+**v3.2 fix:** `order_placed` tracking event now fires on BOTH COD and Stripe success paths.
 
 ---
 
@@ -754,18 +1004,25 @@ flowchart LR
     C -->|Yes| D[Send directly via Gmail SMTP]
     C -->|No| E[Push to QStash]
     E -->|POST /api/jobs/send-email| F[Job handler]
-    F --> G[Render React Email]
-    G --> H[Send via Gmail SMTP]
-    H --> I[Update log: sent]
-    D --> I
-    I --> J[Resend webhook → status tracking]
+    F --> G[Verify QStash signature]
+    G --> H[Render React Email]
+    H --> I[Send via Gmail SMTP]
+    I --> J[Update log: sent + messageId]
+    D --> J
+    J --> K[Optional: Resend webhook → status tracking]
+    
+    F -.->|Render failed| L[Mark failed — no retry]
+    F -.->|SMTP failed| M[Return 500 — QStash retries 3x]
+    E -.->|Publish failed| N[Mark failed with error]
 ```
 
 **Why QStash?** Vercel functions have 10s limits. SMTP is slow. Queue decouples the two.
 
 **Dev-mode fallback:** QStash can't reach `localhost`. Direct send in dev.
 
-**Failure logging:** If QStash publish fails, the email log is marked `failed` with the error message — no more stuck `queued` entries.
+**v3.1 fix:** If QStash publish fails, the email log is marked `failed` with the error message — no more stuck `queued` entries.
+
+**v3.2 fix:** Cron throttles are only set on **real success** — no more silent skips when the previous run failed.
 
 ---
 
@@ -774,11 +1031,11 @@ flowchart LR
 ```mermaid
 flowchart LR
     A[User action] -->|track\('event', props\)| B[Client SDK]
-    B --> C[Batch every 10s]
+    B --> C[Batch every 10s OR 10 events]
     C --> D[navigator.sendBeacon on unload]
     D --> E[POST /api/track]
     E --> F[Rate limit: 100/min/IP]
-    F --> G[Zod validate]
+    F --> G[Zod validate payload]
     G --> H[Parse User-Agent]
     H --> I[Hash IP: SHA-256 + salt]
     I --> J[(MongoDB: events)]
@@ -793,7 +1050,7 @@ flowchart LR
 
 **Events tracked:** `page_view`, `product_view`, `add_to_cart`, `remove_from_cart`, `checkout_started`, `checkout_completed`, `order_placed`, `login`, `signup`, `search`, `wishlist_add`, `wishlist_remove`, `share_product`.
 
-**Sessions:** Each browser tab's continuous interaction is stored as a session document with full activity summary — paths visited, products viewed, orders placed, duration, device, referrer.
+**Sessions:** Each browser tab's continuous interaction is stored as a session document with full activity summary — paths visited, products viewed, orders placed, duration, device, referrer, `ended_with` heuristic (order / abandon / bounce).
 
 ---
 
@@ -805,20 +1062,28 @@ flowchart TD
     B --> C[POST /api/cart/sync]
     C --> D[(MongoDB: cart_snapshots)]
 
-    E[Cron: every hour] -->|GET /api/cron/abandoned-carts| F{Throttle: 50 min?}
-    F -->|No| G[Skip]
-    F -->|Yes| H[Find carts > 2h old, max 3 reminders]
-    H --> I[For each cart]
-    I --> J[Generate/lookup 5%-off coupon]
-    J --> K[Queue email via QStash]
-    K --> L[Update: last_reminder_at, count++]
+    E[Cron: hourly] -->|GET /api/cron/abandoned-carts| F{Throttle: 50 min?}
+    F -->|Yes, throttled| G[Skip + return minutesSince]
+    F -->|No| H[ensureCartIndexes]
+    H --> I[findAbandonedCarts(minAgeHours=2, maxReminders=3, limit=100)]
+    I --> J[For each cart]
+    J --> K[generateRecoveryCoupon (idempotent)]
+    K --> L[queueEmail via QStash]
+    L --> M{logId returned?}
+    M -->|Yes| N[markReminderSent + count++]
+    M -->|No| O[failed++ — do NOT throttle]
+    N --> P[redis.set THROTTLE_KEY]
 
-    M[Customer clicks recovery link] -->|GET /cart?recover=TOKEN| N[/api/cart/recover]
-    N --> O[Restore cart from snapshot]
-    O --> P[Clean URL]
+    Q[Customer clicks recovery link] -->|GET /cart?recover=TOKEN| R[/api/cart/recover]
+    R --> S[findCartByToken → restore items]
+    S --> T[Clean URL]
 
-    Q[Order placed] --> R[markCartRecovered]
+    U[Order placed] --> V[markCartRecovered]
 ```
+
+**v3.2 fixes:**
+- **Param order corrected** — `findAbandonedCarts(minAgeHours, maxReminders, limit)` — was passing args wrong, silently limiting reminders.
+- **Throttle only set on success** — failed runs leave the throttle unset, so the next cron can retry.
 
 ---
 
@@ -828,14 +1093,30 @@ flowchart TD
 flowchart LR
     A[Customer places order] --> B[Supabase INSERT orders]
     B -->|Realtime channel| C[AdminNotificationsProvider]
-    C --> D[Web Audio API chime]
-    C --> E[Custom toast with View action]
+    C --> D[Web Audio API chime<br/>C5 → E5 two-note beep]
+    C --> E[Editorial toast<br/>Left accent bar + View action]
     C --> F[Browser Notification API]
-    C --> G[Bell icon badge++]
-    C --> H[localStorage persist]
+    C --> G[Bell icon badge++ + pulse]
+    C --> H[localStorage persist<br/>Max 30 notifications]
+    
+    I[Payment completed] --> J[Supabase UPDATE orders]
+    J --> C
 ```
 
 **Subscription:** `orders` table INSERT + UPDATE where `payment_status = 'completed'`.
+
+**Notification types:**
+- `order_placed` → indigo accent + Sparkles icon
+- `payment_completed` → emerald accent + CheckCheck icon
+- `order_cancelled` → red accent + Bell icon
+
+**Toast design (v3.2):**
+- Left accent bar (`border-l-[3px]`)
+- Icon tile with matching bg + border
+- Title + 2-line message
+- "View" action with `ExternalLink` icon + hover translate
+- Shine sweep on the View button
+- Auto-dismiss after 8s
 
 ---
 
@@ -847,7 +1128,7 @@ flowchart LR
     B --> C[POST /api/chat]
     C --> D[Rate limit: 20/min/IP]
     D --> E[Zod validate]
-    E --> F[Strip system role]
+    E --> F[Strip system role<br/>Only user/assistant allowed]
     F --> G[streamText with tools]
     G --> H[Groq LPU Inference]
     H --> I{Tool call?}
@@ -858,8 +1139,9 @@ flowchart LR
     J --> L[Return JSON to LLM]
     K --> L
     L --> M[LLM generates response]
-    M --> N[Stream via SSE]
+    M --> N[Stream via text/plain SSE]
     N --> O[Client renders word-by-word]
+    O --> P[Auto-scroll + typing indicator]
 ```
 
 **Security:**
@@ -868,12 +1150,24 @@ flowchart LR
 - Tools are read-only — no INSERT/UPDATE/DELETE
 - `getMyOrders` uses RLS — only sees caller's own orders
 - Rate-limited at 20 messages/min/IP
+- `stopWhen: stepCountIs(3)` — max 3 tool calls per turn
+- Fail-closed — returns 503 if `GROQ_API_KEY` missing
 
 **Why tools over RAG?**
 - **Fresh data** — Tools query live DB
 - **No embeddings** — No vector store needed
 - **Simpler** — One function call vs vector search
 - **Authoritative** — Never hallucinates prices
+
+**v3.1 polish:**
+- Session-scoped history in `sessionStorage` (cleared when tab closes)
+- Suggested prompts on empty state
+- Typing indicator (three bouncing dots)
+- Clear conversation button
+- ESC to close panel
+- Full-screen on mobile, floating panel on desktop
+- Body scroll lock with scrollbar-width compensation
+- Stream abort via `AbortController` when panel closes
 
 ---
 
@@ -904,26 +1198,159 @@ flowchart TD
 - Orders per product (from events + sales)
 - Revenue per product (from order_items)
 - Conversion rate: orders / views
+- Cart-to-order rate: orders / cartAdds
 - Abandoned: views >= 20 AND orders = 0
+
+**Sortable columns (v3.1+):** Views, Cart adds, Orders, Revenue, Conversion rate — with animated direction indicator.
+
+**Abandoned filter:** One-click to show only abandoned products. Amber pulse dot on each.
+
+---
+
+### PDF Print Export Pipeline (NEW in v3.2)
+
+```mermaid
+flowchart TD
+    A[Admin clicks Print] -->|window.open| B[/admin/exports/print/[type]?filters]
+    B --> C[Server Component]
+    C --> D{Verify admin session}
+    D -->|Fail| E[redirect /]
+    D -->|Pass| F[Fetch filtered data]
+    F --> G[<ExportPrintView type title columns rows filters />]
+    G --> H[Render white A4-optimized doc]
+    H --> I[Admin clicks Print button]
+    I -->|window.print| J[Browser print dialog]
+    J --> K[Save as PDF OR send to printer]
+    
+    L[Print CSS] --> M[@page A4 landscape]
+    L --> N[visibility: hidden on chrome]
+    L --> O[thead: display table-header-group]
+    L --> P[tr: page-break-inside avoid]
+    L --> Q[Only #export-print-area visible]
+```
+
+**Why zero-dependency?**
+- No Puppeteer / no headless Chrome (heavy)
+- No server-side PDF library (adds 200KB+)
+- Browser's native print → "Save as PDF" is 100% free
+- Admin gets full control (paper size, margins, headers, footers)
+- Works offline once page loaded
+
+**Print styling (5 export types):**
+
+| Type | Key columns |
+|------|-------------|
+| **Orders** | Order ID, Date, Customer, Status, Payment, Provider, Subtotal, Shipping, Total, Items, City |
+| **Payments** | Order ID, Date, Provider, Txn ID, Amount, Currency, Status, Method |
+| **Emails** | Sent At, Template, Recipient, Status, Message ID, Error |
+| **Users** | User ID, Name, Email, Phone, Role, City, State, Joined |
+| **Audit** | Timestamp, Actor, Action, Target Type, Target ID, IP Hash |
+
+**Format functions:**
+- `format: 'date'` → "5 Oct 2026"
+- `format: 'currency'` → "₹18,999"
+- Empty / null → "—"
+
+---
+
+### Editorial UI Design System (NEW in v3.2)
+
+The v3.2 redesign introduces a **cohesive design language** built on top of Tailwind v4. Every component adheres to the same tokens:
+
+```mermaid
+mindmap
+  root((Editorial<br/>Design System))
+    Colors
+      Background: #0A0A0A
+      Card: #131313 → #0e0e0e gradient
+      Border: white/[0.06]
+      Border Hover: white/[0.12]
+      Text Primary: #FFFFFF
+      Text Secondary: gray-500
+      Text Muted: gray-600
+    Accents
+      Indigo (primary)
+      Emerald (success)
+      Amber (warning)
+      Rose (danger)
+      Violet (info)
+      Teal (secondary)
+    Typography
+      Headlines: tracking-tight, font-bold
+      Eyebrows: text-[10px] tracking-[0.18em] uppercase
+      Numbers: tabular-nums
+      Mono: ui-monospace for IDs
+    Surfaces
+      Card: from-[#131313] to-[#0e0e0e]
+      Border: border-white/[0.06]
+      Rounded: rounded-2xl
+      Shadow: shadow-2xl shadow-black/30
+    Motion
+      Stagger children: 0.06
+      Duration: 0.4s
+      Easing: [0.22, 1, 0.36, 1]
+      Hover lift: y: -3
+    Interactions
+      Shine sweep on CTAs
+      Layout-animated active sidebar
+      Pulse ring on active steps
+      Ping dot on live states
+```
+
+**Signature patterns:**
+
+1. **Bento stat cards** — left accent bar + ambient glow orb + icon tile + eyebrow + big number + subtitle
+2. **Grouped sidebar** — Overview / Commerce / Audience / Operations with layout-animated active bar
+3. **Empty states** — icon tile + halo glow + title + description + CTA (never a bare "No data")
+4. **Status pills** — `w-1 h-1 rounded-full` dot + icon + label, semantic color
+5. **Eyebrow pills** — `text-[10px] tracking-[0.18em] uppercase` in accent-tinted bg
+6. **Shine sweeps** — `-inset-x-1/2 bg-gradient-to-r from-transparent via-white/25 to-transparent -translate-x-full group-hover:translate-x-full`
+7. **Skeleton loaders** — matching card shape with `animate-pulse`
+8. **Ambient orbs** — `blur-[70px]` accent-colored background glow per card
+9. **Timeline dots** — pulse-ping for live, solid for past
+10. **Progress bars** — gradient fill, animated on mount
+
+**Why this matters:**
+- **Consistency** — every admin page feels like the same product
+- **Performance** — pure CSS, no runtime overhead
+- **Accessibility** — semantic colors, sufficient contrast
+- **Maintainability** — tokens documented, easy to extend
+- **Brand identity** — dark editorial tone throughout
 
 ---
 
 ## Screenshots
 
-> Screenshots are captured from the production build at [vestior.vercel.app](https://vestior.vercel.app).
+> Screenshots are captured from the production build at [vestior.vercel.app](https://vestior.vercel.app). All images organized by context in `public/images/`.
+
+### Customer-Facing Pages
 
 <table>
 <tr>
 <td width="50%">
 
 **Homepage**
-![Homepage](./public/og-image.png)
+![Homepage](./public/images/customer_facing-images/home-page.jpg)
 
 </td>
 <td width="50%">
 
-**Product Category**
-![Category](./public/category.png)
+**Home — Category Section**
+![Home Category](./public/images/customer_facing-images/home-category-page.jpg)
+
+</td>
+</tr>
+<tr>
+<td width="50%">
+
+**Products Listing**
+![Products](./public/images/customer_facing-images/product-page.jpg)
+
+</td>
+<td width="50%">
+
+**Product Detail + Quick View**
+![Product Detail](./public/images/customer_facing-images/product-id-page-quickview.jpg)
 
 </td>
 </tr>
@@ -931,13 +1358,13 @@ flowchart TD
 <td width="50%">
 
 **Cart**
-![Cart](./public/cart.png)
+![Cart](./public/images/customer_facing-images/cart-page.jpg)
 
 </td>
 <td width="50%">
 
 **Checkout**
-![Checkout](./public/checkout.png)
+![Checkout](./public/images/customer_facing-images/checkout-page.jpg)
 
 </td>
 </tr>
@@ -945,51 +1372,186 @@ flowchart TD
 <td width="50%">
 
 **Customer Orders**
-![Orders](./public/order.png)
+![Orders](./public/images/customer_facing-images/customer-order-page.jpg)
 
 </td>
 <td width="50%">
 
+**Order Detail**
+![Order Detail](./public/images/customer_facing-images/customer-order-id-page.jpg)
+
+</td>
+</tr>
+<tr>
+<td width="50%" colspan="2">
+
+**Printable Invoice**
+![Invoice](./public/images/customer_facing-images/customer-order-id-invoice.jpg)
+
+</td>
+</tr>
+</table>
+
+---
+
+### Admin Pages
+
+<table>
+<tr>
+<td width="50%">
+
 **Admin Dashboard**
-![Dashboard](./public/dashboard.png)
+![Admin Dashboard](./public/images/admin_pages-images/admin-dashboard.jpg)
+
+</td>
+<td width="50%">
+
+**Admin Analytics**
+![Admin Analytics](./public/images/admin_pages-images/admin-analytics-page.jpg)
 
 </td>
 </tr>
 <tr>
 <td width="50%">
 
-**Admin Orders**
-![Admin Orders](./public/ordersadmin.png)
+**Product Management**
+![Product Management](./public/images/admin_pages-images/admin-product-management-page.jpg)
 
 </td>
 <td width="50%">
 
-**Admin Users**
-![Admin Users](./public/useradmin.png)
+**Order Management**
+![Order Management](./public/images/admin_pages-images/admin-order-management-page.jpg)
+
+</td>
+</tr>
+<tr>
+<td width="50%">
+
+**Payment Management**
+![Payment Management](./public/images/admin_pages-images/admin-payment-managemet-page.jpg)
+
+</td>
+<td width="50%">
+
+**Coupon Management**
+![Coupon Management](./public/images/admin_pages-images/admin-coupon-management-page.jpg)
+
+</td>
+</tr>
+<tr>
+<td width="50%">
+
+**Abandoned Cart Recovery**
+![Abandoned Carts](./public/images/admin_pages-images/admin-abandoned-cart-management-page.jpg)
+
+</td>
+<td width="50%">
+
+**Review Moderation**
+![Review Approval](./public/images/admin_pages-images/admin-review-approvel-page.jpg)
+
+</td>
+</tr>
+<tr>
+<td width="50%">
+
+**Sales Reports**
+![Reports](./public/images/admin_pages-images/admin-report-page.jpg)
+
+</td>
+<td width="50%">
+
+**Export Center**
+![Exports](./public/images/admin_pages-images/admin-export-center-page.jpg)
 
 </td>
 </tr>
 </table>
 
-**Additional pages** (capture and add your own):
-- `/admin/analytics` — Analytics dashboard with product analytics
-- `/admin/coupons` — Coupon management
-- `/admin/reviews` — Review moderation
-- `/admin/abandoned-carts` — Cart recovery
-- `/admin/payments` — Payment dashboard
-- `/admin/visitors` — Visitor tracking
-- `/admin/sessions` — Session drill-down
-- `/admin/reports` — Sales reports
-- `/orders/[id]/invoice` — Printable invoice
-- AI Chatbot — Floating chat widget
+**Additional admin pages** (view live or capture your own):
+- `/admin/visitors` — Session list with tabs (All / Guest / New / Returning / Admin)
+- `/admin/sessions` — Session drill-down with paths, products, orders, device, referrer
+- `/admin/users` — User table with search, role filter, super-admin promotion
+- `/admin/users/[id]/activity` — User activity timeline
+- `/admin/emails` — Email delivery logs with template + status filters
+- `/admin/audit` — Every admin action with actor, target, before/after
+- `/admin/exports/print/orders` — Print-optimized orders (Save as PDF)
+
+---
+
+### Email Templates
+
+All 10 templates designed with **theme-matched editorial style** — dark background, brand masthead, accent eyebrow badge, semantic accent color per template.
+
+<table>
+<tr>
+<td width="50%">
+
+**Order Confirmed**
+![Order Confirmed](./public/images/email_template_images/order-confirmed-email.jpg)
+
+</td>
+<td width="50%">
+
+**Payment Success**
+![Payment Success](./public/images/email_template_images/payment-succes.jpg)
+
+</td>
+</tr>
+<tr>
+<td width="50%">
+
+**Order Shipped**
+![Shipped](./public/images/email_template_images/shipped-email.jpg)
+
+</td>
+<td width="50%">
+
+**Order Delivered**
+![Delivered](./public/images/email_template_images/delivered.jpg)
+
+</td>
+</tr>
+<tr>
+<td width="50%">
+
+**Order Cancelled**
+![Cancelled](./public/images/email_template_images/cancelled-email.jpg)
+
+</td>
+<td width="50%">
+
+**Abandoned Cart**
+![Abandoned Cart](./public/images/email_template_images/abandoned-card-email.jpg)
+
+</td>
+</tr>
+<tr>
+<td width="50%" colspan="2">
+
+**Password Reset**
+![Password Reset](./public/images/email_template_images/reset-email-template.jpg)
+
+</td>
+</tr>
+</table>
+
+**Templates not shown but implemented:**
+- Welcome (on signup)
+- Payment Failed
+- Low Stock Alert (admin notification)
+- Welcome Back (returning users, throttled)
 
 ---
 
 <div align="center">
 
-**📌 End of Part 1 — Continue to Part 2 for setup, environment variables, and configuration.**
+**📌 End of Part 2 — Continue to Part 3 for Getting Started, Setup, Project Structure, Security Checklist, Server Actions, and Database Schema.**
 
 </div>
+
+---
 
 ## 🚀 Getting Started
 
@@ -1125,13 +1687,13 @@ Open **SQL Editor** in Supabase and run these migrations in order (all files in 
 | 6 | `20261012_add_wishlists.sql` | Wishlist table + RLS |
 | 7 | `20261013_add_coupons.sql` | Coupons + redemptions + RPCs |
 | 8 | `20261014_add_last_login.sql` | Login tracking columns |
-| 9 | `20261015_add_super_admin.sql` | Super admin role |
-| 10 | `20261016_normalize_user_roles.sql` | Role normalization |
+| 9 | `20261015_add_super_admin.sql` | Super admin role + `admin_change_user_role` RPC |
+| 10 | `20261016_normalize_user_roles.sql` | Role normalization (hardened, reversible, whitelist-based) |
 | 11 | `20261017_sales_report_rpc.sql` | Sales report RPC |
 | 12 | `20261018_product_analytics_rpc.sql` | Product analytics RPC |
-| 13 | `20261019_place_order_atomic_v2.sql` | **Enhanced place_order_atomic with coupon + provider** |
+| 13 | `20261019_place_order_atomic_v2.sql` | **⚠️ Enhanced `place_order_atomic` (v2)** — coupon + provider in ONE transaction |
 
-**Important:** Migration #13 is the enhanced `place_order_atomic` RPC. It combines stock locking, coupon redemption, and payment provider tagging into a single atomic transaction.
+**Important:** Migration #13 is the enhanced `place_order_atomic` RPC. It combines stock locking, coupon redemption, and payment provider tagging into a **single atomic transaction**. If you're upgrading from an earlier deployment, you **must** run this.
 
 Copy each file's contents and run in SQL Editor. All are **idempotent** (safe to re-run).
 
@@ -1162,6 +1724,7 @@ Copy each file's contents and run in SQL Editor. All are **idempotent** (safe to
 - Redirect URLs:
   - `http://localhost:3000/auth/callback`
   - `https://your-domain.vercel.app/auth/callback`
+  - `https://your-domain.vercel.app/auth/reset-password` (for password reset via `token_hash` flow)
 
 #### 3f. Enable Realtime
 
@@ -1169,12 +1732,28 @@ Copy each file's contents and run in SQL Editor. All are **idempotent** (safe to
 
 Enable for these tables:
 - `orders` (for customer real-time tracking + admin notifications)
-- `product_reviews` (for live review updates — optional)
+- `order_items` (for real-time item updates)
 
 Or run in SQL Editor:
 ```sql
 ALTER PUBLICATION supabase_realtime ADD TABLE public.orders;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.order_items;
 ```
+
+#### 3g. Verify RLS Policies
+
+All 8 tables should have RLS enabled with these policies:
+
+| Table | Policies |
+|-------|----------|
+| `products` | Admins can view all / insert / update / delete. Anyone views active. |
+| `orders` | Users view own. Users insert own. Admins update / delete. |
+| `order_items` | Users view own. Users insert own. Admins update / delete. |
+| `profiles` | Users view own. Users insert own. Users update own. Admins delete. |
+| `product_reviews` | Anyone reads approved. Users read/insert/update own. Admins read/update/delete all. |
+| `wishlists` | Users read/insert/delete own. |
+| `coupons` | Anyone reads active. Admins manage all. |
+| `coupon_redemptions` | Users see own. Admins read all. |
 
 ---
 
@@ -1188,49 +1767,87 @@ ALTER PUBLICATION supabase_realtime ADD TABLE public.orders;
 
 **Collections are auto-created** on first write:
 
-| Collection | Purpose |
-|-----------|---------|
-| `events` | User behavior tracking |
-| `email_logs` | Delivery history |
-| `payment_transactions` | Stripe/COD records |
-| `audit_logs` | Admin actions |
-| `analytics_daily` | Pre-aggregated stats (cron) |
-| `cart_snapshots` | Abandoned cart recovery |
-| `sessions` | Visitor session tracking |
+| Collection | Purpose | TTL |
+|-----------|---------|-----|
+| `events` | User behavior tracking | 90 days |
+| `email_logs` | Delivery history | none |
+| `payment_transactions` | Stripe/COD records | none |
+| `audit_logs` | Admin actions | none |
+| `analytics_daily` | Pre-aggregated stats (cron) | none |
+| `cart_snapshots` | Abandoned cart recovery | none |
+| `sessions` | Visitor session tracking | 90 days |
 
 **Recommended indexes** (auto-created by code where possible):
 
 ```javascript
+// ─────────────────────────────────────────────
 // events
+// ─────────────────────────────────────────────
 db.events.createIndex({ timestamp: -1 }, { expireAfterSeconds: 7776000 }) // 90d TTL
 db.events.createIndex({ session_id: 1 })
 db.events.createIndex({ user_id: 1, timestamp: -1 })
 db.events.createIndex({ event_type: 1, timestamp: -1 })
+db.events.createIndex({ 'properties.productId': 1, timestamp: -1 })
 
+// ─────────────────────────────────────────────
 // email_logs
+// ─────────────────────────────────────────────
 db.email_logs.createIndex({ email: 1, created_at: -1 })
 db.email_logs.createIndex({ status: 1, created_at: -1 })
+db.email_logs.createIndex({ template: 1, created_at: -1 })
 
+// ─────────────────────────────────────────────
 // payment_transactions
+// ─────────────────────────────────────────────
 db.payment_transactions.createIndex({ provider_txn_id: 1 }, { unique: true })
 db.payment_transactions.createIndex({ order_id: 1 })
 
+// ─────────────────────────────────────────────
 // audit_logs
+// ─────────────────────────────────────────────
 db.audit_logs.createIndex({ timestamp: -1 })
+db.audit_logs.createIndex({ actor_id: 1, timestamp: -1 })
 db.audit_logs.createIndex({ target_id: 1 })
+db.audit_logs.createIndex({ action: 1, timestamp: -1 })
+db.audit_logs.createIndex({ target_type: 1, target_id: 1 })
 
+// ─────────────────────────────────────────────
 // cart_snapshots
+// ─────────────────────────────────────────────
 db.cart_snapshots.createIndex({ user_id: 1 }, { unique: true })
 db.cart_snapshots.createIndex({ recovery_token: 1 }, { unique: true })
 db.cart_snapshots.createIndex({ updated_at: -1 })
+db.cart_snapshots.createIndex(
+  { recovered_at: 1, last_reminder_at: 1 },
+  { sparse: true }
+)
 
+// ─────────────────────────────────────────────
 // sessions
-db.sessions.createIndex({ session_id: 1 }, { unique: true })
-db.sessions.createIndex({ user_id: 1, last_seen_at: -1 })
-db.sessions.createIndex({ ip_hash: 1, last_seen_at: -1 })
-db.sessions.createIndex({ visitor_type: 1, last_seen_at: -1 })
-db.sessions.createIndex({ last_seen_at: 1 }, { expireAfterSeconds: 7776000 }) // 90d TTL
+// ─────────────────────────────────────────────
+db.sessions.createIndex(
+  { session_id: 1 },
+  { unique: true, name: 'session_id_unique' }
+)
+db.sessions.createIndex(
+  { user_id: 1, last_seen_at: -1 },
+  { sparse: true, name: 'user_recent' }
+)
+db.sessions.createIndex(
+  { ip_hash: 1, last_seen_at: -1 },
+  { name: 'ip_recent' }
+)
+db.sessions.createIndex(
+  { visitor_type: 1, last_seen_at: -1 },
+  { name: 'type_recent' }
+)
+db.sessions.createIndex(
+  { last_seen_at: 1 },
+  { expireAfterSeconds: 7776000, name: 'session_ttl_90d' }
+)
 ```
+
+**Note:** `ensureSessionIndexes()` and `ensureCartIndexes()` create most of these automatically on cold start. Manual creation via `mongosh` is only needed if you want to guarantee they exist **before** the first request.
 
 ---
 
@@ -1239,11 +1856,18 @@ db.sessions.createIndex({ last_seen_at: 1 }, { expireAfterSeconds: 7776000 }) //
 #### 5a. Redis
 
 1. [console.upstash.com](https://console.upstash.com) → **Create Database**
-2. Region: closest to you
+2. Region: closest to you (or match Vercel region)
 3. Type: **Regional**
 4. Copy from dashboard:
    - `UPSTASH_REDIS_REST_URL`
    - `UPSTASH_REDIS_REST_TOKEN`
+
+**Quotas to monitor:**
+- Commands per day
+- Storage bytes
+- Bandwidth
+
+Enable **alerts** in Upstash console if approaching limits.
 
 #### 5b. QStash
 
@@ -1255,6 +1879,10 @@ Same account → **QStash** tab:
 4. Set `QSTASH_URL` based on your region:
    - `us-east-1` → `https://qstash-us-east-1.upstash.io`
    - `eu-central-1` → `https://qstash-eu-central-1.upstash.io`
+
+**Quotas:**
+- 500 messages/day (free)
+- 10K messages/month
 
 ---
 
@@ -1288,6 +1916,8 @@ stripe listen --forward-to localhost:3000/api/webhooks/stripe
    - `EMAIL_FROM=VESTIOR <your-email@gmail.com>`
 
 **Free tier:** 500 emails/day. Perfect for small stores.
+
+**Why Gmail over Resend?** Gmail SMTP sends to **any recipient** without domain verification. Free tier: 500/day. Migration path: swap `mailer.ts` to Resend when you hit 500/day or need better analytics.
 
 ---
 
@@ -1359,6 +1989,14 @@ SET role = 'admin'
 WHERE email = 'your-email@example.com';
 ```
 
+### Create a Super Admin (can change other users' roles)
+
+```sql
+UPDATE public.profiles
+SET role = 'admin', is_super_admin = true
+WHERE email = 'your-email@example.com';
+```
+
 **Verify access control:**
 
 | User type | `/admin` access |
@@ -1366,6 +2004,7 @@ WHERE email = 'your-email@example.com';
 | Logged out | → `/auth/login` |
 | Customer | → `/` |
 | Admin | ✅ Full access |
+| Super Admin | ✅ Full access + role changes |
 
 ---
 
@@ -1434,15 +2073,19 @@ vestior-store/
 │   └── public-pages.spec.ts
 ├── public/
 │   ├── suits/                                  # Hero images
-│   ├── images/categories/                      # Category tiles
-│   ├── og-image.png
+│   ├── images/
+│   │   ├── admin_pages-images/                 # 10 admin screenshots
+│   │   ├── customer_facing-images/             # 9 customer screenshots
+│   │   ├── email_template_images/              # 7 email screenshots
+│   │   └── categories/                         # Category tiles
+│   ├── og-image.jpg                            # OpenGraph image
 │   ├── manifest.json                           # PWA manifest
 │   ├── sw.js                                   # Service Worker
 │   ├── offline.html                            # Offline fallback
 │   └── site.webmanifest
 ├── src/
 │   ├── actions/                                # Server Actions
-│   │   ├── admin-management.ts
+│   │   ├── admin-management.ts                 # Super-admin role change
 │   │   ├── confirmPayment.ts
 │   │   ├── coupons.ts
 │   │   ├── placeOrder.ts                       # Atomic order placement
@@ -1461,12 +2104,12 @@ vestior-store/
 │   │   │   │   ├── reset-password/
 │   │   │   │   │   ├── page.tsx
 │   │   │   │   │   └── ResetPasswordForm.tsx
-│   │   │   │   └── callback/route.ts
-│   │   │   ├── cart/
-│   │   │   ├── category/[slug]/
-│   │   │   ├── checkout/
-│   │   │   ├── featured/
-│   │   │   ├── new-arrivals/
+│   │   │   │   └── callback/route.ts           # Handles code + token_hash flows
+│   │   │   ├── cart/page.tsx
+│   │   │   ├── category/[slug]/page.tsx
+│   │   │   ├── checkout/page.tsx
+│   │   │   ├── featured/page.tsx
+│   │   │   ├── new-arrivals/page.tsx
 │   │   │   ├── orders/
 │   │   │   │   ├── page.tsx
 │   │   │   │   ├── OrderCard.tsx
@@ -1479,22 +2122,36 @@ vestior-store/
 │   │   │   │   └── [id]/
 │   │   │   │       ├── page.tsx
 │   │   │   │       └── ProductDetailClient.tsx
-│   │   │   ├── profile/
+│   │   │   ├── profile/page.tsx
 │   │   │   ├── wishlist/
 │   │   │   │   ├── page.tsx
 │   │   │   │   └── WishlistGrid.tsx
-│   │   │   ├── privacy/
-│   │   │   ├── terms/
-│   │   │   ├── refund/
+│   │   │   ├── privacy/page.tsx
+│   │   │   ├── terms/page.tsx
+│   │   │   ├── refund/page.tsx
 │   │   │   ├── layout.tsx
 │   │   │   └── page.tsx
-│   │   ├── admin/                              # Admin panel (16 pages)
+│   │   ├── admin/                              # Admin panel (19 pages)
 │   │   │   ├── abandoned-carts/
+│   │   │   │   ├── loading.tsx
+│   │   │   │   └── page.tsx
 │   │   │   ├── analytics/
+│   │   │   │   ├── loading.tsx
+│   │   │   │   └── page.tsx
 │   │   │   ├── audit/
+│   │   │   │   ├── loading.tsx
+│   │   │   │   └── page.tsx
 │   │   │   ├── coupons/
+│   │   │   │   ├── loading.tsx
+│   │   │   │   └── page.tsx
 │   │   │   ├── emails/
+│   │   │   │   ├── loading.tsx
+│   │   │   │   └── page.tsx
 │   │   │   ├── exports/
+│   │   │   │   ├── loading.tsx
+│   │   │   │   ├── page.tsx
+│   │   │   │   └── print/
+│   │   │   │       └── [type]/page.tsx         # NEW in v3.2
 │   │   │   ├── orders/
 │   │   │   │   ├── page.tsx
 │   │   │   │   └── [id]/
@@ -1502,17 +2159,29 @@ vestior-store/
 │   │   │   │       ├── OrderDetailAdmin.tsx
 │   │   │   │       └── invoice/page.tsx
 │   │   │   ├── payments/
+│   │   │   │   ├── loading.tsx
+│   │   │   │   └── page.tsx
 │   │   │   ├── products/
 │   │   │   │   ├── page.tsx
 │   │   │   │   ├── new/page.tsx
 │   │   │   │   └── [id]/edit/page.tsx
 │   │   │   ├── reports/
+│   │   │   │   ├── loading.tsx
+│   │   │   │   └── page.tsx
 │   │   │   ├── reviews/
+│   │   │   │   ├── loading.tsx
+│   │   │   │   └── page.tsx
 │   │   │   ├── sessions/
+│   │   │   │   ├── loading.tsx
+│   │   │   │   └── page.tsx
 │   │   │   ├── users/
 │   │   │   │   ├── page.tsx
-│   │   │   │   └── [id]/activity/page.tsx
+│   │   │   │   └── [id]/activity/
+│   │   │   │       ├── loading.tsx
+│   │   │   │       └── page.tsx
 │   │   │   ├── visitors/
+│   │   │   │   ├── loading.tsx
+│   │   │   │   └── page.tsx
 │   │   │   ├── layout.tsx
 │   │   │   ├── loading.tsx
 │   │   │   └── page.tsx
@@ -1529,10 +2198,10 @@ vestior-store/
 │   │   │   │   └── sync/route.ts
 │   │   │   ├── chat/route.ts                   # AI chatbot endpoint
 │   │   │   ├── cron/
-│   │   │   │   ├── abandoned-carts/route.ts
-│   │   │   │   ├── daily/route.ts
+│   │   │   │   ├── abandoned-carts/route.ts    # v3.2: fixed param order + throttle on success
+│   │   │   │   ├── daily/route.ts              # Combined cron
 │   │   │   │   ├── keep-alive/route.ts
-│   │   │   │   └── low-stock-alert/route.ts
+│   │   │   │   └── low-stock-alert/route.ts    # v3.2: throttle only on success
 │   │   │   ├── jobs/send-email/route.ts
 │   │   │   ├── recommendations/recently-viewed/route.ts
 │   │   │   ├── track/route.ts
@@ -1547,6 +2216,47 @@ vestior-store/
 │   │   └── sitemap.ts
 │   ├── components/
 │   │   ├── admin/                              # 40+ admin components
+│   │   │   ├── AbandonedCartsTable.tsx
+│   │   │   ├── AdminCharts.tsx
+│   │   │   ├── AdminHeader.tsx
+│   │   │   ├── AdminNotificationsProvider.tsx  # v3.2: editorial toast
+│   │   │   ├── AdminShell.tsx
+│   │   │   ├── AdminSidebar.tsx                # v3.2: grouped navigation
+│   │   │   ├── AnalyticsDashboard.tsx
+│   │   │   ├── AuditStats.tsx
+│   │   │   ├── AuditTable.tsx
+│   │   │   ├── CartStats.tsx
+│   │   │   ├── CategoryChart.tsx
+│   │   │   ├── CouponsTable.tsx
+│   │   │   ├── CouponStats.tsx
+│   │   │   ├── DashboardClient.tsx
+│   │   │   ├── DeleteProductButton.tsx
+│   │   │   ├── EmailsTable.tsx
+│   │   │   ├── EmailStats.tsx
+│   │   │   ├── ExportCenter.tsx
+│   │   │   ├── ExportPrintView.tsx             # NEW in v3.2
+│   │   │   ├── FunnelChart.tsx
+│   │   │   ├── LiveUsersWidget.tsx
+│   │   │   ├── NewVsReturningChart.tsx
+│   │   │   ├── NotificationBell.tsx
+│   │   │   ├── OrdersTable.tsx
+│   │   │   ├── OrderStatusUpdater.tsx
+│   │   │   ├── PaymentDetailsModal.tsx
+│   │   │   ├── PaymentsStats.tsx
+│   │   │   ├── PaymentsTable.tsx
+│   │   │   ├── ProductAnalytics.tsx
+│   │   │   ├── ProductsTable.tsx
+│   │   │   ├── QuickActionsGrid.tsx
+│   │   │   ├── ReportsDashboard.tsx
+│   │   │   ├── RevenueChart.tsx
+│   │   │   ├── ReviewAdminStats.tsx
+│   │   │   ├── ReviewsAdminTable.tsx
+│   │   │   ├── SessionDetail.tsx
+│   │   │   ├── UserActivityTimeline.tsx
+│   │   │   ├── UserDetailsModal.tsx
+│   │   │   ├── UsersTable.tsx
+│   │   │   ├── VisitorsStats.tsx
+│   │   │   └── VisitorsTable.tsx
 │   │   ├── auth/
 │   │   │   ├── PasswordInput.tsx
 │   │   │   └── PasswordStrengthMeter.tsx
@@ -1595,18 +2305,38 @@ vestior-store/
 │   │   │   ├── trends.ts
 │   │   │   └── types.ts
 │   │   ├── carts/
+│   │   │   ├── queries.ts
+│   │   │   └── types.ts
 │   │   ├── coupons/
+│   │   │   ├── queries.ts
+│   │   │   └── types.ts
 │   │   ├── dashboard/
+│   │   │   └── queries.ts
 │   │   ├── email/
 │   │   │   ├── mailer.ts
 │   │   │   ├── queries.ts
-│   │   │   ├── queue.ts
+│   │   │   ├── queue.ts                        # v3.2: throttle + failure handling
 │   │   │   ├── render.tsx
 │   │   │   ├── types.ts
-│   │   │   └── templates/                      # 10 email templates
+│   │   │   └── templates/                      # 10 templates (v3.2 redesign)
+│   │   │       ├── abandoned-cart.tsx
+│   │   │       ├── low-stock-alert.tsx
+│   │   │       ├── order-cancelled.tsx
+│   │   │       ├── order-delivered.tsx
+│   │   │       ├── order-placed.tsx
+│   │   │       ├── order-shipped.tsx
+│   │   │       ├── payment-confirmed.tsx
+│   │   │       ├── payment-failed.tsx
+│   │   │       ├── welcome-back.tsx
+│   │   │       └── welcome.tsx
 │   │   ├── exports/
+│   │   │   ├── csv.ts
+│   │   │   ├── queries.ts
+│   │   │   └── types.ts
 │   │   ├── invoice/
+│   │   │   └── generate.ts
 │   │   ├── orders/
+│   │   │   └── queries.ts
 │   │   ├── payments/
 │   │   │   ├── index.ts
 │   │   │   ├── queries.ts
@@ -1615,16 +2345,21 @@ vestior-store/
 │   │   │       ├── cod.ts
 │   │   │       └── stripe.ts
 │   │   ├── products/
+│   │   │   └── filters.ts
 │   │   ├── qstash/
+│   │   │   └── verify.ts
 │   │   ├── recommendations/
+│   │   │   └── queries.ts
 │   │   ├── reviews/
+│   │   │   ├── queries.ts
+│   │   │   └── types.ts
 │   │   ├── supabase/
-│   │   │   ├── admin.ts
-│   │   │   ├── client.ts
-│   │   │   ├── public.ts
-│   │   │   └── server.ts
+│   │   │   ├── admin.ts                        # service-role client
+│   │   │   ├── client.ts                       # browser singleton
+│   │   │   ├── public.ts                       # ISR-friendly
+│   │   │   └── server.ts                       # cookie-aware
 │   │   ├── tracking/
-│   │   │   ├── client.ts
+│   │   │   ├── client.ts                       # batched SDK
 │   │   │   ├── queries.ts
 │   │   │   ├── referrer.ts
 │   │   │   ├── server-user.ts
@@ -1632,9 +2367,10 @@ vestior-store/
 │   │   │   ├── session-types.ts
 │   │   │   └── types.ts
 │   │   ├── wishlist/
+│   │   │   └── queries.ts
 │   │   ├── audit.ts
-│   │   ├── env.ts
-│   │   ├── idempotency.ts
+│   │   ├── env.ts                              # Zod validation
+│   │   ├── idempotency.ts                      # Redis + Lua
 │   │   ├── mongodb.ts
 │   │   ├── password.ts
 │   │   ├── ratelimit.ts
@@ -1647,8 +2383,16 @@ vestior-store/
 │   └── migrations/                             # 13 SQL migrations
 ├── test/
 │   ├── components/
+│   │   ├── PaymentOption.test.tsx
+│   │   └── ProductCard.test.tsx
 │   ├── mocks/
+│   │   └── server-only.ts
 │   ├── unit/
+│   │   ├── csv.test.ts
+│   │   ├── idempotency.test.ts
+│   │   ├── payments-cod.test.ts
+│   │   ├── ratelimit.test.ts
+│   │   └── utils.test.ts
 │   └── setup.ts
 ├── docs/
 │   ├── api-reference.md
@@ -1677,18 +2421,30 @@ vestior-store/
 
 ---
 
+<div align="center">
+
+**📌 End of Part 2 — Continue to Part 3 for Security Checklist, Server Actions API, Database Schema, Performance & SEO, Testing, and CI/CD.**
+
+</div>
+```
+
+---
+
 ## 🔐 Security Checklist
 
 <details open>
 <summary><strong>Authentication & Authorization</strong></summary>
 
-- [x] **RLS enabled** on all Supabase tables
-- [x] **`is_admin()` helper** — RLS-safe role check
+- [x] **RLS enabled** on all 8 Supabase tables
+- [x] **`is_admin()` helper** — RLS-safe role check (SECURITY DEFINER)
 - [x] **Every privileged Server Action** re-verifies admin role against `profiles` table
 - [x] **Never trust client state** for authorization
 - [x] **PKCE OAuth** flow with cookie-preserving callback
-- [x] **Open redirect protection** on `next` query param
+- [x] **`token_hash` flow** for password reset / email confirm (v3.2 fix — prevents missing session)
+- [x] **Open redirect protection** on `next` query param (must start with `/`, not `//`)
 - [x] **Email verification** required before access
+- [x] **Super admin tier** — role changes require super-admin (checked inside Postgres via `admin_change_user_role` RPC)
+- [x] **Role normalization hardened** — whitelist-based migration with backup table
 
 </details>
 
@@ -1702,6 +2458,8 @@ vestior-store/
 - [x] **Address field validation** (required fields non-empty)
 - [x] **AI chat validation** — max 20 messages, 2000 chars each
 - [x] **System role rejected** from AI chat input
+- [x] **PDF print route** — admin session verified server-side before rendering
+- [x] **CSV export** — 10,000 row cap per export
 
 </details>
 
@@ -1709,11 +2467,14 @@ vestior-store/
 <summary><strong>Data Integrity</strong></summary>
 
 - [x] **`FOR UPDATE` locks** prevent oversell on concurrent orders
-- [x] **Idempotency keys** in Redis for every webhook (24h TTL)
+- [x] **Canonical lock ordering** (`product_id ASC`) — prevents deadlocks
+- [x] **Idempotency keys** in Redis for every webhook (24h TTL, atomic Lua release)
 - [x] **Coupon redemption locks** prevent race conditions
 - [x] **One review per user per product** (UNIQUE constraint)
 - [x] **Stock deduction inside transaction** — no partial state
-- [x] **Atomic coupon + order** — single RPC transaction
+- [x] **Atomic coupon + order + provider** — single RPC transaction (v2)
+- [x] **Immutability guard** — `orders.items` and `orders.address` cannot be modified after INSERT (trigger-enforced)
+- [x] **Unique `provider_txn_id`** in MongoDB — prevents duplicate payment records
 
 </details>
 
@@ -1721,23 +2482,39 @@ vestior-store/
 <summary><strong>Secrets & Isolation</strong></summary>
 
 - [x] **Service-role key** never reaches browser (`import 'server-only'`)
-- [x] **Environment variables** validated at startup (fail fast)
+- [x] **Environment variables** validated at startup (Zod schema, fail fast)
 - [x] **CSP headers** on all responses
 - [x] **CSRF protection** via Server Actions (built-in)
 - [x] **Webhook signature verification** (Stripe + QStash)
-- [x] **QStash job verification** — upstash-signature header
+- [x] **QStash job verification** — `upstash-signature` header with key rotation support
+- [x] **IP hashing** (SHA-256 + salt) — raw IPs never stored
+- [x] **No PII in logs** — only hashed identifiers
 
 </details>
 
 <details open>
 <summary><strong>Rate Limiting & Abuse Prevention</strong></summary>
 
-- [x] **Tiered limiters** (auth / admin / orders / cart / track / chat / general)
+- [x] **Tiered limiters** (auth / admin / orders / cart / search / track / chat / general)
 - [x] **Fail-open behavior** — site stays up if Redis is down
-- [x] **IP hashing** (SHA-256 + salt) for tracking
+- [x] **Sliding-window algorithm** — no burst at boundaries
 - [x] **Cron authentication** via `CRON_SECRET`
 - [x] **Per-user coupon limits** (default: 1)
 - [x] **AI chatbot rate limit** — 20 messages/min/IP
+- [x] **Rate limit headers** in 429 responses (`X-RateLimit-*`, `Retry-After`)
+
+**Limiter tiers:**
+
+| Route prefix | Limit |
+|-------------|-------|
+| `/auth` | 10/min |
+| `/admin` | 60/min |
+| `/checkout`, `/api/orders` | 20/min |
+| `/cart`, `/api/cart` | 30/min |
+| `/api/track` | 100/min |
+| `/api/chat` | 20/min |
+| `/search`, `/api/search` | 30/min |
+| Everything else | 300/min |
 
 </details>
 
@@ -1745,10 +2522,25 @@ vestior-store/
 <summary><strong>AI Chatbot Security</strong></summary>
 
 - [x] **System prompt server-side** — client cannot modify
-- [x] **Role whitelist** — only `user` and `assistant` accepted
+- [x] **Role whitelist** — only `user` and `assistant` accepted (Zod enum)
 - [x] **Read-only tools** — no DB writes possible
 - [x] **RLS-enforced order access** — user sees only own orders
 - [x] **Fail-closed** — returns 503 if `GROQ_API_KEY` missing
+- [x] **Max 3 tool calls per turn** — `stopWhen: stepCountIs(3)`
+- [x] **Streaming abort** — `AbortController` when panel closes
+- [x] **Session-scoped history** — `sessionStorage` (cleared when tab closes)
+
+</details>
+
+<details open>
+<summary><strong>PDF Print Export Security</strong></summary>
+
+- [x] **Admin session verification** — server-side check before render
+- [x] **Type whitelist** — only `orders`, `payments`, `emails`, `users`, `audit` accepted
+- [x] **Filter-aware** — date range, status, provider preserved
+- [x] **No PII leak** — only authorized admins can access print routes
+- [x] **No external dependencies** — no Puppeteer, no headless browser
+- [x] **Row limits** — 10,000 max per export (same as CSV)
 
 </details>
 
@@ -1758,24 +2550,46 @@ vestior-store/
 
 All privileged operations go through Next.js Server Actions with strict authorization and Zod validation.
 
+### Customer Actions
+
 | Action | File | Auth | Purpose |
 |--------|------|------|---------|
-| `placeOrder(items, address, method, couponCode?)` | `actions/placeOrder.ts` | User | Atomic order + stock deduction + coupon redemption |
+| `placeOrder(items, address, method, couponCode?)` | `actions/placeOrder.ts` | User | Atomic order + stock deduction + coupon redemption + provider tagging |
 | `confirmPayment(orderId, intentId)` | `actions/confirmPayment.ts` | User | Stripe payment verification (fallback for webhooks) |
-| `updateOrderStatus(orderId, status)` | `actions/updateOrderStatus.ts` | Admin | Whitelisted status transitions |
-| `refundPayment(orderId)` | `actions/refundPayment.ts` | Admin | Stripe refund + order update |
-| `resendOrderEmail(orderId, template)` | `actions/resendOrderEmail.ts` | Admin | Manual email resend |
-| `submitReview(input)` | `actions/reviews.ts` | User | Create or update product review |
-| `updateReviewStatus(id, status)` | `actions/reviews.ts` | Admin | Approve/reject review |
-| `deleteReview(id)` | `actions/reviews.ts` | Admin | Delete review |
+| `submitReview(input)` | `actions/reviews.ts` | User | Create or update product review (resets to pending) |
 | `validateCoupon(code, subtotal)` | `actions/coupons.ts` | User | Check coupon validity |
-| `createCoupon(input)` | `actions/coupons.ts` | Admin | Create coupon |
-| `updateCoupon(id, input)` | `actions/coupons.ts` | Admin | Update coupon |
-| `deleteCoupon(id)` | `actions/coupons.ts` | Admin | Delete coupon |
-| `toggleCouponActive(id, bool)` | `actions/coupons.ts` | Admin | Enable/disable |
 | `toggleWishlist(productId)` | `actions/wishlist.ts` | User | Add/remove from wishlist |
 | `mergeWishlist(productIds[])` | `actions/wishlist.ts` | User | Merge guest wishlist on login |
-| `changeUserRole(userId, role)` | `actions/admin-management.ts` | Super Admin | Promote/demote user |
+
+### Admin Actions
+
+| Action | File | Auth | Purpose |
+|--------|------|------|---------|
+| `updateOrderStatus(orderId, status)` | `actions/updateOrderStatus.ts` | Admin | Whitelisted status transitions + email trigger |
+| `refundPayment(orderId)` | `actions/refundPayment.ts` | Admin | Stripe refund + order update + audit log |
+| `resendOrderEmail(orderId, template)` | `actions/resendOrderEmail.ts` | Admin | Manual email resend with correct payment provider + discount |
+| `updateReviewStatus(id, status)` | `actions/reviews.ts` | Admin | Approve/reject review + audit log |
+| `deleteReview(id)` | `actions/reviews.ts` | Admin | Delete review + audit log |
+| `createCoupon(input)` | `actions/coupons.ts` | Admin | Create coupon + audit log |
+| `updateCoupon(id, input)` | `actions/coupons.ts` | Admin | Update coupon + audit log |
+| `deleteCoupon(id)` | `actions/coupons.ts` | Admin | Delete coupon + audit log |
+| `toggleCouponActive(id, bool)` | `actions/coupons.ts` | Admin | Enable/disable coupon |
+
+### Super Admin Actions
+
+| Action | File | Auth | Purpose |
+|--------|------|------|---------|
+| `changeUserRole(userId, role)` | `actions/admin-management.ts` | Super Admin | Promote/demote user (verified inside Postgres via RPC) |
+
+### Guarantees
+
+- **Re-authenticate** on every call — Server Actions are public POST endpoints
+- **Authorize against DB state** — role checks against `profiles`, not JWT claims
+- **Zod validation** on every argument
+- **Fail closed** — thrown errors surface as toasts on the client
+- **Audit logged** — every privileged mutation writes to MongoDB `audit_logs`
+
+---
 
 ### API Routes
 
@@ -1795,211 +2609,813 @@ All privileged operations go through Next.js Server Actions with strict authoriz
 | `/api/webhooks/stripe` | POST | Signature-verified | Stripe webhook handler |
 | `/api/jobs/send-email` | POST | QStash-verified | Email delivery job |
 | `/api/cron/daily` | GET | Cron-secret | Combined daily cron |
-| `/api/cron/abandoned-carts` | GET | Cron-secret | Abandoned cart reminders |
-| `/api/cron/low-stock-alert` | GET | Cron-secret | Low stock alerts |
+| `/api/cron/abandoned-carts` | GET | Cron-secret | Abandoned cart reminders (v3.2: fixed) |
+| `/api/cron/low-stock-alert` | GET | Cron-secret | Low stock alerts (v3.2: throttle on success) |
 | `/api/cron/keep-alive` | GET | Cron-secret | DB keep-alive ping |
 
-### Guarantees
+### HTTP Status Codes
 
-- **Re-authenticate** on every call — Server Actions are public POST endpoints
-- **Authorize against DB state** — role checks against `profiles`, not JWT claims
-- **Zod validation** on every argument
-- **Fail closed** — thrown errors surface as toasts on the client
+| Code | Meaning |
+|------|---------|
+| 200 | Success (or intentional no-op) |
+| 400 | Bad request (invalid JSON, missing fields) |
+| 401 | Not authenticated |
+| 403 | Not authorized |
+| 404 | Resource not found |
+| 429 | Rate limit exceeded |
+| 500 | Server error |
+
+### Rate Limit Headers
+
+Rate-limited responses include:
+
+```
+X-RateLimit-Limit: 60
+X-RateLimit-Remaining: 0
+X-RateLimit-Reset: 1728740400000
+Retry-After: 45
+```
 
 ---
 
 ## 📊 Database Schema
 
-### Supabase Tables
+**8 Supabase tables + 7 MongoDB collections + 10 PostgreSQL RPCs.**
 
-<details open>
-<summary><strong>products</strong></summary>
+**No overlap** — each table/collection has a single owner:
+- **Supabase** owns transactional data (ACID, RLS)
+- **MongoDB** owns analytical/append-only data (high volume)
+- **Redis** owns ephemeral state (rate limits, idempotency, cache)
+
+---
+
+### Supabase Tables (8)
+
+#### 1. `products`
+
+Catalog of items for sale.
 
 | Column | Type | Notes |
 |--------|------|-------|
-| `id` | `uuid` | PK |
-| `name` | `text` | |
+| `id` | `uuid` | PK, `gen_random_uuid()` |
+| `name` | `text` | NOT NULL |
 | `description` | `text` | |
 | `price` | `numeric` | PKR |
 | `compare_at_price` | `numeric` | For discount display |
-| `category` | `text` | Sub-category |
-| `category_main` | `text` | Main category |
-| `stock` | `int4` | Decremented atomically |
-| `is_active` | `bool` | Storefront visibility |
-| `is_new_arrival` | `bool` | Badge |
-| `is_featured` | `bool` | Homepage highlight |
-| `images` | `text` | JSON array of URLs |
-| `created_at` / `updated_at` | `timestamptz` | |
+| `category` | `text` | Sub-category (e.g., "Classic Fit") |
+| `category_main` | `text` | Main category (e.g., "Suits") |
+| `stock` | `int4` | DEFAULT 0, decremented atomically |
+| `is_active` | `bool` | DEFAULT true, storefront visibility |
+| `is_new_arrival` | `bool` | DEFAULT false, badge |
+| `is_featured` | `bool` | DEFAULT false, homepage highlight |
+| `images` | `text` | JSON array of URLs (or PG array literal) |
+| `created_at` | `timestamptz` | DEFAULT now() |
+| `updated_at` | `timestamptz` | DEFAULT now() |
 
-</details>
+**RLS policies:**
+- Anyone reads `is_active = true`
+- Admins read all
+- Admins insert/update/delete
 
-<details open>
-<summary><strong>orders</strong></summary>
+**Indexes:**
+- `idx_products_active_featured_created` — Partial: featured + created_at DESC
+- `idx_products_active_new_arrival_created` — Partial: new arrivals
+- `idx_products_category_active_created` — Category pages
+- `idx_products_active_created` — General listing
+- `idx_products_name_trgm` — GIN trigram for `ILIKE '%q%'`
+- `idx_products_active` — Admin filter
+
+---
+
+#### 2. `orders`
+
+Order headers. Denormalizes `user_email` for query speed.
 
 | Column | Type | Notes |
 |--------|------|-------|
 | `id` | `uuid` | PK |
-| `user_id` | `uuid` | FK → `auth.users` |
-| `user_email` | `text` | |
-| `items` | `jsonb` | Snapshot at order time |
-| `address` | `jsonb` | Shipping address |
+| `user_id` | `uuid` | FK → `auth.users.id`, `ON DELETE CASCADE` |
+| `user_email` | `text` | Denormalized for admin queries |
+| `items` | `jsonb` | **Immutable snapshot** of items |
+| `address` | `jsonb` | **Immutable snapshot** of shipping address |
 | `subtotal` | `int4` | |
 | `shipping` | `int4` | |
 | `discount_amount` | `numeric` | Coupon discount |
-| `coupon_code` | `text` | Applied code |
-| `total` | `int4` | |
+| `coupon_code` | `text` | Applied coupon code |
+| `total` | `int4` | = subtotal + shipping − discount |
 | `status` | `text` | `pending` / `processing` / `shipped` / `delivered` / `cancelled` |
 | `payment_status` | `text` | `pending` / `completed` / `failed` / `refunded` |
-| `payment_method` | `text` | `cod` / `stripe` (legacy) |
-| `payment_provider` | `text` | `cod` / `stripe` / `paypal` |
+| `payment_method` | `text` | `cod` / `stripe` (legacy, kept for compat) |
+| `payment_provider` | `text` | `cod` / `stripe` / `paypal` (extensible) |
 | `payment_intent_id` | `text` | Stripe PI ID |
 | `payment_metadata` | `jsonb` | Full Stripe payload |
 | `paid_at` | `timestamptz` | |
-| `created_at` | `timestamptz` | |
+| `created_at` | `timestamptz` | DEFAULT now() |
 
-**Immutability guard:** `orders.items` and `orders.address` are protected by a trigger — they cannot be modified after INSERT.
+**Immutability guard:** A `BEFORE UPDATE` trigger (`trg_orders_snapshot_immutable`) prevents modification of `items` or `address` after INSERT. Uses `WHEN` clause for zero overhead on normal updates.
 
-</details>
+**RLS policies:**
+- Users read own orders (`user_id = auth.uid()`) OR admin
+- Users insert own orders only
+- Only admins update (status changes)
+- Only admins delete
 
-<details>
-<summary><strong>order_items</strong></summary>
+**Indexes:**
+- `idx_orders_user_created` — Customer order history
+- `idx_orders_status_created` — Admin filter
+- `idx_orders_created` — Admin sort
+- `idx_orders_created_range` — Date-range queries
+- `idx_orders_payment_provider` — Payments dashboard
+- `idx_orders_payment_status` — Partial: pending payments
+
+---
+
+#### 3. `order_items`
+
+Line items. Denormalizes product name + price at order time.
 
 | Column | Type | Notes |
 |--------|------|-------|
 | `id` | `uuid` | PK |
-| `order_id` | `uuid` | FK → `orders` (cascade) |
+| `order_id` | `uuid` | FK → `orders`, `ON DELETE CASCADE` |
 | `product_id` | `uuid` | FK → `products` |
-| `product_name` | `text` | Denormalized snapshot |
+| `product_name` | `text` | Snapshot (immutable) |
 | `quantity` | `int4` | |
-| `price` | `numeric` | |
+| `price` | `numeric` | Snapshot (price at order time) |
 | `created_at` | `timestamptz` | |
 
-</details>
+**Why denormalize?** If a product's name or price changes later, historical orders must remain accurate.
 
-<details>
-<summary><strong>profiles</strong></summary>
+**RLS policies:**
+- Users read items for own orders OR admin
+- Users insert items for own orders only
+- Only admins update/delete
 
-Extends `auth.users` — matches `id`, adds:
+**Indexes:**
+- `idx_order_items_order` — Join by order
+- `idx_order_items_product` — Reverse lookup
 
-| Column | Type |
-|--------|------|
-| `id` | `uuid` (PK, FK → `auth.users`) |
-| `full_name` | `text` |
-| `email` | `text` (unique) |
-| `phone` | `text` |
-| `role` | `text` (`customer` / `admin`) |
-| `is_super_admin` | `bool` |
-| `address_line1` | `text` |
-| `address_line2` | `text` |
-| `city` | `text` |
-| `state` | `text` |
-| `pincode` | `text` |
-| `last_login_at` | `timestamptz` |
-| `welcome_back_sent_at` | `timestamptz` |
-| `created_at` / `updated_at` | `timestamptz` |
+**Realtime:** ✅ Enabled (v3.2 — for real-time item updates)
 
-</details>
+---
 
-<details>
-<summary><strong>product_reviews</strong></summary>
+#### 4. `profiles`
+
+Extends `auth.users` with app-specific fields.
+
+| Column | Type | Notes |
+|--------|------|-------|
+| `id` | `uuid` | PK, FK → `auth.users.id`, `ON DELETE CASCADE` |
+| `full_name` | `text` | |
+| `email` | `text` | UNIQUE, denormalized from `auth.users` |
+| `phone` | `text` | |
+| `role` | `text` | DEFAULT 'customer', CHECK `IN ('customer', 'admin')` |
+| `is_super_admin` | `bool` | DEFAULT false — can change roles |
+| `address_line1` | `text` | |
+| `address_line2` | `text` | |
+| `city` | `text` | |
+| `state` | `text` | |
+| `pincode` | `text` | |
+| `last_login_at` | `timestamptz` | Last successful login |
+| `welcome_back_sent_at` | `timestamptz` | Throttle for welcome-back emails |
+| `created_at` | `timestamptz` | |
+| `updated_at` | `timestamptz` | |
+
+**Auto-creation:** `handle_new_user()` trigger fires on `auth.users` INSERT.
+
+**RLS policies:**
+- Users read own profile OR admin
+- Users insert own profile (trigger runs as service_role — bypasses)
+- Users update own profile OR admin
+- Only admins delete
+
+**Indexes:**
+- `idx_profiles_created` — Admin user list sort
+- `idx_profiles_last_login` — Partial: `(last_login_at DESC NULLS LAST)`
+
+**Role normalization:** Legacy `role = 'user'` values were migrated to `'customer'` via `20261016_normalize_user_roles.sql`. A backup table (`_role_normalization_backup`) preserves old values. The migration is:
+- **Whitelist-based** — only touches known-legacy values (`user`, `member`, `guest`, `''`)
+- **Reversible** — backup table allows rollback
+- **Atomic** — wrapped in a `DO $$` block
+- **Fails loudly** — aborts if unknown roles exist after normalization
+
+---
+
+#### 5. `product_reviews`
+
+Customer reviews with moderation workflow.
 
 | Column | Type | Notes |
 |--------|------|-------|
 | `id` | `uuid` | PK |
-| `product_id` | `uuid` | FK |
-| `user_id` | `uuid` | FK |
+| `product_id` | `uuid` | FK → `products`, `ON DELETE CASCADE` |
+| `user_id` | `uuid` | FK → `auth.users`, `ON DELETE CASCADE` |
 | `user_name` | `text` | Snapshot |
 | `user_email` | `text` | Snapshot |
 | `rating` | `int4` | CHECK 1–5 |
 | `title` | `text` | Optional |
-| `comment` | `text` | |
+| `comment` | `text` | 10–2000 chars |
 | `status` | `text` | `pending` / `approved` / `rejected` |
-| `is_verified_purchase` | `bool` | |
+| `is_verified_purchase` | `bool` | Auto-detected |
 | `helpful_count` | `int4` | |
-| `created_at` / `updated_at` | `timestamptz` | |
+| `created_at` | `timestamptz` | |
+| `updated_at` | `timestamptz` | |
 
-**UNIQUE** `(product_id, user_id)` — one review per user per product.
+**UNIQUE constraint:** `(product_id, user_id)` — one review per user per product.
 
-</details>
+**RLS policies:**
+- Anyone reads `status = 'approved'`
+- Users read own (any status)
+- Admins read all
+- Users insert own with `status = 'pending'`
+- Users update own with `status = 'pending'` (reset on edit)
+- Admins update/delete any
 
-<details>
-<summary><strong>wishlists</strong></summary>
+**Triggers:** `trg_product_reviews_updated_at` (auto-update `updated_at` on UPDATE).
+
+**Indexes:**
+- `idx_reviews_product_approved` — Partial: approved reviews
+- `idx_reviews_status` — Admin moderation
+- `idx_reviews_user` — My reviews
+
+---
+
+#### 6. `wishlists`
+
+User-to-product favorites.
 
 | Column | Type | Notes |
 |--------|------|-------|
 | `id` | `uuid` | PK |
-| `user_id` | `uuid` | FK |
-| `product_id` | `uuid` | FK |
+| `user_id` | `uuid` | FK → `auth.users`, `ON DELETE CASCADE` |
+| `product_id` | `uuid` | FK → `products`, `ON DELETE CASCADE` |
 | `created_at` | `timestamptz` | |
 
-**UNIQUE** `(user_id, product_id)`.
+**UNIQUE constraint:** `(user_id, product_id)`.
 
-</details>
+**RLS policies:**
+- Users read/insert/delete own
 
-<details>
-<summary><strong>coupons</strong></summary>
+**Indexes:**
+- `idx_wishlists_user` — User's wishlist page
+- `idx_wishlists_product` — "How many users wishlisted this?"
+
+---
+
+#### 7. `coupons`
+
+Discount codes with all constraint types.
 
 | Column | Type | Notes |
 |--------|------|-------|
 | `id` | `uuid` | PK |
 | `code` | `text` | UNIQUE, uppercase |
 | `description` | `text` | |
-| `discount_type` | `text` | `percent` / `fixed` |
-| `discount_value` | `numeric` | |
-| `min_order_amount` | `numeric` | |
-| `max_discount_amount` | `numeric` | For percent cap |
+| `discount_type` | `text` | CHECK `IN ('percent', 'fixed')` |
+| `discount_value` | `numeric` | > 0 |
+| `min_order_amount` | `numeric` | DEFAULT 0 |
+| `max_discount_amount` | `numeric` | NULL = no cap |
 | `usage_limit` | `int4` | NULL = unlimited |
-| `per_user_limit` | `int4` | Default 1 |
-| `times_used` | `int4` | |
-| `valid_from` | `timestamptz` | |
+| `per_user_limit` | `int4` | DEFAULT 1 |
+| `times_used` | `int4` | DEFAULT 0 |
+| `valid_from` | `timestamptz` | DEFAULT now() |
 | `valid_until` | `timestamptz` | NULL = no expiry |
-| `is_active` | `bool` | |
-| `created_at` / `updated_at` | `timestamptz` | |
+| `is_active` | `bool` | DEFAULT true |
+| `created_at` | `timestamptz` | |
+| `updated_at` | `timestamptz` | |
 
-</details>
+**RLS policies:**
+- Anyone reads `is_active = true` (for client-side validation UX)
+- Admins manage all
 
-<details>
-<summary><strong>coupon_redemptions</strong></summary>
+**Indexes:**
+- `idx_coupons_code_active` — Partial: active coupons
+- `idx_coupons_active_until` — `(is_active, valid_until)`
 
-| Column | Type |
-|--------|------|
-| `id` | `uuid` (PK) |
-| `coupon_id` | `uuid` (FK) |
-| `user_id` | `uuid` (FK) |
-| `order_id` | `uuid` (FK) |
-| `discount_amount` | `numeric` |
-| `created_at` | `timestamptz` |
+**Triggers:** `trg_coupons_updated_at` (auto-update `updated_at`).
 
-**UNIQUE** `(coupon_id, order_id)`.
+---
 
-</details>
+#### 8. `coupon_redemptions`
 
-### Supabase RPCs
+Tracking table for coupon usage.
 
-| Function | Purpose |
-|----------|---------|
-| `is_admin()` | RLS-safe role check |
-| `place_order_atomic(items, address, coupon, provider)` | **v2**: Order + stock + coupon + provider in ONE transaction |
-| `get_dashboard_stats()` | Single-query admin aggregation |
-| `get_product_review_stats(product_id)` | Avg rating + breakdown |
-| `get_products_review_stats(ids[])` | Batch ratings |
-| `validate_coupon(code, user_id, subtotal)` | Coupon validity check |
-| `redeem_coupon_atomic(code, user_id, order_id, subtotal)` | Atomic redemption |
-| `get_sales_report(from, to)` | Sales analytics aggregation |
-| `get_product_sales_stats(limit)` | Product-level analytics |
-| `admin_change_user_role(user_id, role)` | Super-admin role change |
+| Column | Type | Notes |
+|--------|------|-------|
+| `id` | `uuid` | PK |
+| `coupon_id` | `uuid` | FK → `coupons`, `ON DELETE CASCADE` |
+| `user_id` | `uuid` | FK → `auth.users`, `ON DELETE CASCADE` |
+| `order_id` | `uuid` | FK → `orders`, `ON DELETE CASCADE` |
+| `discount_amount` | `numeric` | Actual discount applied |
+| `created_at` | `timestamptz` | |
 
-### MongoDB Collections
+**UNIQUE constraint:** `(coupon_id, order_id)` — prevents double-redemption on same order.
 
-| Collection | Purpose | TTL |
-|-----------|---------|-----|
-| `events` | User behavior tracking | 90 days |
-| `email_logs` | Email delivery history | none |
-| `payment_transactions` | Payment audit trail | none |
-| `audit_logs` | Admin actions | none |
-| `analytics_daily` | Pre-aggregated metrics | none |
-| `cart_snapshots` | Abandoned cart recovery | none |
-| `sessions` | Visitor session tracking | 90 days |
+**RLS policies:**
+- Users read own
+- Admins read all
+
+**Indexes:**
+- `idx_redemptions_user` — `(user_id, coupon_id)` — for per-user limit checks
+- `idx_redemptions_coupon` — Usage stats
+
+---
+
+### Supabase RPCs (10)
+
+#### `is_admin()`
+
+RLS-safe role check. `SECURITY DEFINER`, `STABLE`, `SET search_path`.
+
+**Why `SECURITY DEFINER`?** Reads `profiles`, which itself has RLS. Without it, the function would recurse infinitely.
+
+**Why `STABLE`?** Postgres caches the result within a single query.
+
+---
+
+#### `place_order_atomic` (v2)
+
+**Signature:**
+```sql
+place_order_atomic(
+  p_user_id        uuid,
+  p_user_email     text,
+  p_items          jsonb,
+  p_address        jsonb,
+  p_coupon_code    text DEFAULT NULL,
+  p_payment_method text DEFAULT 'cod'
+) RETURNS jsonb
+```
+
+**Returns:**
+```json
+{
+  "order_id": "0cc6c3f0-...",
+  "subtotal": 3998,
+  "shipping": 100,
+  "discount_amount": 400,
+  "coupon_code": "WELCOME10",
+  "total": 3698
+}
+```
+
+**What it does (in one transaction):**
+1. Lock products by `id ASC` (deadlock-safe ordering)
+2. Verify stock, decrement atomically
+3. If coupon set: lock coupon row (`FOR UPDATE`), re-validate, increment `times_used`
+4. Insert order with `coupon_code`, `discount_amount`, `payment_method`, `payment_provider`
+5. Insert `order_items`
+6. Insert `coupon_redemptions` (if coupon applied)
+7. Return summary
+
+**Failure policy:** If the coupon is invalid for any reason (expired, used up, min order not met), the order **still succeeds without the discount**. Only hard DB errors abort the transaction.
+
+**Security:** `SECURITY DEFINER`, `SET search_path = public, pg_temp`, `REVOKE ALL FROM PUBLIC`, `GRANT EXECUTE TO service_role`.
+
+**v2 vs v1:**
+- **v1:** Order + stock in one transaction. Coupon + provider were **separate** — a failure left inconsistent state.
+- **v2:** All four concerns in **one transaction**. No partial state possible.
+
+---
+
+#### `get_dashboard_stats()`
+
+**Returns:**
+```json
+{
+  "product_count": 42,
+  "order_count": 187,
+  "user_count": 231,
+  "total_revenue": 542000,
+  "status_counts": {
+    "pending": 12,
+    "processing": 8,
+    "shipped": 15,
+    "delivered": 148,
+    "cancelled": 4
+  }
+}
+```
+
+**Performance:** Transfers 1 row instead of 10,000.
+
+---
+
+#### `get_sales_report(from, to)`
+
+**Returns:**
+```json
+{
+  "totals": { "total_orders", "total_revenue", "avg_order_value" },
+  "by_status": { "pending": 5, "delivered": 42, ... },
+  "by_provider": [{ "provider": "stripe", "order_count", "revenue" }],
+  "by_category": [{ "category": "Suits", "revenue", "units_sold", "order_count" }],
+  "top_products": [{ "id", "name", "units_sold", "revenue", "order_count" }],
+  "daily_series": [{ "day", "revenue", "order_count" }]
+}
+```
+
+**Revenue filter:** Only `shipped` and `delivered` orders count.
+
+---
+
+#### `get_product_sales_stats(limit)`
+
+**Returns:**
+```json
+{
+  "top_products": [{ "id", "name", "units_sold", "revenue", "order_count", "avg_unit_price" }],
+  "by_category": [{ "category", "units_sold", "revenue", "order_count" }],
+  "global": {
+    "total_units_sold": 312,
+    "total_revenue": 4521000,
+    "total_orders_with_items": 187,
+    "avg_units_per_order": 1.67
+  }
+}
+```
+
+**Merged with:** MongoDB `events` (views, cart adds) in `getProductPerformance()` for the abandoned flag and conversion rate.
+
+---
+
+#### `get_product_review_stats(product_id)`
+
+**Returns:**
+```json
+{
+  "average_rating": 4.5,
+  "total_count": 24,
+  "breakdown": { "5": 15, "4": 6, "3": 2, "2": 1, "1": 0 }
+}
+```
+
+**Only counts `status = 'approved'`.**
+
+---
+
+#### `get_products_review_stats(ids[])`
+
+**Returns:**
+```json
+{
+  "550e8400-...": { "average_rating": 4.5, "total_count": 24 },
+  "660e8400-...": { "average_rating": 5.0, "total_count": 3 }
+}
+```
+
+**Use case:** Product grid needs ratings for 40 products. One call instead of 40.
+
+---
+
+#### `validate_coupon(code, user_id, subtotal)`
+
+**Returns (valid):**
+```json
+{
+  "valid": true,
+  "coupon_id": "...",
+  "code": "WELCOME10",
+  "description": "10% off for new customers",
+  "discount_type": "percent",
+  "discount_value": 10,
+  "discount_amount": 400,
+  "message": "Coupon applied"
+}
+```
+
+**Returns (invalid):**
+```json
+{ "valid": false, "error": "Coupon usage limit reached" }
+```
+
+**Checks:**
+1. Coupon exists + `is_active = true`
+2. `valid_from <= now()`
+3. `valid_until IS NULL OR valid_until > now()`
+4. `times_used < usage_limit` (if limit set)
+5. `subtotal >= min_order_amount`
+6. User's redemptions < `per_user_limit`
+
+**Discount calculation:**
+- Percent: `subtotal * value / 100`, capped at `max_discount_amount` if set
+- Fixed: `value`
+- Capped at `subtotal` (never negative total)
+- Rounded to whole number
+
+---
+
+#### `redeem_coupon_atomic(code, user_id, order_id, subtotal)`
+
+**Standalone atomic coupon redemption** (kept for backward compatibility).
+
+**Note:** In v3.1+, this RPC is **no longer used by `placeOrder`**. Coupon redemption happens **inside `place_order_atomic` v2**. This function remains for backward compatibility with external callers.
+
+---
+
+#### `admin_change_user_role(target_user_id, new_role)`
+
+**Super-admin only.** Authorization enforced **inside Postgres**.
+
+**Rules:**
+1. Caller (`auth.uid()`) must be super admin
+2. Target must not be self (can't demote self)
+3. Target must not be another super admin
+4. `p_new_role` must be `'admin'` or `'customer'`
+
+**Why inside Postgres?** The JS check in `changeUserRole` is a fast-fail optimization. The authoritative check is here. Even if a JS bypass existed, this RPC would reject.
+
+---
+
+### MongoDB Collections (7)
+
+#### `events`
+
+User behavior tracking.
+
+**Document shape:**
+```typescript
+{
+  _id: ObjectId,
+  user_id: string | null,
+  session_id: string,
+  event_type: 'page_view' | 'product_view' | 'add_to_cart' | ... ,
+  properties: Record<string, unknown>,
+  ip_hash: string,
+  country: string | null,
+  city: string | null,
+  device: { type: string, os: string, browser: string },
+  referrer: string | null,
+  path: string,
+  timestamp: Date,
+}
+```
+
+**Indexes:** `timestamp` (TTL 90d), `session_id`, `user_id + timestamp`, `event_type + timestamp`, `properties.productId + timestamp`.
+
+**13 event types:** `page_view`, `product_view`, `add_to_cart`, `remove_from_cart`, `checkout_started`, `checkout_completed`, `order_placed`, `login`, `signup`, `search`, `wishlist_add`, `wishlist_remove`, `share_product`.
+
+---
+
+#### `sessions`
+
+Visitor session documents. One document per browser tab session.
+
+**Document shape:**
+```typescript
+{
+  _id: ObjectId,
+  session_id: string,              // Random UUID from client cookie
+  user_id: string | null,          // null for guests
+  user_email: string | null,
+  user_name: string | null,
+  visitor_type: 'guest' | 'new' | 'returning' | 'admin',
+  ip_hash: string,                 // SHA-256(salt + IP)
+  country: string | null,          // From Vercel headers
+  city: string | null,
+  device: { type, os, browser },
+  referrer: string | null,
+  referrer_source: string,         // 'google' | 'instagram' | 'direct' | ...
+  first_seen_at: Date,
+  last_seen_at: Date,
+  duration_ms: number,
+  page_view_count: number,
+  product_view_count: number,
+  cart_add_count: number,
+  order_count: number,
+  revenue: number,
+  paths_visited: string[],         // Unique paths this session
+  products_viewed: string[],       // Unique product IDs
+  orders_placed: string[],         // Order IDs
+  ended_with: 'order' | 'abandon' | 'bounce' | null,
+}
+```
+
+**Indexes:** `session_id` UNIQUE, `user_id + last_seen_at` sparse, `ip_hash + last_seen_at`, `visitor_type + last_seen_at`, `last_seen_at` (TTL 90d).
+
+**`ended_with` heuristic:**
+- `order` — if `order_count > 0`
+- `abandon` — if `duration_ms >= 30_000`
+- `bounce` — otherwise
+
+**Used by:** `/admin/visitors`, `/admin/sessions`, `/admin/users/[id]/activity`, `LiveUsersWidget`, `NewVsReturningChart`.
+
+---
+
+#### `email_logs`
+
+Every email attempted.
+
+**Document shape:**
+```typescript
+{
+  _id: ObjectId,
+  user_id: string | null,
+  email: string,
+  template: string,        // 'welcome' | 'order-placed' | ...
+  status: 'queued' | 'sent' | 'failed' | 'delivered' | 'opened' | 'bounced',
+  provider_message_id: string | null,
+  error: string | null,
+  metadata: Record<string, unknown>,
+  created_at: Date,
+  updated_at: Date,
+}
+```
+
+**Lifecycle:**
+```
+queued → sent (via QStash job) → delivered (via Resend webhook)
+                              → opened (tracking pixel)
+queued → failed (on SMTP error, up to 3 retries)
+queued → failed (if QStash publish throws — v3.1 fix)
+```
+
+**v3.2 fix:** Cron throttle only set on real success.
+
+---
+
+#### `payment_transactions`
+
+Payment audit trail.
+
+**Document shape:**
+```typescript
+{
+  _id: ObjectId,
+  order_id: string,
+  user_id: string | null,
+  provider: 'cod' | 'stripe' | 'paypal',
+  provider_txn_id: string,
+  amount: number,
+  currency: string,
+  status: 'created' | 'processing' | 'succeeded' | 'failed' | 'refunded',
+  method: string | null,
+  card_last4?: string | null,
+  card_brand?: string | null,
+  webhook_events: Array<{
+    event: string,
+    at: Date,
+    raw: unknown
+  }>,
+  created_at: Date,
+  updated_at: Date,
+}
+```
+
+**Indexes:** `provider_txn_id` UNIQUE (prevents duplicate records), `order_id`.
+
+**Why `webhook_events` array?** Full audit trail for debugging. If Stripe claims a webhook fired and we disagree, we have the raw payload.
+
+**Duplicate guard:** Before inserting, we check if a document with the same `provider_txn_id` exists. Handles the race between client-side `confirmPayment` and the webhook.
+
+---
+
+#### `audit_logs`
+
+Admin actions timeline.
+
+**Document shape:**
+```typescript
+{
+  _id: ObjectId,
+  actor_id: string,
+  actor_email: string,
+  action: string,        // 'order.refund' | 'coupon.create' | ...
+  target_type: string,   // 'order' | 'coupon' | 'product' | 'user' | 'review'
+  target_id: string,
+  before: Record<string, unknown> | null,
+  after: Record<string, unknown> | null,
+  ip_hash: string | null,
+  metadata: Record<string, unknown>,
+  timestamp: Date,
+}
+```
+
+**Indexes:** `timestamp`, `actor_id + timestamp`, `target_type + target_id`, `action + timestamp`.
+
+**No TTL** — kept indefinitely for compliance.
+
+**Actions logged:**
+- `payment.refund`
+- `coupon.create`, `coupon.update`, `coupon.delete`
+- `user.change_role`
+- `product.create`, `product.update`, `product.delete`
+- `review.approved`, `review.rejected`, `review.delete`
+
+---
+
+#### `cart_snapshots`
+
+Abandoned cart recovery state.
+
+**Document shape:**
+```typescript
+{
+  _id: ObjectId,
+  user_id: string,
+  user_email: string,
+  user_name: string,
+  items: Array<{
+    id: string,
+    name: string,
+    price: number,
+    quantity: number,
+    image: string | null,
+    size?: string | null
+  }>,
+  subtotal: number,
+  item_count: number,
+  recovery_token: string,
+  recovery_email_sent_at: Date | null,
+  recovery_email_count: number,
+  last_reminder_at: Date | null,
+  recovered_at: Date | null,
+  recovered_order_id: string | null,
+  offered_coupon_code: string | null,
+  created_at: Date,
+  updated_at: Date,
+}
+```
+
+**Indexes:** `user_id` UNIQUE, `recovery_token` UNIQUE, `updated_at`, `recovered_at + last_reminder_at` sparse.
+
+**Query for cron:**
+```javascript
+db.cart_snapshots.find({
+  item_count: { $gt: 0 },
+  recovered_at: null,
+  updated_at: { $lte: twoHoursAgo },
+  recovery_email_count: { $lt: 3 },
+  $or: [
+    { last_reminder_at: null },
+    { last_reminder_at: { $lte: sevenDaysAgo } }
+  ]
+})
+```
+
+**Lifecycle:**
+1. Client syncs cart on change (debounced 2s)
+2. If cart becomes empty → document deleted
+3. Cron runs hourly → finds eligible carts → sends recovery email + 5% coupon
+4. Order placed → `markCartRecovered` sets `recovered_at`, `recovered_order_id`
+
+---
+
+#### `analytics_daily`
+
+Pre-aggregated metrics (cron-generated).
+
+**Document shape:**
+```typescript
+{
+  _id: ObjectId,
+  date: string,          // 'YYYY-MM-DD'
+  metrics: {
+    page_views: number,
+    unique_visitors: number,
+    sessions: number,
+    orders_placed: number,
+    revenue: number,
+    conversion_rate: number,
+  },
+  breakdown: {
+    by_device: Record<string, number>,
+    by_country: Record<string, number>,
+    by_referrer: Record<string, number>,
+  },
+  created_at: Date,
+}
+```
+
+**Indexes:** `date` UNIQUE.
+
+**Status:** Reserved for future optimization. Current analytics queries MongoDB `events` and `sessions` collections directly.
+
+---
+
+### Database Ownership Boundaries
+
+**Rule:** If losing a row breaks money or trust → Supabase. If losing a row just makes a dashboard slightly wrong → MongoDB.
+
+| Data | Where | Why |
+|------|-------|-----|
+| Products | Supabase | Transactional, ACID, RLS |
+| Orders | Supabase | Money + trust |
+| Order items | Supabase | Referential integrity |
+| Profiles | Supabase | RLS, auth integration |
+| Reviews | Supabase | Moderation, RLS |
+| Wishlists | Supabase | Per-user, RLS |
+| Coupons | Supabase | Atomic redemption |
+| Coupon redemptions | Supabase | Audit trail |
+| Events | MongoDB | High-volume, append-only |
+| Sessions | MongoDB | High-volume, TTL |
+| Email logs | MongoDB | Append-only, no ACID needed |
+| Payment transactions | MongoDB | Audit trail + webhook payloads |
+| Audit logs | MongoDB | Append-only, no TTL |
+| Cart snapshots | MongoDB | Mutable state, recovery focus |
+| Analytics daily | MongoDB | Pre-aggregated, optional |
+
+**No overlap. No confusion.**
 
 ---
 
@@ -2020,16 +3436,49 @@ Extends `auth.users` — matches `id`, adds:
 | `Promise.all` parallel fetches | Dashboard 4x faster |
 | Dynamic import Recharts | Admin-only chunk |
 | AI streaming (SSE) | Perceived instant response |
+| **Editorial redesign** | Consistent paint, fewer reflows |
+| **Removed edge fades** | Cleaner scroll cut-off |
+| **Zero-dependency PDF print** | No Puppeteer / Chrome overhead |
+| **Custom CSV builder** | No external library |
+
+### Core Web Vitals
+
+**Desktop:**
+- LCP: **0.5s** 🟢
+- FCP: **0.3s** 🟢
+- TBT: **100ms** 🟢
+- CLS: **0** 🟢
+
+**Mobile:**
+- LCP: **3.5s** 🟡
+- FCP: **0.9s** 🟢
+- TBT: **250ms** 🟢
+- CLS: **0** 🟢
+
+**Why mobile LCP is 3.5s:** Client-side hydration + Framer Motion animations on mid-range phones. Optimized as far as possible without dropping interactivity.
 
 ### SEO
 
 - ✅ **Dynamic `robots.txt`** — Blocks admin/checkout from crawlers
 - ✅ **Auto-generated `sitemap.xml`** — Products + categories + static pages (hourly revalidation)
-- ✅ **JSON-LD schemas** — Organization, WebSite, Product, Breadcrumb, Review
+- ✅ **JSON-LD schemas:**
+  - `Organization` — Brand info
+  - `WebSite` — Search action
+  - `Product` — With offers, aggregateRating, reviews
+  - `BreadcrumbList` — Navigation path
 - ✅ **Per-page dynamic metadata** — Product names in OG + Twitter cards
 - ✅ **Canonical URLs** on every dynamic route
 - ✅ **Rich Results eligible** — Google stars in search from reviews
 - ✅ **Semantic HTML** — `<main>`, `<nav>`, `<article>`, proper heading hierarchy
+- ✅ **Sitemap submitted** to Google Search Console
+
+### Image Optimization
+
+- **AVIF + WebP** formats served based on `Accept` header
+- **Responsive sizes:** 640, 750, 828, 1080, 1200, 1920, 2048
+- **Quality values:** 70, 75, 80, 85
+- **Cache TTL:** 60 days
+- **Remote patterns:** Supabase Storage + placehold.co
 
 ---
 
@@ -2044,23 +3493,29 @@ npm run test:coverage # Coverage report
 npm run test:ui       # Interactive UI
 ```
 
-**53 tests** covering:
+**53 tests** across 7 files:
 
 | File | Tests | Coverage |
 |------|-------|----------|
-| `csv.test.ts` | 12 | CSV builder (escaping, BOM, filenames) |
-| `utils.test.ts` | 11 | `parseProductImages` (all formats) |
-| `ratelimit.test.ts` | 10 | Limiter tiers + client key |
-| `payments-cod.test.ts` | 6 | COD provider contract |
-| `ProductCard.test.tsx` | 6 | Cart interactions, badges |
-| `idempotency.test.ts` | 5 | Redis lock + result cache |
-| `PaymentOption.test.tsx` | 3 | Selection, disabled state |
+| `csv.test.ts` | 12 | CSV builder (escaping, quotes, newlines, BOM, filenames) |
+| `utils.test.ts` | 11 | `parseProductImages` (JSON, PG arrays, plain strings, edge cases) |
+| `ratelimit.test.ts` | 10 | Limiter tiers + client key resolution |
+| `payments-cod.test.ts` | 6 | COD provider contract (intent, retrieve, capture, refund, webhook) |
+| `ProductCard.test.tsx` | 6 | Cart interactions, badges, stock states, quantity increment |
+| `idempotency.test.ts` | 5 | Redis lock + result cache + Lua release |
+| `PaymentOption.test.tsx` | 3 | Selection, disabled state, click handler |
 
 **Coverage thresholds** (enforced in CI):
 - Lines: 55%
 - Functions: 55%
 - Branches: 50%
 - Statements: 55%
+
+**Exclusions** (integration-covered by E2E):
+- `src/lib/supabase/**` — DB clients
+- `src/providers/**` — React Contexts
+- `src/actions/**` — Server Actions
+- `src/app/**/page.tsx`, `layout.tsx`, `loading.tsx`, `error.tsx`
 
 ### E2E Tests (Playwright)
 
@@ -2070,20 +3525,105 @@ npm run test:e2e:ui       # Interactive UI
 npm run test:e2e:report   # View last HTML report
 ```
 
-**21 tests** covering:
+**21 tests** across 4 specs:
 
 | Suite | Tests | Focus |
 |-------|-------|-------|
-| `public-pages.spec.ts` | 9 | Homepage, products, category, 404, robots, sitemap |
-| `auth-guards.spec.ts` | 6 | Redirects + login/signup page rendering |
-| `cart-flow.spec.ts` | 4 | Add, view, update qty, remove |
-| `navigation.spec.ts` | 2 | Navbar links, search modal |
+| `public-pages.spec.ts` | 9 | Homepage, products, category, featured, new arrivals, cart empty, 404, robots.txt, sitemap.xml |
+| `auth-guards.spec.ts` | 6 | Redirects for /admin, /orders, /checkout, /profile + login/signup page rendering |
+| `cart-flow.spec.ts` | 4 | Add to cart, view, update qty, remove |
+| `navigation.spec.ts` | 2 | Navbar links + search modal open/close |
 
 **Config:**
 - Chromium only
 - Sequential (`workers: 1`) — shared auth state
 - Retries: 3 in CI, 1 local
 - 90s timeout (CI cold starts)
+- `webServer` auto-starts app
+- Trace + screenshot + video on failure
+
+### Testing AI Chatbot
+
+**Philosophy:** The AI chatbot is **non-deterministic** — the same input produces different outputs. We test **boundaries**, not content.
+
+| What we test | What we don't test |
+|--------------|-------------------|
+| Zod schema accepts `user`/`assistant` only | LLM's actual response text |
+| Zod schema rejects `system` role | Tool call order |
+| Message count ≤ 20 | Chat content |
+| Message length ≤ 2000 | Specific prices mentioned |
+| Rate limit returns 429 | Streaming chunk timing |
+| Tool schemas validate input | |
+| System prompt contains "decline" | |
+| Tools are read-only (no mutation verbs) | |
+
+**Manual verification before releases:**
+1. Open chat widget
+2. Click "Show me suits under ₹25,000"
+3. Verify streaming response with product names + prices
+4. Try prompt injection — LLM should decline
+5. Send 21 messages fast → 21st returns 429
+
+### Testing PWA
+
+- **Static tests** — Verify `sw.js` content (routes skipped, cache version)
+- **E2E tests** — Verify SW registers in real browser
+- **Manual tests** — Offline mode via DevTools
+
+### Testing Atomic Operations
+
+**Three layers:**
+1. **Unit tests** — Zod validation (input shape, quantity limits, address fields)
+2. **Manual concurrency script** — `scripts/test-concurrency.ts`:
+   - 10 parallel orders, stock = 5 → exactly 5 succeed
+   - 20 parallel coupon redemptions, limit = 3 → exactly 3 succeed
+3. **Post-deploy smoke test** — Verify a real order succeeds end-to-end
+
+### Testing Immutability Guards
+
+**Manual SQL test** (run in Supabase SQL Editor on dev):
+
+```sql
+-- Create a test order
+INSERT INTO public.orders (user_id, user_email, items, address, subtotal, shipping, total)
+VALUES ((SELECT id FROM auth.users LIMIT 1), 'test@example.com',
+        '[{"product_id": "abc", "quantity": 1}]'::jsonb,
+        '{"full_name": "Test", "city": "Karachi"}'::jsonb,
+        100, 100, 200)
+RETURNING id;
+
+-- Try to modify items — should FAIL
+UPDATE public.orders SET items = '[]'::jsonb WHERE id = '<test-id>';
+-- Expected: ERROR: orders.items is an immutable snapshot
+
+-- Try to update status — should SUCCEED
+UPDATE public.orders SET status = 'processing' WHERE id = '<test-id>';
+-- Expected: UPDATE 1
+```
+
+### Test Pyramid
+
+```
+       ┌─────────────────────┐
+       │   E2E Tests (21)    │  ~90s
+       │   Playwright        │
+       └──────────┬──────────┘
+                  │
+       ┌──────────▼──────────┐
+       │  Component Tests    │  Folded into unit suite
+       │  React Testing Lib  │
+       └──────────┬──────────┘
+                  │
+       ┌──────────▼──────────┐
+       │   Unit Tests (53)   │  ~30s
+       │   Vitest            │
+       └─────────────────────┘
+```
+
+**Distribution:**
+- **Unit tests (70%)** — Fast, isolated, high coverage
+- **E2E tests (30%)** — Slow, integrated, user-facing flows
+- **No separate integration layer** — Folded into E2E for practicality
 
 ---
 
@@ -2109,6 +3649,16 @@ flowchart LR
 | **E2E Tests** | Playwright + Chromium | ~2 min, reports uploaded on failure |
 | **Security Audit** | `npm audit --audit-level=high` | ~10s (fail-soft) |
 
+### Concurrency Control
+
+```yaml
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+```
+
+**Effect:** If you push twice rapidly, only the latest runs. Saves CI minutes.
+
 ### Required GitHub Secrets
 
 Set these in **Settings → Secrets and variables → Actions**:
@@ -2132,12 +3682,56 @@ QSTASH_CURRENT_SIGNING_KEY
 QSTASH_NEXT_SIGNING_KEY
 STRIPE_SECRET_KEY
 NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
+GROQ_API_KEY                     # ← New in v3.1
 ```
 
 > **Safe?** Yes. GitHub secrets are encrypted at rest (AES-256), masked in logs, and never exposed to fork PRs.
 
+### Keep-Alive Workflow
+
+The repo includes `.github/workflows/keep-alive.yml`:
+
+```yaml
+on:
+  schedule:
+    - cron: '0 0,12 * * *'    # Twice daily
+  workflow_dispatch:          # Manual trigger
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping keep-alive endpoint
+        run: |
+          curl -sS --max-time 30 -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "${{ secrets.SITE_URL }}/api/cron/keep-alive"
+```
+
+**Why?** Free-tier databases pause after inactivity:
+- Supabase Free: pauses after 7 days
+- MongoDB M0: pauses after 60 days
+
+Pinging twice daily keeps them warm.
+
+### Build Verification
+
+Every commit must pass:
+- [ ] `npm run lint` — zero errors
+- [ ] `npm run typecheck` — clean
+- [ ] `npm run test` — 53 unit tests pass
+- [ ] `npm run build` — succeeds locally
+- [ ] `npm run test:e2e` — 21 E2E tests pass (CI only)
+
 ---
 
+<div align="center">
+
+**📌 End of Part 3 — Continue to Part 4 for Troubleshooting, FAQ, Roadmap, Changelog, Deployment, Contributing, and Contact.**
+
+</div>
+```
+
+---
 ## 🐛 Troubleshooting
 
 <details>
@@ -2145,7 +3739,7 @@ NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
 
 **Cause:** One or more required env vars not set in `.env.local`.
 
-**Fix:** The error message lists exactly which are missing. Compare against `.env.example`.
+**Fix:** The error message lists exactly which are missing. Compare against `.env.example`. All required variables are validated by Zod at startup.
 
 </details>
 
@@ -2157,6 +3751,17 @@ NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
 **Fix:** Supabase → Authentication → URL Configuration → add both:
 - `http://localhost:3000/auth/callback`
 - `https://your-domain.vercel.app/auth/callback`
+
+</details>
+
+<details>
+<summary><strong>Password reset link → "session missing" or stuck on login</strong></summary>
+
+**Cause (fixed in v3.2):** Old flow used `code`-based exchange which left users without a session.
+
+**Fix:** The `/auth/callback` route now handles `token_hash` flow via `supabase.auth.verifyOtp({ token_hash, type })`. Ensure:
+1. Supabase → Authentication → URL Configuration → add `https://your-domain.vercel.app/auth/reset-password`
+2. Email templates use `{{ .TokenHash }}` (not legacy `{{ .ConfirmationURL }}` — or update the redirect URL)
 
 </details>
 
@@ -2180,19 +3785,23 @@ NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
 - Wait 60 seconds
 - Verify Upstash env vars
 - Temporarily bump limits in `src/lib/ratelimit.ts`
+- Check `X-RateLimit-*` headers in 429 responses for details
 
 </details>
 
 <details>
 <summary><strong>Real-time updates not working</strong></summary>
 
-**Cause:** Realtime not enabled on `orders` table.
+**Cause:** Realtime not enabled on `orders` (or `order_items`) table.
 
-**Fix:** Supabase → Database → Replication → enable `orders`:
+**Fix:** Supabase → Database → Replication → enable both:
 
 ```sql
 ALTER PUBLICATION supabase_realtime ADD TABLE public.orders;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.order_items;
 ```
+
+**Verify:** Admin → open dashboard → place a test order from another browser. The admin bell should pulse and a toast should appear.
 
 </details>
 
@@ -2204,6 +3813,7 @@ ALTER PUBLICATION supabase_realtime ADD TABLE public.orders;
 **Fix:**
 - Stripe Dashboard → Developers → Webhooks → copy signing secret
 - For local: `stripe listen --forward-to localhost:3000/api/webhooks/stripe`
+- Ensure the webhook endpoint URL matches your deployment (https, no trailing slash)
 
 </details>
 
@@ -2212,7 +3822,9 @@ ALTER PUBLICATION supabase_realtime ADD TABLE public.orders;
 
 **Cause:** QStash can't reach `localhost`.
 
-**Fix:** The email queue auto-detects dev mode and sends directly via Gmail SMTP. No tunnel needed.
+**Fix:** The email queue auto-detects dev mode (`NEXT_PUBLIC_SITE_URL` contains `localhost`/`127.0.0.1`/`192.168`/`.local`) and sends directly via Gmail SMTP. No tunnel needed.
+
+**To test QStash locally (optional):** Use ngrok/cloudflared and update `NEXT_PUBLIC_SITE_URL`.
 
 </details>
 
@@ -2225,6 +3837,32 @@ ALTER PUBLICATION supabase_realtime ADD TABLE public.orders;
 3. Check MongoDB `email_logs` — `status: sent` or `failed`?
 4. Check spam folder
 5. Check terminal for `[email] sent` or `[email] failed` logs
+6. **v3.2:** If log status is `queued` for more than 5 minutes, check QStash dashboard → Logs → Delivery attempts
+
+</details>
+
+<details>
+<summary><strong>Cron job not firing / throttle skip</strong></summary>
+
+**Symptom (v3.2):** `{"success":true,"skipped":true,"reason":"throttled","minutesSince":11}`
+
+**Cause:** Throttle window active (50 min for carts, 12h for low-stock).
+
+**Fix:**
+- Wait for throttle to expire
+- To force-run: delete throttle key from Redis
+  ```
+  DEL throttle:cron:abandoned-carts
+  DEL throttle:alert:low-stock
+  ```
+
+**v3.2 fix:** Throttle is **only set on real success**. If `queueEmail` fails, throttle stays unset — next cron run retries automatically.
+
+**How to test locally:**
+```bash
+curl -X GET https://your-domain.vercel.app/api/cron/daily \
+  -H "Authorization: Bearer YOUR_CRON_SECRET"
+```
 
 </details>
 
@@ -2233,7 +3871,7 @@ ALTER PUBLICATION supabase_realtime ADD TABLE public.orders;
 
 **Cause:** Middleware not refreshing cookies.
 
-**Fix:** Ensure `src/proxy.ts` uses cookie-preserving `redirectWithCookies` helper (see source).
+**Fix:** Ensure `src/proxy.ts` uses the cookie-preserving `redirectWithCookies` helper. Cookies are set on both the request AND the redirect response.
 
 </details>
 
@@ -2243,17 +3881,18 @@ ALTER PUBLICATION supabase_realtime ADD TABLE public.orders;
 **Cause:** Multiple Supabase clients or missing middleware.
 
 **Fix:**
-- Verify `src/lib/supabase/client.ts` exports a **singleton**
-- Verify `src/proxy.ts` runs on all pages
+- Verify `src/lib/supabase/client.ts` exports a **singleton** (uses `let client: SupabaseClient | null`)
+- Verify `src/proxy.ts` runs on all pages (matcher config excludes only static assets)
+- Clear cookies and re-login
 
 </details>
 
 <details>
 <summary><strong>Build fails: "Cookies can only be modified in a Server Action"</strong></summary>
 
-**Cause:** Server Component writing cookies.
+**Cause:** Server Component trying to write cookies.
 
-**Fix:** `src/lib/supabase/server.ts` should wrap `cookieStore.set` in `try/catch` (silently ignore in RSC).
+**Fix:** `src/lib/supabase/server.ts` should wrap `cookieStore.set` in `try/catch` (silently ignore in RSC context).
 
 </details>
 
@@ -2262,7 +3901,7 @@ ALTER PUBLICATION supabase_realtime ADD TABLE public.orders;
 
 **Cause:** Next.js 16 renamed `middleware.ts` → `proxy.ts`.
 
-**Fix:** Already handled — file is `src/proxy.ts` and exports `proxy`.
+**Fix:** Already handled — file is `src/proxy.ts` and exports `proxy` (not `middleware`).
 
 </details>
 
@@ -2276,6 +3915,8 @@ ALTER PUBLICATION supabase_realtime ADD TABLE public.orders;
 ```bash
 npm run build
 npm run start
+# In another terminal:
+npm run test:e2e
 ```
 
 </details>
@@ -2286,9 +3927,9 @@ npm run start
 **Cause:** Hobby plan allows 1 cron per project.
 
 **Fix:**
-- **Option A:** Upgrade to Pro
-- **Option B:** Use external cron (cron-job.org) to hit `/api/cron/daily`
-- **Option C:** Combine into one daily cron (already done via `/api/cron/daily`)
+- **Option A:** Upgrade to Vercel Pro ($20/mo)
+- **Option B:** Use external cron (cron-job.org, free) to hit `/api/cron/daily`
+- **Option C:** Use GitHub Actions schedule (already have `keep-alive.yml` as example)
 
 </details>
 
@@ -2313,7 +3954,9 @@ curl https://api.groq.com/openai/v1/models \
   -H "Authorization: Bearer $GROQ_API_KEY"
 ```
 
-If `openai/gpt-oss-120b` isn't listed, use another model from the response in `src/lib/ai/groq.ts`.
+If `openai/gpt-oss-120b` isn't listed, use another model from the response in `src/lib/ai/groq.ts` (`AI_MODELS.QUALITY`).
+
+**Known regional variation (Oct 2026):** DMM (Saudi) region accounts have `openai/gpt-oss-*` instead of `llama-*`.
 
 </details>
 
@@ -2322,7 +3965,7 @@ If `openai/gpt-oss-120b` isn't listed, use another model from the response in `s
 
 **Cause:** More than 20 messages/minute from same IP.
 
-**Fix:** Wait 60 seconds. Rate limit resets automatically.
+**Fix:** Wait 60 seconds. Rate limit resets automatically. Check `Retry-After` header.
 
 </details>
 
@@ -2336,6 +3979,9 @@ If `openai/gpt-oss-120b` isn't listed, use another model from the response in `s
 2. Not already installed (check `display-mode: standalone`)
 3. Not dismissed in last 30 days (check localStorage `vestior-pwa-install-dismissed`)
 4. Browser supports `beforeinstallprompt` (Chrome, Edge — not Safari)
+5. Waited at least 20 seconds (auto-show delay)
+
+**iOS Safari:** No `beforeinstallprompt`. Use Share → "Add to Home Screen".
 
 </details>
 
@@ -2348,6 +3994,59 @@ If `openai/gpt-oss-120b` isn't listed, use another model from the response in `s
 1. Bump `CACHE_VERSION` in `public/sw.js`
 2. Hard refresh (Ctrl+Shift+R)
 3. Or: DevTools → Application → Service Workers → Unregister, then reload
+4. Or: DevTools → Application → Storage → Clear site data
+
+</details>
+
+<details>
+<summary><strong>PDF print view shows dark background</strong></summary>
+
+**Cause:** Browser's print settings override.
+
+**Fix:**
+- Chrome: Print dialog → "More settings" → uncheck "Background graphics" or set to **ON** (either works — our CSS forces white)
+- Firefox: Print dialog → uncheck "Print backgrounds"
+- Verify `@media print` styles are loaded (`body { background: white !important }`)
+
+**v3.2 note:** Print CSS uses `visibility: hidden` on all body children, then `visibility: visible` on `#export-print-area` and its descendants. This ensures only the print area shows.
+
+</details>
+
+<details>
+<summary><strong>PDF export missing rows on multi-page print</strong></summary>
+
+**Cause:** Table header doesn't repeat.
+
+**Fix:** Our print CSS uses `thead { display: table-header-group }` — headers auto-repeat on every page. If you're not seeing this:
+- Verify your browser is Chrome/Firefox (both support it)
+- Reduce row height (some browsers fail with very tall rows)
+- Check `tr { page-break-inside: avoid }` is applied
+
+</details>
+
+<details>
+<summary><strong>Editorial UI feels broken / missing styles</strong></summary>
+
+**Cause:** Tailwind v4 not loading, or cache stale.
+
+**Fix:**
+1. `rm -rf .next && npm run dev`
+2. Verify `postcss.config.mjs` has `@tailwindcss/postcss`
+3. Verify `src/app/globals.css` has `@import "tailwindcss"`
+4. Hard refresh browser (Ctrl+Shift+R)
+
+</details>
+
+<details>
+<summary><strong>Currency symbol shows as "?" in CSV export</strong></summary>
+
+**Cause:** Excel opens CSV without UTF-8 detection.
+
+**Fix:** Already handled — our CSV builder prepends a UTF-8 BOM (`\uFEFF`). Excel will detect UTF-8 and display ₹ correctly.
+
+**If still broken:**
+- Open Excel → Data → From Text/CSV → choose "UTF-8" encoding
+- Or open with Google Sheets (auto-detects)
 
 </details>
 
@@ -2361,13 +4060,31 @@ If `openai/gpt-oss-120b` isn't listed, use another model from the response in `s
 | Firefox | 100+ | ✅ Full |
 | Safari | 15+ | ✅ Full |
 | Edge | 100+ | ✅ Full |
-| Safari iOS | 15+ | ✅ Full |
-| Chrome Android | 100+ | ✅ Full |
+| Safari iOS | 15+ | ✅ Full (PWA manual install) |
+| Chrome Android | 100+ | ✅ Full (PWA install prompt) |
 | Samsung Internet | 18+ | ✅ Full |
 
 **Not supported:** Internet Explorer (any version).
 
-**Modern features used:** AVIF/WebP, CSS `aspect-ratio`, `:has()`, `view-transition` (progressive), Web Audio API, `navigator.sendBeacon`, Service Workers, `beforeinstallprompt`.
+**Modern features used:**
+- AVIF/WebP image formats
+- CSS `aspect-ratio`
+- CSS `:has()` (progressive enhancement)
+- `view-transition` (progressive)
+- Web Audio API (admin notification chime)
+- `navigator.sendBeacon` (event batching)
+- Service Workers (PWA)
+- `beforeinstallprompt` (PWA install)
+- `backdrop-filter` (glass morphism)
+- `Intl` formatting (dates, currency)
+- `AbortController` (chat streaming)
+
+**Progressive enhancement:** Every modern feature has a graceful fallback:
+- AVIF → WebP → JPEG
+- `:has()` → static CSS
+- Web Audio → silent fail
+- Service Worker → normal HTTP
+- `beforeinstallprompt` → manual install via instructions
 
 ---
 
@@ -2377,83 +4094,190 @@ If `openai/gpt-oss-120b` isn't listed, use another model from the response in `s
 
 ### Implemented
 
-- ✅ Semantic HTML (`<main>`, `<nav>`, `<header>`, `<footer>`, `<article>`)
-- ✅ Proper heading hierarchy (h1 → h2 → h3)
-- ✅ ARIA labels on every icon-only button
-- ✅ `aria-pressed` on toggles (wishlist, filter chips)
-- ✅ `aria-live` regions for toasts
-- ✅ Keyboard navigation (all interactive elements)
-- ✅ Focus-visible outlines on every focusable element
-- ✅ **Skip to main content** link
-- ✅ Color contrast meets WCAG AA everywhere
-- ✅ Alt text on all meaningful images
-- ✅ `role="status"` on loading states
-- ✅ No `user-scalable=no` (zoom allowed)
-- ✅ Form inputs have visible labels
-- ✅ Touch targets ≥ 44px
-- ✅ Chat widget has `role="dialog"` and keyboard close
-- ✅ PWA install prompt dismissible with aria-label
+**Semantic HTML:**
+- `<main>`, `<nav>`, `<header>`, `<footer>`, `<article>`, `<aside>`, `<section>`
+- Proper heading hierarchy (h1 → h2 → h3, no skips)
+- `<button>` for actions, `<a>` for navigation
+- `<form>` with `<label>` for every input
+- `<table>` with `<thead>`, `<tbody>`, `<th>`
+
+**ARIA:**
+- `aria-label` on every icon-only button
+- `aria-pressed` on toggles (wishlist, filter chips, abandoned filter)
+- `aria-live="polite"` on toasts and loading states
+- `aria-live="assertive"` on critical notifications
+- `aria-modal="true"` on dialogs (payment detail, user detail, chat)
+- `aria-expanded` on collapsible sections
+- `aria-selected` on tabs
+- `aria-current="page"` on active nav links
+- `role="status"` on loading spinners
+- `role="dialog"` on modals
+- `role="tablist"` + `role="tab"` on filter tabs
+- `role="radiogroup"` + `role="radio"` on star rating
+- `aria-hidden="true"` on decorative elements
+
+**Keyboard:**
+- All interactive elements reachable via Tab
+- Focus-visible outlines on every focusable element
+- ESC closes modals (chat, payment detail, user detail, notification dropdown)
+- Enter submits forms
+- Space toggles checkboxes
+- Arrow keys in dropdowns (native `<select>`)
+
+**Visual:**
+- Color contrast meets WCAG AA everywhere
+- No color-only information (icons + labels always paired)
+- Alt text on all meaningful images
+- Decorative images use `aria-hidden="true"`
+
+**Motion:**
+- `prefers-reduced-motion` respected via Tailwind
+- No autoplaying videos
+- Animations have pauses (not infinite flickers)
+
+**Structure:**
+- **Skip to main content** link (first focusable element)
+- Landmarks on every page
+- Breadcrumb navigation
+- Consistent header/footer across pages
+
+**Forms:**
+- Visible labels on every input
+- Real-time validation with clear error messages
+- Loading states with spinners + disabled buttons
+- Success/error toasts with proper ARIA
+
+**Touch targets:**
+- Minimum 44×44 px for all interactive elements
+- Adequate spacing between adjacent targets
+
+**Print:**
+- Print views hide navigation, footer, chrome
+- Only the invoice/export visible
+- A4-optimized layout
+
+### Tested with
+
+- **axe DevTools** — 0 violations
+- **Lighthouse Accessibility** — 100/100
+- **WAVE** — 0 errors
+- **Screen reader** — tested with VoiceOver (macOS/iOS) and NVDA (Windows)
 
 ---
 
 ## ❓ FAQ
 
+### General
+
 **Q: Is this multi-vendor?**
-A: No. VESTIOR is a **single-vendor** store — one admin manages all products, orders, and users.
+A: No. VESTIOR is a **single-vendor** store — one admin manages all products, orders, and users. Multi-vendor would be a completely different product (v4.0 or a fork).
 
 **Q: What payment methods are supported?**
 A: **Cash on Delivery (COD)** and **Stripe** (test mode ready, live-mode compatible). The provider abstraction makes adding PayPal, Razorpay, etc. a single-file change.
 
-**Q: Can customers see their order history?**
-A: Yes, at `/orders` with real-time status updates, plus a printable invoice.
-
-**Q: How do I add a new category?**
-A: Categories are derived from `category_main`. Just type a new value when creating/editing a product. Update `src/components/CategorySection.tsx` to add the homepage tile.
-
 **Q: Can I use this for other products (not clothing)?**
-A: Yes. The core logic is generic. Update category names, imagery, branding.
+A: Yes. The core logic is generic. Update category names, imagery, branding. Size selector (XS–3XL + Custom) may need adjustment if not applicable.
 
-**Q: How do I reset a customer's password?**
-A: Supabase → Auth → Users → select user → "Send password recovery".
-
-**Q: Where are product images stored?**
-A: Supabase Storage → `product-images` bucket (public).
+**Q: Is there a public API?**
+A: Not currently. Server Actions are internal. For external use, build routes under `src/app/api/`. The API routes that DO exist are documented in the API Reference section.
 
 **Q: How do I disable a product without deleting it?**
 A: Set `is_active = false` in the admin panel. Hidden from storefront, preserved in DB.
 
-**Q: Is there a public API?**
-A: Not currently. Server Actions are internal. For external use, build routes under `src/app/api/`.
+**Q: How do I add a new category?**
+A: Categories are derived from `category_main`. Just type a new value when creating/editing a product. Update `src/components/CategorySection.tsx` to add the homepage tile.
 
-**Q: How does the abandoned cart recovery work?**
-A: Client silently syncs carts every 2s (debounced). A cron job runs hourly, finds carts >2h old, sends reminders with 5% off. Max 3 reminders per cart, 7 days apart.
+### Auth & Users
 
-**Q: Are product reviews moderated?**
-A: Yes. All reviews start as `pending`. Admins approve/reject via `/admin/reviews`.
+**Q: Can customers see their order history?**
+A: Yes, at `/orders` with real-time status updates, plus a printable invoice.
 
-**Q: What happens if Redis is down?**
-A: Site keeps working (fail-open rate limiting). Idempotency falls back to permissive.
-
-**Q: What happens if MongoDB is down?**
-A: Analytics + email logs + abandoned carts + sessions temporarily fail. **Core commerce unaffected** (Supabase is source of truth).
-
-**Q: Can I deploy to a VPS instead of Vercel?**
-A: Yes. The `Dockerfile.vercel` is compatible with any Docker host. See `next.config.ts` for `output: 'standalone'`.
-
-**Q: How does the AI chatbot work?**
-A: VESTIOR uses Groq (LPU inference) with the `openai/gpt-oss-120b` model. It has access to read-only tools (`searchProducts`, `getCategories`, `getMyOrders`, etc.) but can never modify data. Rate-limited at 20 messages/min per IP. Free tier handles ~1,000 requests/day.
-
-**Q: Can I install VESTIOR as an app?**
-A: Yes. On Chrome/Edge (Android or desktop), you'll see an install prompt. On iOS Safari, tap Share → "Add to Home Screen". The app works offline for cached pages.
+**Q: How do I reset a customer's password?**
+A: Supabase → Auth → Users → select user → "Send password recovery". Or use the customer-facing `/auth/forgot-password` flow.
 
 **Q: Do I need to verify my email?**
 A: Yes. After signup, check your inbox for the verification link. Until verified, login will show "Please verify your email first".
 
-**Q: Why do I get two payment confirmation emails?**
-A: This was a bug in older versions. Now fixed: the Stripe webhook checks if the order is already completed before queuing the email.
+**Q: Why does my password reset link not work?**
+A: **v3.2 fixed this.** The flow now uses `token_hash` (Supabase's newer recommended flow). Ensure Supabase URL Configuration includes `/auth/reset-password` in Redirect URLs.
 
-**Q: How do I change the AI model?**
-A: Edit `AI_MODELS` in `src/lib/ai/groq.ts`. Available options: `openai/gpt-oss-120b` (quality), `openai/gpt-oss-20b` (fast).
+**Q: What happens if a user signs up with Google and later wants a password?**
+A: They can use "Forgot password" to set one. Supabase auth handles the linking automatically.
+
+**Q: How do I promote a user to admin?**
+A: Supabase → Table Editor → `profiles` → change `role` to `admin`. For super admin (can change roles), also set `is_super_admin = true`.
+
+### Payments
+
+**Q: How does Stripe work if the client's browser closes mid-payment?**
+A: The order exists in DB with `payment_status: pending`. The Stripe webhook fires asynchronously and completes it. Both client-side `confirmPayment` and webhook are idempotent.
+
+**Q: What if a customer pays twice?**
+A: Not possible. Stripe's PaymentIntent is single-use. Idempotency keys prevent duplicate processing on our end.
+
+**Q: Can I refund an order?**
+A: Yes. Admin → Order detail → Refund button. For Stripe orders, calls Stripe Refund API. For COD, marks order refunded.
+
+**Q: What if the webhook fails?**
+A: Stripe retries automatically (up to 72h with exponential backoff). Our handler is idempotent, so retries are safe.
+
+### Email
+
+**Q: Why do I get two payment confirmation emails?**
+A: This was a bug in older versions. **Fixed in v3.1:** the Stripe webhook checks if the order is already completed before queuing the email. Whichever path fires first wins.
+
+**Q: Why is my email stuck as `queued`?**
+A: **Fixed in v3.1:** if `qstash.publishJSON` throws, the log is now marked `failed` with the error. Before, it stayed `queued` forever.
+
+**Q: Can I use Resend instead of Gmail?**
+A: Yes. Swap `src/lib/email/mailer.ts` from Nodemailer to Resend SDK. Everything else stays. `RESEND_API_KEY` is already in `.env.example` (optional).
+
+**Q: How do I test email templates locally?**
+A: The email queue detects `localhost` and sends directly (bypassing QStash). Emails arrive in your Gmail inbox. Check `email_logs` in MongoDB.
+
+### AI Chatbot
+
+**Q: How does the AI chatbot work?**
+A: VESTIOR uses Groq (LPU inference) with the `openai/gpt-oss-120b` model. It has access to read-only tools (`searchProducts`, `getCategories`, `getMyOrders`, etc.) but can never modify data. Rate-limited at 20 messages/min per IP. Free tier handles ~1,000 requests/day.
+
+**Q: Why tools over RAG?**
+A: Tools query **live DB** — always fresh, no embeddings needed, never hallucinate prices. RAG would require vector embeddings + stale snapshots. For ~500 products, tools are simpler and always correct.
+
+**Q: Can I change the AI model?**
+A: Yes. Edit `AI_MODELS` in `src/lib/ai/groq.ts`. Available options: `openai/gpt-oss-120b` (quality), `openai/gpt-oss-20b` (fast). Verify model availability with the `/models` endpoint.
+
+**Q: What if Groq is down?**
+A: The chatbot returns 503 with "AI chatbot is not configured." The rest of the site works normally.
+
+**Q: Can the chatbot take actions (place orders, etc.)?**
+A: No. Tools are strictly **read-only**. It can search products, get product details, list categories, and retrieve the user's order history. It cannot modify anything.
+
+### PWA
+
+**Q: Can I install VESTIOR as an app?**
+A: Yes. On Chrome/Edge (Android or desktop), you'll see an install prompt. On iOS Safari, tap Share → "Add to Home Screen". The app works offline for cached pages.
+
+**Q: Why doesn't the install prompt appear?**
+A: Check: HTTPS, not already installed, not dismissed in last 30 days, supported browser (Chrome/Edge). Safari doesn't support `beforeinstallprompt`.
+
+**Q: What works offline?**
+A: Cached pages (previously visited), static assets (JS/CSS/fonts), and images. Dynamic content (products, cart) requires a connection.
+
+### Performance & SEO
+
+**Q: Why is mobile LCP 3.5s?**
+A: Client-side hydration + Framer Motion animations on mid-range phones. Optimized as far as possible without dropping interactivity. On desktop, LCP is 0.5s.
+
+**Q: Does the site work without JavaScript?**
+A: Partially. Server-rendered pages work, but cart, search, AI chat, and interactive filtering need JS. This is standard for modern e-commerce.
+
+**Q: Is the site SEO-friendly?**
+A: Yes. Lighthouse SEO = 100/100. Dynamic metadata, JSON-LD schemas (Organization, WebSite, Product, Breadcrumb, Review), auto-generated sitemap, canonical URLs, rich results eligible.
+
+**Q: How do I submit the sitemap to Google?**
+A: [Google Search Console](https://search.google.com/search-console) → Add property → Verify → Sitemaps → submit `https://your-domain.com/sitemap.xml`.
+
+### Admin Panel
 
 **Q: Can I see what visitors are doing live?**
 A: Yes. `/admin/visitors` shows all sessions. `/admin/analytics` has a Live Users widget that auto-refreshes every 30 seconds.
@@ -2461,34 +4285,78 @@ A: Yes. `/admin/visitors` shows all sessions. `/admin/analytics` has a Live User
 **Q: How do I track product performance?**
 A: `/admin/analytics` shows per-product views, cart adds, orders, and conversion rate. Products with high views but zero orders are flagged as "abandoned".
 
+**Q: Can I export data?**
+A: Yes. `/admin/exports` — CSV for orders, payments, emails, users, and audit logs. **NEW in v3.2:** PDF print views for all 5 export types.
+
+**Q: How do I export to PDF?**
+A: Admin → `/admin/exports` → click **Print** on any card → opens a print-optimized page → use browser's "Print → Save as PDF".
+
+**Q: How do I change a user's role?**
+A: Only **super admins** can change roles. Go to `/admin/users` → click user → role dropdown. Regular admins can't do this (security).
+
+**Q: What's an "abandoned" product?**
+A: A product with **20+ views** but **zero orders** in the selected date range. Indicates a potential issue (price, photos, copy, stock).
+
+### Deployment
+
+**Q: Can I deploy to a VPS instead of Vercel?**
+A: Yes. The `Dockerfile.vercel` is compatible with any Docker host. See the Deployment section for details on VPS setup.
+
+**Q: What's the free tier cost?**
+A: **$0/month** until you exceed limits. See "Free Tier Limits" section for details on each service.
+
+**Q: When should I upgrade?**
+A: 
+- **Vercel:** Commercial use or more crons → Pro ($20/mo)
+- **Supabase:** Backups + more compute → Pro ($25/mo)
+- **MongoDB:** Storage > 512MB → M2 ($9/mo)
+- **Groq:** >1K requests/day → Paid tier
+
+**Q: How do I roll back a deployment?**
+A: Vercel → Deployments → find last good → ⋯ → **Promote to Production**. ~30 seconds.
+
+### Data & Recovery
+
+**Q: What happens if Redis is down?**
+A: Site keeps working (fail-open rate limiting). Idempotency falls back to permissive. Idempotency keys won't be cached — duplicate webhooks may double-process, but our DB-level UNIQUE constraints prevent actual duplicates.
+
+**Q: What happens if MongoDB is down?**
+A: Analytics + email logs + abandoned carts + sessions temporarily fail. **Core commerce unaffected** (Supabase is source of truth).
+
+**Q: What happens if Supabase is down?**
+A: Site is fully down. Products, orders, users all come from Supabase. This is by design — single source of truth for transactional data.
+
+**Q: How do I back up data?**
+A: 
+- **Supabase:** Pro tier has daily backups + PITR. Free tier: manual `pg_dump` via Supabase CLI.
+- **MongoDB:** M2+ has automated backups. M0: no backups (free tier limitation).
+- **Redis:** Ephemeral. No backups needed.
+
 ---
 
-<div align="center">
-
-**📌 End of Part 2 — Continue to Part 3 for Roadmap, Changelog, Deployment, and Contact.**
-
-</div>
 ## 🗺️ Roadmap
 
 > **Promise:** This roadmap is honest. It reflects what we plan to build, what we'll prioritize, and what we're deliberately not doing.
 
 ### Current State
 
-VESTIOR is at **v3.1.0** — production-ready with AI-powered features and PWA capabilities.
+VESTIOR is at **v3.2.0** — production-ready with editorial UI, AI chatbot, PWA, and PDF export.
 
-### What's shipped
+### What's Shipped
 
 | Category | Status |
 |----------|--------|
 | **Core commerce** | Browse → cart → checkout → orders — complete |
-| **Payments** | COD + Stripe live, refunds, webhooks, idempotency |
-| **Admin panel** | 16 pages covering products, orders, payments, users, analytics, reviews, coupons, carts, audit, exports, visitors, sessions, reports |
-| **Email** | Gmail SMTP + QStash queue, 10 templates, delivery tracking |
+| **Payments** | COD + Stripe live, refunds, webhooks, idempotency, atomic v2 |
+| **Admin panel** | 19 pages covering products, orders, payments, users, analytics, reviews, coupons, carts, audit, exports, visitors, sessions, reports |
+| **Email** | Gmail SMTP + QStash queue, 10 templates, delivery tracking, editorial redesign |
 | **Analytics** | Self-hosted event tracking + sessions + product analytics + funnel + live users |
-| **AI** | Groq-powered shopping assistant with tool-calling |
+| **AI** | Groq-powered shopping assistant with tool-calling + streaming |
 | **PWA** | Installable, offline mode, service worker, app shortcuts |
-| **Growth** | Coupons, reviews, wishlist, abandoned cart recovery, recommendations |
-| **Security** | RLS, atomic operations, idempotency, rate limiting, audit logs |
+| **Growth** | Coupons (atomic), reviews, wishlist, abandoned cart recovery, recommendations |
+| **Editorial UI** | Full redesign across 120+ files — bento cards, glass morphism, motion-first |
+| **Data export** | CSV + **PDF print views** (v3.2) |
+| **Security** | RLS, atomic operations, idempotency (Lua), rate limiting, audit logs, immutability guards |
 | **Testing** | 53 unit + 21 E2E tests, GitHub Actions CI (4 jobs) |
 | **Performance** | 97/100 Lighthouse desktop, 91/100 mobile |
 | **Docs** | 11 deep-dive files + README |
@@ -2516,7 +4384,7 @@ Every feature decision traces back to these:
 - Real-time conversion based on daily exchange rates
 - User selects currency (auto-detected by IP)
 - Persisted in cookie
-- All displays (product cards, cart, checkout, invoices, emails) convert
+- All displays (product cards, cart, checkout, invoices, emails, PDF exports) convert
 - Admin sets currency markup (e.g., +5% for USD)
 
 **Effort:** ~2 weeks
@@ -2571,6 +4439,21 @@ Every feature decision traces back to these:
 
 ---
 
+#### 🎯 Groq paid tier evaluation
+
+**Why:** Free tier caps at 1,000 requests/day. If AI usage grows, we hit the cap.
+
+**What:**
+- Monitor Groq usage dashboard
+- Evaluate pricing (~$0.05-0.10 per 1K requests)
+- Set up alerts at 800 requests/day
+- Upgrade if consistently hitting 1K/day
+
+**Effort:** ~1 day (setup) + ongoing monitoring
+**Blockers:** None. Cost decision when usage justifies.
+
+---
+
 ### Medium Term — Next 6 Months
 
 #### 🎯 Multi-language (i18n)
@@ -2583,10 +4466,12 @@ Every feature decision traces back to these:
 - RTL layout for Urdu
 - All UI strings externalized
 - Emails in recipient's language
+- PDF export headers in selected language
 - DB stores language preference on profile
+- **AI chatbot** responds in user's language
 
 **Effort:** ~4 weeks
-**Blockers:** Need to translate ~500 strings.
+**Blockers:** Need to translate ~500 strings. Can be partially outsourced.
 
 ---
 
@@ -2600,6 +4485,7 @@ Every feature decision traces back to these:
 - Tiers: Bronze → Silver → Gold (based on lifetime spend)
 - Tier perks: free shipping, early access, birthday discount
 - Admin panel to view/adjust points
+- Email notifications on tier upgrades
 
 **Effort:** ~3 weeks
 **Blockers:** None technical.
@@ -2616,6 +4502,7 @@ Every feature decision traces back to these:
 - Redeem at checkout (like a coupon, but with balance tracking)
 - Partial redemption (spend ₹1,200 of ₹2,500)
 - Expiry: 12 months
+- Refundable? No (industry standard)
 
 **Effort:** ~2 weeks
 **Blockers:** Requires new table `gift_cards` + `gift_card_transactions`.
@@ -2637,18 +4524,35 @@ Every feature decision traces back to these:
 
 ---
 
+#### 🎯 Advanced analytics
+
+**Why:** Current analytics shows funnel + top products + sessions. Missing cohort/retention analysis.
+
+**What:**
+- Cohort retention (D1, D7, D30)
+- Customer lifetime value
+- Repeat purchase rate
+- Product affinity (customers who bought X also bought Y)
+- Search analytics (what users search, what they don't find)
+
+**Effort:** ~3 weeks
+**Blockers:** Requires pre-aggregation cron to keep dashboards fast.
+
+---
+
 #### 🎯 Advanced AI features
 
-**Why:** Current AI is read-only. Add personalized recommendations and semantic search.
+**Why:** Current AI is read-only, tool-based. Next step: semantic search + personalization.
 
 **What:**
 - **Semantic search** — "fancy suit for wedding" → matches suits
 - **"Recommended for you"** — based on browsing history
 - **Auto-generated product descriptions** — for new products
-- **Customer support chatbot** — with FAQs and order lookup
+- **Customer support chatbot** — with FAQs + order lookup
+- **Multi-turn context** — "show me that in blue" after seeing a suit
 
 **Effort:** ~4 weeks
-**Blockers:** Needs vector embeddings (Voyage, OpenAI) and cost analysis.
+**Blockers:** Needs vector embeddings (Voyage, OpenAI, or self-hosted) + cost analysis.
 
 ---
 
@@ -2661,9 +4565,10 @@ Every feature decision traces back to these:
 **What:**
 - React Native app (Expo)
 - Shared business logic with web (via monorepo)
+- Native camera for AR try-on (future)
 - Push notifications
 - Deep linking
-- Biometric auth
+- **AI chatbot** integrated natively
 
 **Effort:** ~3 months
 **Blockers:** Significant investment. Only if user base justifies it.
@@ -2680,6 +4585,7 @@ Every feature decision traces back to these:
 - Per-vendor revenue tracking
 - Split payments (Stripe Connect)
 - Vendor-specific fulfillment
+- Buyer reviews of vendors
 
 **Effort:** ~6 months
 **Blockers:** This is a different product. Would be a v4.0 or a fork.
@@ -2695,9 +4601,25 @@ Every feature decision traces back to these:
 - "Recommended for you" personalization
 - Product affinity (customers who bought X also bought Y)
 - Cohort retention analysis
+- **AI-generated product descriptions** based on attributes
 
 **Effort:** ~2 months
 **Blockers:** Needs data volume (10K+ orders) and ML infrastructure.
+
+---
+
+#### 🎯 Self-hosted AI inference
+
+**Why:** Groq free tier caps at 1K/day. Paid tier adds per-request cost.
+
+**What:**
+- Deploy Llama or Mistral on dedicated GPU (vLLM, Ollama)
+- Or use serverless inference (Replicate, Together AI)
+- Swap `getGroq()` in `src/lib/ai/groq.ts` for a custom endpoint
+- Cost: ~$20-50/month for low-traffic, vs per-request pricing
+
+**Effort:** ~1 week (integration)
+**Blockers:** Cost analysis. Only worth it at high volume.
 
 ---
 
@@ -2705,9 +4627,9 @@ Every feature decision traces back to these:
 
 Some things we've deliberately not built. Reasons below.
 
-- ❌ **Crypto payments** — Volatile, complex, not demanded by user base.
-- ❌ **Subscription model** — Men's fashion isn't a subscription product.
-- ❌ **Social features (follow, feed)** — VESTIOR is a store, not a social network.
+- ❌ **Crypto payments** — Volatile, complex, not demanded by user base. If demand emerges, use a provider (Coinbase Commerce).
+- ❌ **Subscription model** — Men's fashion isn't a subscription product. Customers buy occasionally.
+- ❌ **Social features (follow, feed)** — VESTIOR is a store, not a social network. Reviews are the social layer.
 - ❌ **Custom CMS for content** — Static content + product data. A CMS is overkill.
 - ❌ **Voice search** — Low demand for a niche store.
 - ❌ **VR/AR try-on** — Requires 3D models + AR SDKs. Not worth the cost at our scale.
@@ -2717,6 +4639,10 @@ Some things we've deliberately not built. Reasons below.
 - ❌ **Light mode toggle** — Our brand is dark. Light mode would break the visual identity.
 - ❌ **Blockchain NFTs for authenticity** — Solutions looking for problems.
 - ❌ **Deep integration with Facebook/Instagram** — Standard OG tags suffice.
+- ❌ **RAG for the AI chatbot** — Tools are simpler and always correct for ~500 products.
+- ❌ **Third-party analytics (Mixpanel, Amplitude)** — Our self-hosted MongoDB analytics is fast and free.
+- ❌ **Session recording (Hotjar, FullStory)** — Privacy-invasive, expensive, and heavy.
+- ❌ **A/B testing framework** — Low traffic volume makes it statistically meaningless.
 
 ---
 
@@ -2740,7 +4666,157 @@ Some things we've deliberately not built. Reasons below.
 
 All notable changes to VESTIOR are documented in this file. Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-### v3.1.0 — AI + PWA + Auth Polish (Current)
+### v3.2.0 — Editorial Redesign + PDF Export + Bug Fixes (Current)
+
+**Release date:** 2026-10-16
+**Scope:** 120 files changed, +23,657 / −8,498 lines (across multiple commits)
+
+This is the **largest UI/UX overhaul + feature hardening release** since v3.0. It brings the entire app to a coherent **editorial design language**, adds **PDF print export**, and fixes critical bugs across auth, checkout, and notifications.
+
+**🎨 Added — Editorial UI/UX Redesign (Massive)**
+
+Redesigned the entire application around a **cohesive editorial design system**.
+
+*Design principles:*
+- Bento-style stat cards with left accent bar + ambient glow orb
+- Glass morphism (`backdrop-blur-xl`) throughout
+- Grouped sidebar navigation (Overview / Commerce / Audience / Operations)
+- Editorial typography — `tracking-tight` headlines, `[0.15em]` uppercase eyebrows, `tabular-nums` for all numbers
+- Motion-first micro-interactions — hover lifts, staggered children, shine sweeps on CTAs
+- Ambient glow orbs per page section (color-matched)
+- Consistent empty states on every list, table, and grid
+- Status pills everywhere (dot + icon + label, semantic color)
+- Sharp scroll boundaries — removed edge fade gradients
+- Responsive-first — every component tested at 320px → 2xl
+
+*Pages redesigned:*
+- Homepage (Hero + CategorySection + HomeProductSection + RecommendedRow)
+- Products listing, Product detail, Reviews section
+- Cart (with playful rotating empty-state messages + floating mini-icons)
+- Checkout (2-step with animated stepper)
+- Orders list, Order detail, Invoice
+- Wishlist, WishlistGrid
+- Profile
+- Auth pages (login, signup, forgot, reset, verify)
+- Legal pages (privacy, terms, refund)
+- **All 19 admin pages**
+- **All 10 email templates** (theme-matched editorial style)
+- Global error boundary, 404 page, loading states
+
+*Signature patterns:*
+- **Bento stat cards** — left accent bar + ambient glow + icon tile + eyebrow + big number + subtitle
+- **Grouped sidebar** — layout-animated active bar + ExternalLink on hover for "Back to Site"
+- **Empty states** — icon tile + halo glow + title + description + CTA
+- **Status pills** — `w-1 h-1 rounded-full` dot + icon + label
+- **Eyebrow pills** — `text-[10px] tracking-[0.18em] uppercase`
+- **Shine sweeps** — `-inset-x-1/2 bg-gradient-to-r from-transparent via-white/25 to-transparent`
+- **Skeleton loaders** — matching card shape with `animate-pulse`
+- **Ambient orbs** — `blur-[70px]` accent-colored background glow per card
+- **Timeline dots** — pulse-ping for live, solid for past
+
+**🖨️ Added — PDF Print Export**
+
+`/admin/exports/print/[type]` — dedicated print-optimized views for all 5 export types.
+
+*Features:*
+- Print-optimized CSS (`@media print` with `visibility: hidden` on chrome)
+- A4 landscape for tables (`@page { size: A4 landscape }`)
+- UTF-8 BOM — currency symbols (₹) render correctly
+- Banded headers (`thead { display: table-header-group }`) — auto-repeat on page breaks
+- Row-level page-break (`tr { page-break-inside: avoid }`)
+- Filter-aware — date range, status, provider preserved
+- Active filter chips in header
+- Record count + generation date
+- **Zero external dependencies** — uses browser's native "Print → Save as PDF"
+- Available types: Orders, Payments, Emails, Users, Audit logs
+
+**📸 Added — Organized Screenshot Structure**
+
+Screenshots organized by context in `public/images/`:
+- `admin_pages-images/` — 10 admin screenshots
+- `customer_facing-images/` — 9 customer screenshots
+- `email_template_images/` — 7 email screenshots
+
+**🐛 Fixed — Cron + Email Pipeline (4 fixes)**
+
+1. **Low-stock throttle on failure** — Throttle key is now set **only on real success**. Previously, a failed `queueEmail` still set the throttle — the next cron run was skipped, and the alert never fired.
+
+2. **Abandoned-cart parameter order** — `findAbandonedCarts(minAgeHours, maxReminders, limit)` — the cron was passing args in the wrong order (`maxAgeHours` instead of `maxReminders`), silently limiting reminders to wrong values.
+
+3. **Abandoned-cart window** — Correct throttle window (50 minutes) + correct 2-hour cart age threshold. Verified via curl test — 4 low-stock alerts + 1 abandoned cart sent successfully.
+
+4. **Email queue hardening** — If `qstash.publishJSON` throws, the email log is now marked `status: 'failed'` with the error message. Previously it stayed `status: 'queued'` forever — invisible to admins.
+
+**🔐 Fixed — Auth (1 fix)**
+
+5. **Password reset / email confirm session missing** — Switched to `token_hash` flow in `/auth/callback`. The previous `code`-based flow was leaving users without a session after clicking the email link. Now uses `supabase.auth.verifyOtp({ token_hash, type })`.
+
+**💳 Fixed — Checkout (1 fix)**
+
+6. **`order_placed` event not tracked on Stripe success** — COD flow tracked the event correctly, but the Stripe success path called `handlePaymentSuccess` without tracking. Now both paths emit `order_placed` with the correct `paymentMethod`, `couponCode`, and `discountAmount`.
+
+**🎨 Refactored — UI Polish (1 refactor)**
+
+7. **Edge fade gradients removed** — Scrollable rows (HomeProductSection, ProductRow, RecommendedRow) had edge fade gradients that created inconsistent visual cut-off. Removed for sharp, clean boundaries.
+
+**📧 Redesigned — All 10 Email Templates**
+
+Theme-matched editorial style:
+- Dark `#0A0A0A` background
+- Brand masthead with accent-colored dot (`● VESTIOR`)
+- Accent eyebrow badge (uppercase, tracking-widest)
+- Semantic accent color per template:
+  - Blue for orders (`#3B82F6`)
+  - Emerald for success (`#10B981`)
+  - Red for failures (`#EF4444`)
+  - Amber for warnings (`#F59E0B`)
+  - Violet for shipped/abandoned (`#8B5CF6`)
+- Hairline accent dividers (`rgba(accent, 0.25)`)
+- Gradient CTA buttons with box-shadow
+- Trust footer with email reply prompt
+- Auto-computed copyright year
+
+**📊 Enhanced — Admin Notifications**
+
+- Editorial toast design with left accent bar (`border-l-[3px]`)
+- Icon tile with matching bg + border
+- Title + 2-line message
+- "View" action with `ExternalLink` icon + hover translate
+- Shine sweep on the View button
+- Auto-dismiss after 8s
+
+**🏗️ Added — Editorial Design System**
+
+- Consistent tokens across 120+ files
+- Documented color palette, typography, surfaces, motion
+- Reusable patterns: bento cards, empty states, status pills, eyebrows
+- Zero runtime overhead (pure CSS)
+- Full accessibility compliance (WCAG AA)
+
+**⚡ Performance**
+
+- Lighthouse Desktop: **97/100** (unchanged)
+- Lighthouse Mobile: **91/100** (unchanged)
+- Accessibility: **100/100** (unchanged)
+- Best Practices: **100/100**
+- SEO: **100/100**
+- Zero-dependency PDF print — no Puppeteer/Chrome overhead
+- Sharp scroll boundaries — cleaner paint
+
+**📦 Dependencies**
+
+- No new dependencies added
+- Kept 100% free-tier compatible
+
+**📚 Documentation**
+
+- README updated with v3.2 features
+- Docs updated to reflect editorial redesign
+- Screenshot paths updated to new organized structure
+
+---
+
+### v3.1.0 — AI + PWA + Auth Polish
 
 **🤖 New — AI Shopping Assistant**
 - Groq-powered chatbot with `openai/gpt-oss-120b` (500 tok/s)
@@ -2946,7 +5022,8 @@ All notable changes to VESTIOR are documented in this file. Format based on [Kee
 
 | Version | Date | Focus | Lighthouse (Desktop) |
 |---------|------|-------|---------------------|
-| v3.1.0 | 2026-10-13 | AI + PWA + Auth | 97/100/100/100 |
+| **v3.2.0** | **2026-10-16** | **Editorial redesign + PDF export + bug fixes** | **97/100/100/100** |
+| v3.1.0 | 2026-10-13 | AI + PWA + Auth polish | 97/100/100/100 |
 | v3.0.0 | 2026-10-12 | Enterprise features | 98/100/100/100 |
 | v2.0.0 | 2026-10-05 | Security + perf | 87/85/100/100 |
 | v1.0.0 | 2026-10-01 | Initial release | — |
@@ -2955,22 +5032,43 @@ All notable changes to VESTIOR are documented in this file. Format based on [Kee
 
 ### Upgrade Guide
 
+#### From v3.1 to v3.2
+
+**Database:** No new migrations required.
+
+**Environment:** No new env vars required.
+
+**Code:** No breaking changes. The editorial redesign replaces all UI components in-place. Simply pull the latest code and redeploy.
+
+**Verification after deploy:**
+- [ ] Test password reset flow — session should be created (v3.2 fix)
+- [ ] Test Stripe checkout — verify `order_placed` event fires in MongoDB
+- [ ] Test cron manually — verify throttle only set on success
+- [ ] Test PDF export — click Print, verify A4-optimized view
+
 #### From v3.0 to v3.1
 
 **Database:**
-1. Run new migrations (if not already applied):
-   - `20261014_add_last_login.sql`
-   - `20261015_add_super_admin.sql`
-   - `20261016_normalize_user_roles.sql`
-   - `20261017_sales_report_rpc.sql`
-   - `20261018_product_analytics_rpc.sql`
-   - `20261019_place_order_atomic_v2.sql` (⚠️ **Important** — enhanced order RPC)
+1. Run new migrations (in order):
+   - `20261014_add_last_login.sql` — Adds `last_login_at`, `welcome_back_sent_at` columns
+   - `20261015_add_super_admin.sql` — Adds `is_super_admin` column + `admin_change_user_role` RPC
+   - `20261016_normalize_user_roles.sql` — Whitelist-based role normalization + backup table
+   - `20261017_sales_report_rpc.sql` — Adds `get_sales_report` RPC
+   - `20261018_product_analytics_rpc.sql` — Adds `get_product_sales_stats` RPC
+   - `20261019_place_order_atomic_v2.sql` — **⚠️ Critical** — Replaces order RPC with atomic v2
 
 2. Add `sessions` collection indexes in MongoDB:
    ```javascript
    db.sessions.createIndex({ session_id: 1 }, { unique: true })
    db.sessions.createIndex({ user_id: 1, last_seen_at: -1 })
+   db.sessions.createIndex({ ip_hash: 1, last_seen_at: -1 })
+   db.sessions.createIndex({ visitor_type: 1, last_seen_at: -1 })
    db.sessions.createIndex({ last_seen_at: 1 }, { expireAfterSeconds: 7776000 })
+   ```
+
+3. Enable Realtime on `order_items` table:
+   ```sql
+   ALTER PUBLICATION supabase_realtime ADD TABLE public.order_items;
    ```
 
 **Environment:**
@@ -2979,8 +5077,14 @@ Add new var to `.env.local`:
 GROQ_API_KEY=gsk_...
 ```
 
-**Code:**
-No breaking changes for existing features. New components mount automatically.
+**Code:** No breaking changes.
+
+**Deploy:**
+1. Update Vercel env vars (add `GROQ_API_KEY`)
+2. Redeploy
+3. Verify AI chatbot works ("Show me suits under ₹25,000")
+4. Verify PWA install prompt appears (mobile or Chrome desktop)
+5. Check email logs no longer show stuck `queued` entries
 
 #### From v2 to v3
 
@@ -3021,6 +5125,8 @@ Include:
 - CSRF / SSRF / open redirect
 - Sensitive data exposure
 - AI prompt injection / jailbreak bypasses
+- PDF print route exposure
+- CSV export data leaks
 
 ### Out of Scope
 
@@ -3028,6 +5134,7 @@ Include:
 - DoS via legitimate high traffic
 - Social engineering
 - Issues already documented in the README
+- Self-XSS (user attacking themselves)
 
 ### Disclosure Policy
 
@@ -3052,6 +5159,9 @@ git push origin main
 - Go to [vercel.com/new](https://vercel.com/new)
 - Select your `vestior-store` repo
 - Framework: **Next.js** (auto-detected)
+- Root directory: `./`
+- Build command: `npm run build`
+- Output directory: `.next`
 
 **3. Add environment variables:**
 
@@ -3087,6 +5197,7 @@ NEXT_PUBLIC_GA_MEASUREMENT_ID       (optional)
 
 Authentication → URL Configuration → Redirect URLs:
 - Add `https://your-domain.vercel.app/auth/callback`
+- Add `https://your-domain.vercel.app/auth/reset-password` (for v3.2 `token_hash` flow)
 
 **5. Update Stripe webhook:**
 
@@ -3102,7 +5213,7 @@ Developers → Webhooks → Add endpoint:
 
 - [ ] Lighthouse audit on live URL (target: 90+ mobile, 95+ desktop)
 - [ ] Test signup + Google OAuth
-- [ ] Test password reset flow
+- [ ] Test password reset flow (v3.2 `token_hash`) — session should be created
 - [ ] Place a test order (COD + Stripe)
 - [ ] Verify stock decremented
 - [ ] Test admin access (customer redirected)
@@ -3114,6 +5225,9 @@ Developers → Webhooks → Add endpoint:
 - [ ] Configure GA4 custom events (optional)
 - [ ] Verify Vercel cron runs (check logs after first hour)
 - [ ] Test abandoned cart flow (add to cart, wait 2h+, check email)
+- [ ] **v3.2:** Test PDF print export from `/admin/exports`
+- [ ] **v3.2:** Verify editorial UI on all admin pages
+- [ ] **v3.2:** Verify admin notifications (place test order from incognito)
 
 ---
 
@@ -3129,8 +5243,6 @@ docker run -p 3000:3000 --env-file .env.local vestior
 
 **Set `NEXT_OUTPUT=standalone`** in the build environment to enable standalone output.
 
----
-
 ### Other Platforms
 
 Works on any Node.js host (Railway, Render, Fly.io, VPS):
@@ -3141,11 +5253,64 @@ Works on any Node.js host (Railway, Render, Fly.io, VPS):
 4. Configure cron jobs to hit `/api/cron/daily` hourly
 5. Set up a reverse proxy (Nginx/Caddy) for HTTPS
 
----
+### VPS Deployment (Ubuntu 22.04 Example)
+
+```bash
+# Install Node.js 20
+curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+sudo apt install -y nodejs
+
+# Install PM2
+sudo npm install -g pm2
+
+# Clone and build
+cd /var/www
+git clone https://github.com/zainshah3464/vestior-store.git
+cd vestior-store
+npm install
+NEXT_OUTPUT=standalone npm run build
+
+# Create .env.local
+cp .env.example .env.local
+nano .env.local  # paste all production values
+
+# Start with PM2
+pm2 start .next/standalone/server.js --name vestior
+pm2 save
+pm2 startup
+```
+
+**Nginx reverse proxy:**
+
+```nginx
+server {
+    listen 80;
+    server_name vestior.com www.vestior.com;
+
+    location / {
+        proxy_pass http://localhost:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+```
+
+**SSL with Certbot:**
+
+```bash
+sudo apt install certbot python3-certbot-nginx
+sudo certbot --nginx -d vestior.com -d www.vestior.com
+```
 
 ### Cron Jobs
 
-Two options for scheduled tasks:
+Three options for scheduled tasks:
 
 **Option A — Vercel Cron (Hobby = 1 cron):**
 
@@ -3165,7 +5330,7 @@ Two options for scheduled tasks:
 
 **Option B — External Cron (cron-job.org, free):**
 
-For more granular control, use external cron:
+For more granular control:
 - `https://your-domain.com/api/cron/low-stock-alert` — every 6 hours
 - `https://your-domain.com/api/cron/abandoned-carts` — hourly
 - Add header: `Authorization: Bearer YOUR_CRON_SECRET`
@@ -3173,6 +5338,76 @@ For more granular control, use external cron:
 **Option C — GitHub Actions:**
 
 The repo includes `.github/workflows/keep-alive.yml` which pings `/api/cron/keep-alive` twice daily to prevent free-tier DB pausing.
+
+### Rollback
+
+Vercel → Deployments → find last good → ⋯ → **Promote to Production**. ~30 seconds.
+
+**For DB migrations:** Not auto-reversible. Write a new migration that undoes the change, test in dev, apply to production.
+
+**Special case — role normalization:** Reversible via backup table:
+```sql
+UPDATE public.profiles p
+SET role = b.old_role
+FROM public._role_normalization_backup b
+WHERE p.id = b.id;
+```
+
+---
+
+## 💰 Free Tier Limits
+
+VESTIOR runs on **100% free tiers** at MVP scale. Here's what you get:
+
+| Service | Free Tier | Capacity |
+|---------|-----------|----------|
+| **Vercel Hobby** | 100GB bandwidth, 100GB-hours compute | ~50K monthly visitors |
+| **Supabase Free** | 500MB DB, 1GB storage, 50K MAU | ~10K products, 50K users |
+| **MongoDB M0** | 512MB storage | ~500K events (90-day TTL) |
+| **Upstash Redis** | 500K commands/month | ~1M rate-limit checks |
+| **Upstash QStash** | 500 messages/day | ~15K emails/month |
+| **Gmail SMTP** | 500 emails/day | ~15K emails/month |
+| **Stripe** | No monthly fee | 2.9% + 30¢ per transaction |
+| **Groq** | 1,000 requests/day | ~1K AI chats/day |
+| **GitHub Actions** | 2,000 minutes/month | Plenty for CI |
+
+**Total monthly cost: $0** until you exceed limits.
+
+### When to Upgrade
+
+- **Vercel:** When you need commercial use + more crons → Pro ($20/month)
+- **Supabase:** When you need backups + more compute → Pro ($25/month)
+- **MongoDB:** When storage exceeds 512MB → M2 ($9/month)
+- **Resend:** When you exceed 500 emails/day → Add Resend (free 3K/month)
+- **Groq:** When you exceed 1K requests/day → Paid tier available
+
+### Scaling Checklist
+
+**At 10K orders/month:**
+- [ ] Upgrade Vercel to Pro
+- [ ] Upgrade Supabase to Pro (backups + no pause)
+- [ ] Review MongoDB performance advisor
+- [ ] Check Upstash quotas
+- [ ] Monitor Groq daily request count
+
+**At 100K orders/month:**
+- [ ] Supabase Pro → Team tier
+- [ ] MongoDB M0 → M10
+- [ ] Add Redis caching layer for product queries
+- [ ] Add Sentry error tracking
+- [ ] Migrate Groq to paid tier if hitting free limits
+- [ ] Consider adding Resend for transactional email
+
+**At 1M orders/month:**
+- [ ] Migrate from Vercel to AWS ECS / Kubernetes
+- [ ] Self-hosted Postgres with read replicas
+- [ ] Sharded MongoDB or migrate to ClickHouse
+- [ ] CDN caching for product pages
+- [ ] Split admin panel from storefront
+- [ ] Background workers on dedicated queue (BullMQ, SQS)
+- [ ] Self-hosted AI inference (vLLM, Ollama)
+
+**None of the core business logic changes.** Just swap connection strings and add infrastructure.
 
 ---
 
@@ -3193,8 +5428,12 @@ git push origin feature/amazing-feature
 - [ ] Run `npm run typecheck` (must be clean)
 - [ ] Run `npm run lint` (zero errors)
 - [ ] Run `npm run test` (all pass)
+- [ ] Run `npm run test:e2e` (all pass)
 - [ ] Add tests for new features
 - [ ] Update README if behavior changes
+- [ ] New migrations must be idempotent
+- [ ] New AI tools must be read-only
+- [ ] Server-only modules must have `import 'server-only'`
 
 ### Commit Convention
 
@@ -3209,25 +5448,34 @@ We use [Conventional Commits](https://www.conventionalcommits.org/):
 | `refactor:` | Code change (no feature, no fix) |
 | `test:` | Adding or fixing tests |
 | `chore:` | Tooling, dependencies, config |
+| `build:` | Build system changes |
+| `ci:` | CI configuration |
+| `revert:` | Revert a previous commit |
 
-**Scopes:** `cart`, `checkout`, `payments`, `email`, `admin`, `auth`, `db`, `api`, `analytics`, `reviews`, `wishlist`, `coupons`, `invoices`, `ai`, `pwa`
+**Scopes:** `cart`, `checkout`, `payments`, `email`, `admin`, `auth`, `db`, `api`, `analytics`, `reviews`, `wishlist`, `coupons`, `invoices`, `ai`, `pwa`, `sessions`, `audit`, `ui`, `exports`
 
 **Examples:**
 ```
 feat(ai): add semantic product search tool
 fix(email): prevent duplicate payment-confirmed emails
+fix(cron): correct param order in findAbandonedCarts
+feat(admin): add PDF print export for all entity types
+refactor(ui): remove edge fade gradients from scrollable rows
 perf(images): switch hero to AVIF format
 docs(readme): update lighthouse scores
 ```
 
 ### What We're Looking For
 
-- **Bug fixes** — especially in cart, checkout, payments, email
+- **Bug fixes** — especially in cart, checkout, payments, email, cron
 - **Performance improvements** — with Lighthouse benchmarks
 - **Security hardening** — with CVE-style reasoning
 - **Accessibility improvements** — WCAG AA compliance
 - **Test coverage** — new tests, edge cases
+- **AI improvements** — better tool descriptions, prompt refinements, new tools
+- **PWA improvements** — offline UX, cache strategy, install flow
 - **Documentation** — clearer explanations, better examples
+- **UI polish** — consistent with editorial design system
 
 ### What We Don't Accept
 
@@ -3236,9 +5484,25 @@ docs(readme): update lighthouse scores
 - Breaking changes in minor versions
 - Tests that just test mocks
 - Changes without tests
+- LLM output tests (non-deterministic — test boundaries instead)
 - AI-generated PRs without review (you must understand every line)
+- Reformatting existing code "for consistency" without discussing first
 
 See [CONTRIBUTING.md](./CONTRIBUTING.md) for full guidelines.
+
+### Getting Help
+
+| Channel | Use for |
+|---------|---------|
+| **GitHub Issues** | Bug reports, feature requests |
+| **GitHub Discussions** | Questions, ideas, show-and-tell |
+| **Email** | Security disclosures, private matters |
+
+**Response time (solo maintainer):**
+- Bug reports: 24-72 hours
+- Feature requests: 3-7 days
+- PR reviews: 48 hours
+- Security disclosures: 24 hours
 
 ---
 
@@ -3274,36 +5538,9 @@ SOFTWARE.
 
 ---
 
-## 💰 Free Tier Limits
-
-VESTIOR runs on **100% free tiers** at MVP scale. Here's what you get:
-
-| Service | Free Tier | Capacity |
-|---------|-----------|----------|
-| **Vercel Hobby** | 100GB bandwidth, 100GB-hours compute | ~50K monthly visitors |
-| **Supabase Free** | 500MB DB, 1GB storage, 50K MAU | ~10K products, 50K users |
-| **MongoDB M0** | 512MB storage | ~500K events (90-day TTL) |
-| **Upstash Redis** | 500K commands/month | ~1M rate-limit checks |
-| **Upstash QStash** | 500 messages/day | ~15K emails/month |
-| **Gmail SMTP** | 500 emails/day | ~15K emails/month |
-| **Stripe** | No monthly fee | 2.9% + 30¢ per transaction |
-| **Groq** | 1,000 requests/day | ~1K AI chats/day |
-| **GitHub Actions** | 2,000 minutes/month | Plenty for CI |
-
-**Total monthly cost: $0** until you exceed limits.
-
-**When to upgrade:**
-- **Vercel:** When you need commercial use + more crons → Pro ($20/month)
-- **Supabase:** When you need backups + more compute → Pro ($25/month)
-- **MongoDB:** When storage exceeds 512MB → M2 ($9/month)
-- **Resend:** When you exceed 500 emails/day → Add Resend (free 3K/month)
-- **Groq:** When you exceed 1K requests/day → Paid tier available
-
----
-
 ## 📞 Contact
 
-**Zain Ali Shah**
+**Zain Shah**
 
 - 📧 Email: [zainshahzs110@gmail.com](mailto:zainshahzs110@gmail.com)
 - 🐙 GitHub: [@zainshah3464](https://github.com/zainshah3464)
@@ -3368,6 +5605,61 @@ Original version handled stock + order in one transaction. But coupon + payment 
 
 Both serve different needs. Duplication is intentional. Trigger ensures they don't drift.
 
+### Why the editorial redesign in v3.2?
+
+The original UI was functional but inconsistent — different components used different patterns, colors, spacings. The v3.2 redesign:
+- **Establishes a single design language** across 120+ files
+- **Improves maintainability** — tokens documented, easy to extend
+- **Boosts brand identity** — dark editorial tone throughout
+- **Enhances perceived performance** — cleaner paint, fewer reflows
+- **Zero runtime cost** — pure CSS, no JS overhead
+
+Result: every page feels like the same product.
+
+### Why PDF print export (v3.2)?
+
+Three reasons:
+1. **Compliance** — many jurisdictions require printable audit trails
+2. **Practicality** — admins want physical copies for accounting
+3. **Zero dependencies** — browser's native "Print → Save as PDF" is free
+
+We chose **not** to use Puppeteer/headless Chrome (heavy, slow) or a server-side PDF library (200KB+ bundle). Instead, we use print-optimized CSS that leverages what the browser already does perfectly.
+
+### Why `token_hash` flow for password reset (v3.2)?
+
+Supabase deprecated the older `code`-based flow in favor of `token_hash`. The new flow:
+- **Prevents session loss** — user gets a real session after clicking the link
+- **More secure** — hash is single-use and time-limited
+- **Simpler** — one API call instead of a code exchange dance
+
+The old flow was leaving users without a session after clicking the reset link. The v3.2 fix was a one-line change but a critical bug.
+
+### Why sharp scroll boundaries (v3.2)?
+
+Previous versions added **edge fade gradients** to scrollable rows (product carousels, recommended rows). The intent was "premium soft edges." The result was:
+- Inconsistent visual cut-off (fades were in different places on different rows)
+- Performance cost (extra gradient layers)
+- Confusion — users couldn't tell where the scroll area ended
+
+**v3.2 removed all edge fades** in favor of sharp boundaries. Cleaner look, faster paint, clearer affordance.
+
+### Why `stepCountIs(3)` for AI tool calls?
+
+A single user message can trigger a chain:
+```
+User: "Do I have suits in stock that match my last order?"
+Step 1: getMyOrders({ limit: 1 }) → { items: [{ productId: "abc", category: "Suits" }] }
+Step 2: searchProducts({ category: "Suits" }) → [...10 suits]
+Step 3: getProductById({ id: "xyz" }) → { stock: 5, ... }
+```
+
+**3 steps is enough** for:
+- Search → get details → answer
+- Get order → search → answer
+- Get categories → search → answer
+
+**4+ steps** usually means the LLM is confused. Cap prevents runaway tool-calling + cost explosion.
+
 ---
 
 <div align="center">
@@ -3377,3 +5669,6 @@ Both serve different needs. Duplication is intentional. Trigger ensures they don
 Thank you for reading this far. If you build something great with VESTIOR, let me know.
 
 </div>
+```
+
+---
