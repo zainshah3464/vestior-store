@@ -1,25 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
+import type { EmailOtpType } from '@supabase/supabase-js'
 
 export async function GET(request: NextRequest) {
-  const { searchParams } = new URL(request.url)
+  const { searchParams, origin } = new URL(request.url)
   const code = searchParams.get('code')
+  const token_hash = searchParams.get('token_hash')
+  const type = searchParams.get('type') as EmailOtpType | null
   const next = searchParams.get('next') ?? '/'
 
-  // Sanitize `next` — only allow same-origin relative paths
   const safeNext = next.startsWith('/') && !next.startsWith('//') ? next : '/'
+  const redirectUrl = new URL(safeNext, origin)
+  const response = NextResponse.redirect(redirectUrl)
 
-  // If no code, redirect straight to login
-  if (!code) {
-    return NextResponse.redirect(new URL('/auth/login', request.url))
-  }
-
-  // Build the redirect response FIRST so we can attach cookies to it
-  const redirectUrl = new URL(safeNext, request.url)
-const response = NextResponse.redirect(redirectUrl)
-
-  // Server client bound to `response.cookies` — every cookie it sets
-  // will land on the redirect response, not on next/headers
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -30,9 +23,7 @@ const response = NextResponse.redirect(redirectUrl)
         },
         setAll(cookiesToSet) {
           cookiesToSet.forEach(({ name, value, options }) => {
-            // Set on request (so downstream reads work)
             request.cookies.set(name, value)
-            // Set on response (so browser receives them)
             response.cookies.set(name, value, options)
           })
         },
@@ -40,14 +31,29 @@ const response = NextResponse.redirect(redirectUrl)
     }
   )
 
-  const { error } = await supabase.auth.exchangeCodeForSession(code)
-
-  if (error) {
-    console.error('[auth/callback] exchange failed:', error.message)
-    return NextResponse.redirect(
-      new URL('/auth/login?error=oauth_failed', request.url)
-    )
+  // 🆕 Naya: token_hash wala flow (reset password + signup confirm)
+  if (token_hash && type) {
+    const { error } = await supabase.auth.verifyOtp({ token_hash, type })
+    if (error) {
+      console.error('[auth/callback] verifyOtp failed:', error.message)
+      return NextResponse.redirect(
+        new URL('/auth/forgot-password?error=invalid_or_expired_link', origin)
+      )
+    }
+    return response
   }
 
-  return response
+  // Purana: OAuth (Google login) ke liye code wala flow
+  if (code) {
+    const { error } = await supabase.auth.exchangeCodeForSession(code)
+    if (error) {
+      console.error('[auth/callback] exchange failed:', error.message)
+      return NextResponse.redirect(
+        new URL('/auth/login?error=oauth_failed', origin)
+      )
+    }
+    return response
+  }
+
+  return NextResponse.redirect(new URL('/auth/login', origin))
 }

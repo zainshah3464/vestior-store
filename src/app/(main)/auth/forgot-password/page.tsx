@@ -27,13 +27,11 @@ export default function ForgotPasswordPage() {
 
     try {
       const supabase = createClient()
-      const siteUrl =
-        process.env.NEXT_PUBLIC_SITE_URL ||
-        (typeof window !== 'undefined' ? window.location.origin : '')
+ const siteUrl = window.location.origin  // hamesha current origin use karo
 
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${siteUrl}/auth/reset-password`,
-      })
+const { error } = await supabase.auth.resetPasswordForEmail(email, {
+  redirectTo: `${siteUrl}/auth/callback`,  // ✅ callback route pe bhejo
+})
 
       if (error) {
         toast.error(error.message)
