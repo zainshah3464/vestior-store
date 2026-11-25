@@ -39,7 +39,7 @@ export default async function NewArrivalsPage() {
         <div className="absolute top-1/3 right-0 w-[380px] h-[380px] bg-blue-500/[0.03] blur-[120px]" />
       </div>
 
-      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="relative z-10 w-full px-4 sm:px-6 lg:px-8">
         {/* ─────────────────────────────────────────────
             Editorial header
            ───────────────────────────────────────────── */}

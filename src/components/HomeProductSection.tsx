@@ -214,9 +214,16 @@ export default function HomeProductSection({
         }}
       >
         <div
-          className="flex gap-3 sm:gap-4 md:gap-5 lg:gap-6"
-          style={{ width: 'max-content', minWidth: '100%' }}
-        >
+  className={`flex w-max min-w-full gap-3 sm:gap-4 md:gap-5 lg:gap-6 ${
+    rowProducts.length <= 4 ? 'lg:grid lg:w-full' : ''
+  }`}
+  style={{
+    minWidth: '100%',
+    ...(rowProducts.length <= 4 && {
+      gridTemplateColumns: `repeat(${rowProducts.length}, minmax(0, 1fr))`,
+    }),
+  }}
+>
           {rowProducts.map((product, index) => (
             <motion.div
               key={product.id}
@@ -229,7 +236,9 @@ export default function HomeProductSection({
                 delay: Math.min(index * 0.05, 0.35),
                 ease: [0.22, 1, 0.36, 1],
               }}
-              className="w-[170px] sm:w-[200px] md:w-[240px] lg:w-[280px] flex-shrink-0 snap-start"
+              className={`w-[170px] sm:w-[200px] md:w-[240px] ${
+  rowProducts.length <= 4 ? 'lg:w-full' : 'lg:w-[280px]'
+} flex-shrink-0 snap-start`}
             >
               <ProductCard product={product} />
             </motion.div>

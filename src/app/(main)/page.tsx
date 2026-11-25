@@ -68,7 +68,7 @@ export default async function HomePage() {
           <div className="absolute bottom-0 right-0 w-[400px] h-[300px] bg-indigo-500/[0.04] blur-[100px]" />
         </div>
 
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+        <div className="w-full px-4 sm:px-6 lg:px-8 relative z-10">
           {/* Section Header */}
           <div className="text-center mb-14 md:mb-20">
             <div className="inline-flex items-center gap-2.5 px-4 py-1.5 rounded-full bg-blue-500/[0.08] border border-blue-500/25 mb-5 backdrop-blur-sm">
@@ -127,7 +127,7 @@ export default async function HomePage() {
           <div className="absolute top-1/2 left-0 w-[400px] h-[400px] bg-emerald-500/[0.03] blur-[120px]" />
         </div>
 
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+        <div className="w-full px-4 sm:px-6 lg:px-8 relative z-10">
           {/* Section Header */}
           <div className="text-center mb-14 md:mb-20">
             <div className="inline-flex items-center gap-2.5 px-4 py-1.5 rounded-full bg-emerald-500/[0.08] border border-emerald-500/25 mb-5 backdrop-blur-sm">

@@ -66,7 +66,7 @@ export default function RecommendedRow({
 
   return (
     <section ref={sectionRef} className="relative py-10 md:py-14">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="w-full px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: 16 }}

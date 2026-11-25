@@ -17,6 +17,7 @@ import {
   Clock,
   ArrowRight,
   Sparkles,
+  ShieldCheck,
 } from 'lucide-react'
 import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
@@ -84,7 +85,7 @@ export default function Navbar() {
   const pathname = usePathname()
   const router = useRouter()
   const supabase = useMemo(() => createClient(), [])
-  const { user } = useAuth()
+  const { user, isAdmin } = useAuth()
   const { count: wishlistCount } = useWishlist()
 
   const isHomePage = pathname === '/'
@@ -386,6 +387,18 @@ export default function Navbar() {
                 />
               </button>
 
+              {/* Admin — visible only to verified admins */}
+              {isAdmin && (
+                <Link
+                  href="/admin"
+                  className="hidden md:inline-flex items-center gap-2 px-3 py-2 rounded-full text-[13px] font-medium text-blue-400 hover:text-blue-300 hover:bg-blue-500/[0.08] transition-all duration-200"
+                  aria-label="Admin dashboard"
+                >
+                  <ShieldCheck size={17} aria-hidden="true" />
+                  <span>Admin</span>
+                </Link>
+              )}
+
               {/* User */}
               {user ? (
                 <div
@@ -646,6 +659,31 @@ export default function Navbar() {
                     )
                   )}
                 </div>
+
+                {/* Admin — mobile */}
+                {isAdmin && (
+                  <motion.div
+                    initial={{ opacity: 0, x: -8 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: navItems.length * 0.04 }}
+                  >
+                    <Link
+                      href="/admin"
+                      onClick={() => setIsOpen(false)}
+                      className="flex items-center justify-between w-full py-3 px-3 text-[14px] text-blue-400 hover:text-blue-300 hover:bg-blue-500/[0.06] rounded-xl transition-colors"
+                    >
+                      <span className="flex items-center gap-3">
+                        <ShieldCheck size={16} aria-hidden="true" />
+                        Admin Dashboard
+                      </span>
+                      <ArrowRight
+                        size={14}
+                        className="text-blue-500/60"
+                        aria-hidden="true"
+                      />
+                    </Link>
+                  </motion.div>
+                )}
 
                 {/* User section */}
                 {user ? (
